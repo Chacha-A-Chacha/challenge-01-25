@@ -22,6 +22,17 @@ export const VALIDATION_RULES = {
         MIN_LENGTH: 2,
         MAX_LENGTH: 50,
         REGEX: /^[a-zA-Z\s\-'\.]+$/
+    },
+
+    PASSWORD: {
+        MIN_LENGTH: 8,
+        MAX_LENGTH: 100
+    },
+
+    RECEIPT_NUMBER: {
+        MIN_LENGTH: 6,
+        MAX_LENGTH: 20,
+        REGEX: /^\d+$/
     }
 } as const
 
@@ -43,6 +54,12 @@ export const CLASS_RULES = {
 export const ATTENDANCE_RULES = {
     MAX_REASSIGNMENT_REQUESTS: 3,
     AUTO_MARK_ABSENT_DELAY_HOURS: 4
+} as const
+
+export const REGISTRATION_RULES = {
+    MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB for receipt image
+    ALLOWED_IMAGE_TYPES: ['image/jpeg', 'image/png', 'image/webp'],
+    AUTO_EXPIRE_DAYS: 7
 } as const
 
 export const EXCEL_IMPORT = {
@@ -106,6 +123,23 @@ export const API_ROUTES = {
         STATS: '/api/admin/stats',
         TEACHERS: '/api/admin/teachers',
         HEALTH_CHECK: '/api/admin/health'
+    },
+
+    // Registration (public)
+    REGISTER: {
+        SUBMIT: '/api/register',
+        COURSES: '/api/register/courses',
+        SESSIONS: (courseId: string) => `/api/register/courses/${courseId}/sessions`,
+        UPLOAD: '/api/register/upload'
+    },
+
+    // Teacher registration management
+    TEACHER: {
+        REGISTRATIONS: '/api/teacher/registrations',
+        REGISTRATION_DETAIL: (id: string) => `/api/teacher/registrations/${id}`,
+        APPROVE: (id: string) => `/api/teacher/registrations/${id}/approve`,
+        REJECT: (id: string) => `/api/teacher/registrations/${id}/reject`,
+        BULK_APPROVE: '/api/teacher/registrations/bulk-approve'
     }
 } as const
 
@@ -140,6 +174,8 @@ export const PERMISSIONS = {
     CREATE_SESSION: 'create_session',
     APPROVE_REASSIGNMENT: 'approve_reassignment',
     MARK_ATTENDANCE: 'mark_attendance',
+    VIEW_REGISTRATIONS: 'view_registrations',
+    APPROVE_REGISTRATION: 'approve_registration',
 
     // Student permissions
     GENERATE_QR: 'generate_qr',
@@ -159,7 +195,9 @@ export const ERROR_MESSAGES = {
         REQUIRED_FIELD: 'This field is required',
         INVALID_EMAIL: 'Please enter a valid email address',
         INVALID_PHONE: 'Please enter a valid phone number',
-        INVALID_STUDENT_NUMBER: 'Student number must be 3-6 characters (letters and numbers only)'
+        INVALID_STUDENT_NUMBER: 'Student number must be 3-6 characters (letters and numbers only)',
+        PASSWORDS_DONT_MATCH: 'Passwords do not match',
+        INVALID_RECEIPT_NUMBER: 'Receipt number must contain only digits'
     },
 
     ATTENDANCE: {
@@ -172,6 +210,7 @@ export const ERROR_MESSAGES = {
     FILE_UPLOAD: {
         FILE_TOO_LARGE: 'File size exceeds 5MB limit',
         INVALID_FORMAT: 'Only .xlsx, .xls, and .csv files are allowed',
+        INVALID_IMAGE_FORMAT: 'Only JPEG, PNG, and WebP images are allowed',
         PARSING_FAILED: 'Failed to parse Excel file',
         CORRUPTED_FILE: 'File appears to be corrupted'
     },
@@ -182,6 +221,14 @@ export const ERROR_MESSAGES = {
         SAME_DAY_ONLY: 'Can only reassign within the same day sessions',
         SAME_CLASS_ONLY: 'Can only reassign within the same class',
         SESSION_FULL: 'Target session is at full capacity'
+    },
+
+    REGISTRATION: {
+        EMAIL_EXISTS: 'An account with this email already exists',
+        SESSION_FULL: 'Selected session is at full capacity',
+        COURSE_NOT_ACTIVE: 'This course is not currently accepting registrations',
+        ALREADY_PROCESSED: 'This registration has already been processed',
+        NOT_FOUND: 'Registration not found'
     }
 } as const
 
