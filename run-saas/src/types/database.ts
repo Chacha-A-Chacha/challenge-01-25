@@ -1,5 +1,5 @@
 // types/database.ts
-import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
+import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus, RegistrationStatus } from './enums'
 import type { TeacherRole } from './enums'
 
 // Base entity interfaces matching Prisma schema exactly
@@ -22,6 +22,7 @@ export interface Course {
   headTeacher?: Teacher
   teachers?: Teacher[]
   classes?: Class[]
+  registrations?: StudentRegistration[]
 }
 
 export interface Teacher {
@@ -37,6 +38,7 @@ export interface Teacher {
   headCourse?: Course
   attendanceRecords?: Attendance[]
   approvedRequests?: ReassignmentRequest[]
+  reviewedRegistrations?: StudentRegistration[]
 }
 
 export interface Class {
@@ -63,7 +65,10 @@ export interface Session {
   
   // Relations
   class?: Class
-  students?: Student[]
+  saturdayStudents?: Student[]
+  sundayStudents?: Student[]
+  pendingSaturdayRegs?: StudentRegistration[]
+  pendingSundayRegs?: StudentRegistration[]
   attendances?: Attendance[]
   fromRequests?: ReassignmentRequest[]
   toRequests?: ReassignmentRequest[]
@@ -73,18 +78,50 @@ export interface Student {
   id: string
   uuid: string
   studentNumber: string
+  surname: string
   firstName: string
   lastName?: string
   email: string
   phoneNumber?: string
+  passwordHash: string
   classId: string
+  saturdaySessionId?: string
+  sundaySessionId?: string
   createdAt: Date
   
   // Relations
   class?: Class
-  sessions?: Session[]
+  saturdaySession?: Session
+  sundaySession?: Session
   attendances?: Attendance[]
   reassignmentRequests?: ReassignmentRequest[]
+}
+
+export interface StudentRegistration {
+  id: string
+  surname: string
+  firstName: string
+  lastName?: string
+  email: string
+  phoneNumber?: string
+  courseId: string
+  saturdaySessionId: string
+  sundaySessionId: string
+  passwordHash: string
+  paymentReceiptUrl: string
+  paymentReceiptNo: string
+  status: RegistrationStatus
+  reviewedById?: string
+  reviewedAt?: Date
+  rejectionReason?: string
+  createdAt: Date
+  updatedAt: Date
+  
+  // Relations
+  course?: Course
+  saturdaySession?: Session
+  sundaySession?: Session
+  reviewedBy?: Teacher
 }
 
 export interface Attendance {
