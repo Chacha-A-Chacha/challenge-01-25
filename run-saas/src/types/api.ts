@@ -1,6 +1,5 @@
 // types/api.ts
-import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
-// import type { Student } from './database'
+import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus, RegistrationStatus } from './enums'
 
 export interface ApiResponse<T = unknown> {
   success: boolean
@@ -36,7 +35,9 @@ export interface ApiRequest<T = unknown> {
   params?: Record<string, string>
 }
 
-// Specific API request types
+// ═══════════════════════════════════════════════════════════════════════════
+// COURSE API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface CourseCreateRequest {
   courseName: string
   headTeacherEmail: string
@@ -49,11 +50,17 @@ export interface CourseUpdateRequest {
   status?: CourseStatus
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TEACHER API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface TeacherCreateRequest {
   email: string
   password: string
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CLASS & SESSION API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface ClassCreateRequest {
   name: string
   capacity: number
@@ -66,11 +73,17 @@ export interface SessionCreateRequest {
   capacity: number
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STUDENT IMPORT API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface StudentImportRequest {
   file: File
   classId: string
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// ATTENDANCE API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface AttendanceMarkRequest {
   qrData?: string
   studentId?: string
@@ -88,6 +101,9 @@ export interface BulkAttendanceRequest {
   date?: Date
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// REASSIGNMENT API TYPES
+// ═══════════════════════════════════════════════════════════════════════════
 export interface ReassignmentCreateRequest {
   studentId: string
   fromSessionId: string
@@ -98,4 +114,119 @@ export interface ReassignmentCreateRequest {
 export interface ReassignmentUpdateRequest {
   status: RequestStatus
   teacherId?: string
-} 
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTRATION API TYPES (NEW)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Public course info for registration dropdown */
+export interface CoursePublic {
+  id: string
+  name: string
+  status: CourseStatus
+}
+
+/** Session with availability info for registration */
+export interface SessionWithAvailability {
+  id: string
+  classId: string
+  className: string
+  day: WeekDay
+  startTime: string  // Formatted time string "09:00"
+  endTime: string    // Formatted time string "11:00"
+  capacity: number
+  available: number
+  isFull: boolean
+}
+
+/** Grouped sessions by day for registration form */
+export interface CourseSessionsResponse {
+  courseId: string
+  courseName: string
+  saturday: SessionWithAvailability[]
+  sunday: SessionWithAvailability[]
+}
+
+/** Student registration submission request */
+export interface StudentRegistrationRequest {
+  // Course & Sessions
+  courseId: string
+  saturdaySessionId: string
+  sundaySessionId: string
+  
+  // Personal Info
+  surname: string
+  firstName: string
+  lastName?: string
+  email: string
+  phoneNumber?: string
+  
+  // Authentication
+  password: string
+  
+  // Payment
+  paymentReceiptUrl: string
+  paymentReceiptNo: string
+}
+
+/** Registration submission response */
+export interface StudentRegistrationResponse {
+  registrationId: string
+  email: string
+  courseName: string
+  saturdaySession: string  // Formatted: "9:00 AM - 11:00 AM"
+  sundaySession: string    // Formatted: "11:30 AM - 1:30 PM"
+  submittedAt: string
+}
+
+/** Registration details for teacher review */
+export interface RegistrationDetail {
+  id: string
+  surname: string
+  firstName: string
+  lastName?: string
+  email: string
+  phoneNumber?: string
+  courseName: string
+  saturdaySession: {
+    id: string
+    time: string
+    className: string
+  }
+  sundaySession: {
+    id: string
+    time: string
+    className: string
+  }
+  paymentReceiptUrl: string
+  paymentReceiptNo: string
+  status: RegistrationStatus
+  createdAt: string
+  reviewedAt?: string
+  reviewedBy?: string
+  rejectionReason?: string
+}
+
+/** Rejection request */
+export interface RejectRegistrationRequest {
+  reason: string
+}
+
+/** Bulk approval request */
+export interface BulkApprovalRequest {
+  registrationIds: string[]
+}
+
+/** Bulk approval response */
+export interface BulkApprovalResponse {
+  successful: Array<{
+    registrationId: string
+    studentId: string
+    studentNumber: string
+  }>
+  failed: Array<{
+    registrationId: string
+    error: string
+  }>
+}

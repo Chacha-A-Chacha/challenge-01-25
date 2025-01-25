@@ -8,6 +8,7 @@ export {
   WEEK_DAYS,
   ATTENDANCE_STATUS,
   REQUEST_STATUS,
+  REGISTRATION_STATUS,
   NOTIFICATION_TYPES
 } from './enums'
 
@@ -18,6 +19,7 @@ export type {
   WeekDay,
   AttendanceStatus,
   RequestStatus,
+  RegistrationStatus,
   NotificationType
 } from './enums'
 
@@ -36,6 +38,7 @@ export type {
   Class,
   Session,
   Student,
+  StudentRegistration,
   Attendance,
   ReassignmentRequest
 } from './database'
@@ -56,7 +59,16 @@ export type {
   AttendanceMarkRequest,
   BulkAttendanceRequest,
   ReassignmentCreateRequest,
-  ReassignmentUpdateRequest
+  ReassignmentUpdateRequest,
+  CoursePublic,
+  SessionWithAvailability,
+  CourseSessionsResponse,
+  StudentRegistrationRequest,
+  StudentRegistrationResponse,
+  RegistrationDetail,
+  RejectRegistrationRequest,
+  BulkApprovalRequest,
+  BulkApprovalResponse
 } from './api'
 
 // Component types
