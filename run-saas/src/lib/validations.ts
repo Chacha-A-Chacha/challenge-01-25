@@ -242,6 +242,53 @@ export function validateForm<T>(
     return {isValid: false, errors}
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// REGISTRATION VALIDATION SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export const studentRegistrationSchema = z.object({
+    // Course & Sessions
+    courseId: uuidSchema,
+    saturdaySessionId: uuidSchema,
+    sundaySessionId: uuidSchema,
+
+    // Personal Info
+    surname: nameSchema,
+    firstName: nameSchema,
+    lastName: z.string().max(VALIDATION_RULES.NAME.MAX_LENGTH).optional().or(z.literal('')),
+    email: emailSchema,
+    phoneNumber: phoneSchema,
+
+    // Authentication
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+
+    // Payment
+    paymentReceiptUrl: z.string().url('Invalid receipt image URL'),
+    paymentReceiptNo: z
+        .string()
+        .min(VALIDATION_RULES.RECEIPT_NUMBER.MIN_LENGTH, `Receipt number must be at least ${VALIDATION_RULES.RECEIPT_NUMBER.MIN_LENGTH} digits`)
+        .max(VALIDATION_RULES.RECEIPT_NUMBER.MAX_LENGTH, `Receipt number must be at most ${VALIDATION_RULES.RECEIPT_NUMBER.MAX_LENGTH} digits`)
+        .regex(VALIDATION_RULES.RECEIPT_NUMBER.REGEX, ERROR_MESSAGES.VALIDATION.INVALID_RECEIPT_NUMBER)
+}).refine((data) => data.password === data.confirmPassword, {
+    message: ERROR_MESSAGES.VALIDATION.PASSWORDS_DONT_MATCH,
+    path: ['confirmPassword']
+})
+
+export const rejectRegistrationSchema = z.object({
+    reason: z
+        .string()
+        .min(10, 'Rejection reason must be at least 10 characters')
+        .max(500, 'Rejection reason must be at most 500 characters')
+})
+
+export const bulkApprovalSchema = z.object({
+    registrationIds: z.array(uuidSchema).min(1, 'At least one registration must be selected')
+})
+
+export type StudentRegistrationInput = z.infer<typeof studentRegistrationSchema>
+export type RejectRegistration = z.infer<typeof rejectRegistrationSchema>
+export type BulkApproval = z.infer<typeof bulkApprovalSchema>
 export type AdminTeacherLogin = z.infer<typeof adminTeacherLoginSchema>
 export type StudentLogin = z.infer<typeof studentLoginSchema>
 export type CreateCourse = z.infer<typeof createCourseSchema>
