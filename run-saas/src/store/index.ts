@@ -5,9 +5,7 @@
 // ============================================================================
 export { 
   useAuthStore,
-  useAuth,
-  useStudentLogin,
-  useAdminTeacherLogin
+  useAuth
 } from './auth/auth-store'
 
 // ============================================================================
@@ -67,6 +65,16 @@ export {
 } from './student/reassignment-store'
 
 // ============================================================================
+// REGISTRATION STORES (Public - for student self-registration)
+// ============================================================================
+export {
+  useRegistrationStore,
+  useRegistrationForm,
+  useRegistrationData,
+  useRegistrationSubmission
+} from './registration/registration-store'
+
+// ============================================================================
 // SHARED STORES
 // ============================================================================
 export {
@@ -100,6 +108,7 @@ import { useAttendanceStore } from './teacher/attendance-store'
 import { useQRStore } from './student/qr-store'
 import { useScheduleStore } from './student/schedule-store'
 import { useReassignmentStore } from './student/reassignment-store'
+import { useRegistrationStore } from './registration/registration-store'
 
 /**
  * Hook to initialize stores on app startup
@@ -140,6 +149,7 @@ export const useClearAllStores = () => {
       localStorage.removeItem('qr-store')
       localStorage.removeItem('schedule-store')
       localStorage.removeItem('reassignment-store')
+      localStorage.removeItem('registration-store')
       localStorage.removeItem('ui-store')
       localStorage.removeItem('offline-store')
     }
@@ -153,6 +163,7 @@ export const useClearAllStores = () => {
     useQRStore.getState().reset()
     useScheduleStore.getState().reset()
     useReassignmentStore.getState().reset()
+    useRegistrationStore.getState().reset()
     useUIStore.getState().reset()
     useOfflineStore.getState().reset()
   }
@@ -169,6 +180,7 @@ export type {
   Class,
   Session,
   Student,
+  StudentRegistration,
   Attendance,
   ReassignmentRequest,
   QRCodeData,
