@@ -40,6 +40,8 @@ export enum Permission {
     MANAGE_SESSIONS = 'manage_sessions',
     VIEW_ATTENDANCE_REPORTS = 'view_attendance_reports',
     BULK_MARK_ATTENDANCE = 'bulk_mark_attendance',
+    VIEW_REGISTRATIONS = 'view_registrations',
+    APPROVE_REGISTRATION = 'approve_registration',
 
     // ============================================================================
     // STUDENT PERMISSIONS
@@ -88,6 +90,8 @@ export function checkPermission(user: AuthUser | null, permission: Permission): 
         [Permission.MANAGE_SESSIONS]: () => role === 'teacher',
         [Permission.VIEW_ATTENDANCE_REPORTS]: () => role === 'teacher',
         [Permission.BULK_MARK_ATTENDANCE]: () => role === 'teacher',
+        [Permission.VIEW_REGISTRATIONS]: () => role === 'teacher',
+        [Permission.APPROVE_REGISTRATION]: () => role === 'teacher',
 
         // Student permissions
         [Permission.GENERATE_QR]: () => role === 'student',
