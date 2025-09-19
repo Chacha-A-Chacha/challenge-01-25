@@ -1,32 +1,6 @@
 // types/database.ts
-
-export const COURSE_STATUS = {
-  ACTIVE: 'ACTIVE',
-  INACTIVE: 'INACTIVE',
-  COMPLETED: 'COMPLETED'
-} as const
-
-export const WEEK_DAYS = {
-  SATURDAY: 'SATURDAY',
-  SUNDAY: 'SUNDAY'
-} as const
-
-export const ATTENDANCE_STATUS = {
-  PRESENT: 'PRESENT',
-  ABSENT: 'ABSENT',
-  WRONG_SESSION: 'WRONG_SESSION'
-} as const
-
-export const REQUEST_STATUS = {
-  PENDING: 'PENDING',
-  APPROVED: 'APPROVED',
-  DENIED: 'DENIED'
-} as const
-
-export type CourseStatus = typeof COURSE_STATUS[keyof typeof COURSE_STATUS]
-export type WeekDay = typeof WEEK_DAYS[keyof typeof WEEK_DAYS]
-export type AttendanceStatus = typeof ATTENDANCE_STATUS[keyof typeof ATTENDANCE_STATUS]
-export type RequestStatus = typeof REQUEST_STATUS[keyof typeof REQUEST_STATUS]
+import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
+import type { TeacherRole } from './auth'
 
 // Base entity interfaces matching Prisma schema exactly
 export interface Admin {
