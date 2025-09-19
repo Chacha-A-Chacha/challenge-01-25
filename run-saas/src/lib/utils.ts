@@ -4,10 +4,8 @@ import type {
   ApiResponse, 
   SuccessResponse, 
   ErrorResponse,
-  JSONValue,
   StudentImportData,
-  QRCodeData,
-  SafeAny
+  QRCodeData
 } from '@/types'
 import { VALIDATION_RULES, REQUEST_TIMEOUTS, ERROR_MESSAGES } from './constants'
 
@@ -38,7 +36,7 @@ export function getStatusColor(status: string): string {
     'COMPLETED': 'text-blue-600 bg-blue-50'
   }
   
-  return statusColors[status] || 'text-gray-600 bg-gray-50'
+  return statusColors[status] ?? 'text-gray-600 bg-gray-50'
 }
 
 // ============================================================================
@@ -141,7 +139,12 @@ export function validateEmail(email: string): ValidationError | null {
   }
   
   const domain = email.split('@')[1]?.toLowerCase()
-  if (domain && VALIDATION_RULES.EMAIL.DOMAIN_BLOCKLIST.includes(domain)) {
+  if (
+    domain &&
+    VALIDATION_RULES.EMAIL.DOMAIN_BLOCKLIST.includes(
+      domain as typeof VALIDATION_RULES.EMAIL.DOMAIN_BLOCKLIST[number]
+    )
+  ) {
     return { field: 'email', message: 'This email domain is not allowed' }
   }
   
@@ -331,9 +334,12 @@ export async function fetchWithTimeout(
     
     clearTimeout(timeoutId)
     return response
-  } catch (error) {
+  } catch (error: unknown) {
     clearTimeout(timeoutId)
-    throw error
+    if (error instanceof Error) {
+      throw error
+    }
+    throw new Error('Network request failed')
   }
 }
 
@@ -349,8 +355,9 @@ export async function parseApiResponse<T>(response: Response): Promise<ApiRespon
     }
     
     return data
-  } catch (error) {
-    return createApiResponse(false, undefined, undefined, 'Failed to parse response') as ErrorResponse
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Failed to parse response'
+    return createApiResponse(false, undefined, undefined, errorMessage) as ErrorResponse
   }
 }
 
@@ -385,20 +392,45 @@ export async function parseExcelFile(file: File): Promise<StudentImportData[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     
-    reader.onload = (e) => {
+    reader.onload = (e: ProgressEvent<FileReader>) => {
       try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const result = e.target?.result
+        if (!result) {
+          reject(new Error('Failed to read file'))
+          return
+        }
+        
+        const data = new Uint8Array(result as ArrayBuffer)
         const workbook = XLSX.read(data, { type: 'array' })
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet)
         
-        const studentData: StudentImportData[] = jsonData.map((row: SafeAny) => ({
-          student_number: String(row.student_number || row['Student Number'] || '').trim(),
-          first_name: String(row.first_name || row['First Name'] || '').trim(),
-          last_name: String(row.last_name || row['Last Name'] || '').trim() || undefined,
-          email: String(row.email || row['Email'] || '').trim(),
-          phone_number: String(row.phone_number || row['Phone Number'] || '').trim() || undefined
-        }))
+        if (!worksheet) {
+          reject(new Error('No worksheet found'))
+          return
+        }
+        
+        const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, unknown>[]
+        
+        const studentData: StudentImportData[] = jsonData.map((row: Record<string, unknown>) => {
+          const getStringValue = (key: string, alternatives: string[] = []): string => {
+            const allKeys = [key, ...alternatives]
+            for (const k of allKeys) {
+              const value = row[k]
+              if (value !== null && value !== undefined) {
+                return String(value).trim()
+              }
+            }
+            return ''
+          }
+          
+          return {
+            student_number: getStringValue('student_number', ['Student Number', 'StudentNumber', 'ID']),
+            first_name: getStringValue('first_name', ['First Name', 'FirstName', 'Given Name']),
+            last_name: getStringValue('last_name', ['Last Name', 'LastName', 'Surname']) || undefined,
+            email: getStringValue('email', ['Email', 'Email Address']),
+            phone_number: getStringValue('phone_number', ['Phone Number', 'PhoneNumber', 'Phone']) || undefined
+          }
+        })
         
         resolve(studentData)
       } catch (error) {
@@ -414,18 +446,19 @@ export async function parseExcelFile(file: File): Promise<StudentImportData[]> {
 /**
  * Download data as CSV
  */
-export function downloadCSV(data: Record<string, SafeAny>[], filename: string): void {
+export function downloadCSV(data: Record<string, unknown>[], filename: string): void {
   if (data.length === 0) return
   
   const headers = Object.keys(data[0])
   const csvContent = [
     headers.join(','),
-    ...data.map(row => 
-      headers.map(header => {
-        const value = row[header] || ''
-        return typeof value === 'string' && (value.includes(',') || value.includes('"'))
-          ? `"${value.replace(/"/g, '""')}"`
-          : String(value)
+    ...data.map((row: Record<string, unknown>) => 
+      headers.map((header: string) => {
+        const value = row[header] ?? ''
+        const stringValue = String(value)
+        return stringValue.includes(',') || stringValue.includes('"')
+          ? `"${stringValue.replace(/"/g, '""')}"`
+          : stringValue
       }).join(',')
     )
   ].join('\n')
@@ -441,6 +474,7 @@ export function downloadCSV(data: Record<string, SafeAny>[], filename: string): 
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 }
 
@@ -495,7 +529,8 @@ export const storage = {
     try {
       const item = localStorage.getItem(key)
       return item ? JSON.parse(item) : defaultValue
-    } catch {
+    } catch (error: unknown) {
+      console.warn('Failed to get from localStorage:', error)
       return defaultValue
     }
   },
@@ -505,7 +540,7 @@ export const storage = {
     
     try {
       localStorage.setItem(key, JSON.stringify(value))
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('Failed to save to localStorage:', error)
     }
   },
@@ -515,7 +550,7 @@ export const storage = {
     
     try {
       localStorage.removeItem(key)
-    } catch (error) {
+    } catch (error: unknown) {
       console.warn('Failed to remove from localStorage:', error)
     }
   }
