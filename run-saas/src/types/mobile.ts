@@ -19,10 +19,16 @@ export interface DeviceInfo {
 }
 
 export interface PWAInstallPrompt {
-  canInstall: boolean
-  showPrompt: () => Promise<boolean>
-  isInstalled: boolean
-  installEvent?: BeforeInstallPromptEvent
+    canInstall: boolean
+    showPrompt: () => Promise<boolean>
+    isInstalled: boolean
+    installEvent?: BeforeInstallPromptEvent
+}
+
+interface BeforeInstallPromptEvent extends Event {
+    readonly platforms: string[]
+    readonly userChoice: Promise<{ outcome: 'accepted' | 'dismissed', platform: string }>
+    prompt(): Promise<void>
 }
 
 export interface NotificationPermission {

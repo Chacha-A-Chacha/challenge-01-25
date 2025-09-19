@@ -1,6 +1,6 @@
 // types/api.ts
 import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
-import type { Student } from './database'
+// import type { Student } from './database'
 
 export interface ApiResponse<T = unknown> {
   success: boolean
@@ -98,4 +98,4 @@ export interface ReassignmentCreateRequest {
 export interface ReassignmentUpdateRequest {
   status: RequestStatus
   teacherId?: string
-}
+} 
