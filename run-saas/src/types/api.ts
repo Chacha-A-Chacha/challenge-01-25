@@ -1,4 +1,6 @@
 // types/api.ts
+import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
+import type { Student } from './database'
 
 export interface ApiResponse<T = unknown> {
   success: boolean
