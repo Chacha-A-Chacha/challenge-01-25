@@ -1,6 +1,6 @@
 // types/business.ts
 import type { AttendanceStatus, WeekDay } from './enums'
-import type { Student, Session, Attendance } from './database'
+import type { Student, Session, Attendance, Class, Course } from './database'
 
 export interface QRCodeData {
   uuid: string
@@ -90,8 +90,8 @@ export interface StudentSchedule {
   student: Student
   saturdaySession?: Session
   sundaySession?: Session
-  class: import('./database').Class
-  course: import('./database').Course
+  class: Class
+  course: Course
   nextSession?: Session
   attendanceRate: number
 }
