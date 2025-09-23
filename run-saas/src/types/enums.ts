@@ -1,5 +1,16 @@
 // types/enums.ts
 
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  TEACHER: 'teacher',
+  STUDENT: 'student'
+} as const
+
+export const TEACHER_ROLES = {
+  HEAD: 'HEAD',
+  ADDITIONAL: 'ADDITIONAL'
+} as const
+
 export const COURSE_STATUS = {
   ACTIVE: 'ACTIVE',
   INACTIVE: 'INACTIVE',
@@ -30,6 +41,8 @@ export const NOTIFICATION_TYPES = {
   INFO: 'info'
 } as const
 
+export type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES]
+export type TeacherRole = typeof TEACHER_ROLES[keyof typeof TEACHER_ROLES]
 export type CourseStatus = typeof COURSE_STATUS[keyof typeof COURSE_STATUS]
 export type WeekDay = typeof WEEK_DAYS[keyof typeof WEEK_DAYS]
 export type AttendanceStatus = typeof ATTENDANCE_STATUS[keyof typeof ATTENDANCE_STATUS]

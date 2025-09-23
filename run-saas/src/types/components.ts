@@ -1,6 +1,6 @@
 // types/components.ts
 import type { AttendanceStatus } from './enums'
-import type { Student, Session, Course, Teacher, Class } from './database'
+import type { Student, Session, Course, Teacher} from './database'
 import type { AttendanceStats, QRScanResult, ReassignmentOption, AttendanceRecord } from './business'
 import type { StudentImportResult } from './forms'
 import type { SessionCreateRequest, ReassignmentCreateRequest } from './api'
