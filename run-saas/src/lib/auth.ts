@@ -1,71 +1,25 @@
 // lib/auth.ts
 import NextAuth, { type NextAuthConfig } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import type { AuthUser, UserRole, TeacherRole } from "@/types"
-import { 
-  findAdminByEmail, 
-  findTeacherByEmail, 
+import type {
+  AuthUser,
+  UserRole,
+  TeacherRole,
+  StudentWithSessions,
+  TeacherWithCourse
+} from "@/types"
+import {
+  findAdminByEmail,
+  findTeacherByEmail,
   findStudentByCredentials,
-  handlePrismaError 
+  handlePrismaError
 } from "./db"
 import { verifyPassword } from "./utils"
-import { 
-  adminTeacherLoginSchema, 
+import {
+  adminTeacherLoginSchema,
   studentLoginSchema,
-  validateForm 
+  validateForm
 } from "./validations"
-import { USER_ROLES, TEACHER_ROLES, PERMISSIONS, ERROR_MESSAGES } from "./constants"
-
-// ============================================================================
-// TYPE GUARDS AND VALIDATION
-// ============================================================================
-
-function isValidUserRole(role: string): role is UserRole {
-  return Object.values(USER_ROLES).includes(role as UserRole)
-}
-
-function isValidTeacherRole(role: string): role is TeacherRole {
-  return Object.values(TEACHER_ROLES).includes(role as TeacherRole)
-}
-
-function createAuthUser(userData: {
-  id: string
-  email?: string
-  role: string
-  studentNumber?: string
-  uuid?: string
-  firstName?: string
-  lastName?: string
-  phoneNumber?: string
-  classId?: string
-  courseId?: string
-  teacherRole?: string
-}): AuthUser | null {
-  // Validate required fields
-  if (!userData.id || !isValidUserRole(userData.role)) {
-    return null
-  }
-
-  const baseUser: AuthUser = {
-    id: userData.id,
-    role: userData.role
-  }
-
-  // Add optional fields if they exist
-  if (userData.email) baseUser.email = userData.email
-  if (userData.studentNumber) baseUser.studentNumber = userData.studentNumber
-  if (userData.uuid) baseUser.uuid = userData.uuid
-  if (userData.firstName) baseUser.firstName = userData.firstName
-  if (userData.lastName) baseUser.lastName = userData.lastName
-  if (userData.phoneNumber) baseUser.phoneNumber = userData.phoneNumber
-  if (userData.classId) baseUser.classId = userData.classId
-  if (userData.courseId) baseUser.courseId = userData.courseId
-  if (userData.teacherRole && isValidTeacherRole(userData.teacherRole)) {
-    baseUser.teacherRole = userData.teacherRole
-  }
-
-  return baseUser
-}
 
 // ============================================================================
 // AUTHENTICATION PROVIDERS
@@ -82,9 +36,8 @@ const adminTeacherProvider = CredentialsProvider({
     try {
       // Validate input format
       const { isValid, data } = validateForm(adminTeacherLoginSchema, credentials)
-      
+
       if (!isValid || !data) {
-        console.warn('Invalid admin/teacher login credentials format')
         return null
       }
 
@@ -95,11 +48,11 @@ const adminTeacherProvider = CredentialsProvider({
       if (admin) {
         const isValidPassword = await verifyPassword(password, admin.password)
         if (isValidPassword) {
-          return createAuthUser({
+          return {
             id: admin.id,
             email: admin.email,
-            role: USER_ROLES.ADMIN
-          })
+            role: "admin" as UserRole
+          }
         }
       }
 
@@ -108,17 +61,16 @@ const adminTeacherProvider = CredentialsProvider({
       if (teacher) {
         const isValidPassword = await verifyPassword(password, teacher.password)
         if (isValidPassword) {
-          return createAuthUser({
+          return {
             id: teacher.id,
             email: teacher.email,
-            role: USER_ROLES.TEACHER,
-            teacherRole: teacher.role,
+            role: "teacher" as UserRole,
+            teacherRole: teacher.role as TeacherRole,
             courseId: teacher.courseId || teacher.headCourse?.id
-          })
+          }
         }
       }
 
-      console.warn('Admin/teacher authentication failed for email:', email)
       return null
     } catch (error: unknown) {
       console.error('Admin/Teacher authentication error:', handlePrismaError(error))
@@ -129,7 +81,7 @@ const adminTeacherProvider = CredentialsProvider({
 
 const studentProvider = CredentialsProvider({
   id: "student-auth",
-  name: "Student Authentication", 
+  name: "Student Authentication",
   credentials: {
     studentNumber: { label: "Student Number", type: "text" },
     phoneNumber: { label: "Phone Number", type: "tel" },
@@ -140,7 +92,6 @@ const studentProvider = CredentialsProvider({
   async authorize(credentials) {
     try {
       if (!credentials?.studentNumber) {
-        console.warn('Student authentication attempted without student number')
         return null
       }
 
@@ -154,18 +105,7 @@ const studentProvider = CredentialsProvider({
         )
 
         if (student) {
-          return createAuthUser({
-            id: student.id,
-            role: USER_ROLES.STUDENT,
-            studentNumber: student.studentNumber,
-            uuid: student.uuid,
-            firstName: student.firstName,
-            lastName: student.lastName || undefined,
-            phoneNumber: student.phoneNumber || undefined,
-            email: student.email,
-            classId: student.classId,
-            courseId: student.class?.course?.id
-          })
+          return createStudentAuthUser(student)
         }
       }
 
@@ -173,54 +113,30 @@ const studentProvider = CredentialsProvider({
       if (credentials.email) {
         const student = await findStudentByCredentials(
           studentNumber,
-          undefined, // no phone
+          undefined,
           credentials.email.trim().toLowerCase()
         )
 
         if (student) {
-          return createAuthUser({
-            id: student.id,
-            role: USER_ROLES.STUDENT,
-            studentNumber: student.studentNumber,
-            uuid: student.uuid,
-            firstName: student.firstName,
-            lastName: student.lastName || undefined,
-            phoneNumber: student.phoneNumber || undefined,
-            email: student.email,
-            classId: student.classId,
-            courseId: student.class?.course?.id
-          })
+          return createStudentAuthUser(student)
         }
       }
 
       // Fallback method: Student Number + First Name + Last Name
       if (credentials.firstName && credentials.lastName) {
-        // Find by student number only, then validate names
         const student = await findStudentByCredentials(studentNumber)
 
         if (student) {
           const firstNameMatch = student.firstName.toLowerCase() === credentials.firstName.trim().toLowerCase()
-          const lastNameMatch = !student.lastName || 
+          const lastNameMatch = !student.lastName ||
             student.lastName.toLowerCase() === credentials.lastName.trim().toLowerCase()
 
           if (firstNameMatch && lastNameMatch) {
-            return createAuthUser({
-              id: student.id,
-              role: USER_ROLES.STUDENT,
-              studentNumber: student.studentNumber,
-              uuid: student.uuid,
-              firstName: student.firstName,
-              lastName: student.lastName || undefined,
-              phoneNumber: student.phoneNumber || undefined,
-              email: student.email,
-              classId: student.classId,
-              courseId: student.class?.course?.id
-            })
+            return createStudentAuthUser(student)
           }
         }
       }
 
-      console.warn('Student authentication failed for student number:', studentNumber)
       return null
     } catch (error: unknown) {
       console.error('Student authentication error:', handlePrismaError(error))
@@ -228,6 +144,25 @@ const studentProvider = CredentialsProvider({
     }
   }
 })
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function createStudentAuthUser(student: StudentWithSessions): AuthUser {
+  return {
+    id: student.id,
+    role: "student" as UserRole,
+    studentNumber: student.studentNumber,
+    uuid: student.uuid,
+    firstName: student.firstName,
+    lastName: student.lastName || undefined,
+    phoneNumber: student.phoneNumber || undefined,
+    email: student.email,
+    classId: student.classId,
+    courseId: student.class?.course?.id
+  }
+}
 
 // ============================================================================
 // NEXTAUTH CONFIGURATION
@@ -263,16 +198,14 @@ const authConfig: NextAuthConfig = {
 
       // Handle session updates
       if (trigger === "update" && session) {
-        // Validate session data before updating token
         if (typeof session === 'object' && session !== null) {
           const sessionData = session as Record<string, unknown>
-          
-          // Only update specific allowed fields
+
           const allowedFields = ['email', 'firstName', 'lastName', 'phoneNumber'] as const
-          
+
           for (const field of allowedFields) {
             if (field in sessionData && typeof sessionData[field] === 'string') {
-              token[field] = sessionData[field]
+              token[field] = sessionData[field] as string
             }
           }
         }
@@ -282,11 +215,10 @@ const authConfig: NextAuthConfig = {
     },
 
     async session({ session, token }) {
-      if (token) {
-        // Type-safe session construction
+      if (token && token.id && token.role) {
         const authUser: AuthUser = {
-          id: typeof token.id === 'string' ? token.id : '',
-          role: isValidUserRole(token.role as string) ? (token.role as UserRole) : USER_ROLES.STUDENT
+          id: token.id as string,
+          role: token.role as UserRole
         }
 
         // Add optional fields with type checking
@@ -298,15 +230,12 @@ const authConfig: NextAuthConfig = {
         if (typeof token.phoneNumber === 'string') authUser.phoneNumber = token.phoneNumber
         if (typeof token.classId === 'string') authUser.classId = token.classId
         if (typeof token.courseId === 'string') authUser.courseId = token.courseId
-        if (typeof token.teacherRole === 'string' && isValidTeacherRole(token.teacherRole)) {
-          authUser.teacherRole = token.teacherRole
-        }
+        if (typeof token.teacherRole === 'string') authUser.teacherRole = token.teacherRole as TeacherRole
 
-        // Safely assign to session
         session.user = {
           ...session.user,
           ...authUser,
-          name: authUser.firstName && authUser.lastName 
+          name: authUser.firstName && authUser.lastName
             ? `${authUser.firstName} ${authUser.lastName}`
             : authUser.email || authUser.studentNumber || 'User'
         }
@@ -315,29 +244,18 @@ const authConfig: NextAuthConfig = {
       return session
     },
 
-    async signIn({ user, account, profile }) {
-      // Additional validation can be added here
+    async signIn({ user }) {
       if (!user || !user.id) {
-        console.warn('Sign in rejected: invalid user data')
         return false
       }
-
-      // Log successful authentication
-      console.info('User authenticated:', {
-        userId: user.id,
-        role: (user as AuthUser).role,
-        method: account?.provider
-      })
 
       return true
     },
 
     async redirect({ url, baseUrl }) {
-      // Handle redirects based on user role
       if (url.startsWith("/")) return `${baseUrl}${url}`
       if (new URL(url).origin === baseUrl) return url
-      
-      // Default redirect
+
       return baseUrl
     }
   },
@@ -356,13 +274,6 @@ const authConfig: NextAuthConfig = {
         userId: token?.id,
         role: token?.role
       })
-    },
-
-    async session({ session, token }) {
-      // Session validation can be added here
-      if (!token?.id) {
-        console.warn('Invalid session detected')
-      }
     }
   },
   debug: process.env.NODE_ENV === "development",
@@ -392,16 +303,15 @@ export async function getCurrentSession() {
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const session = await getCurrentSession()
-  
+
   if (!session?.user) {
     return null
   }
 
   const user = session.user as AuthUser
-  
+
   // Validate user has required fields
-  if (!user.id || !isValidUserRole(user.role)) {
-    console.warn('Invalid user data in session')
+  if (!user.id || !user.role) {
     return null
   }
 
@@ -409,41 +319,42 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 }
 
 /**
- * Check if user has specific permission
+ * Check if user has specific permission based on role
  */
 export async function hasPermission(permission: string): Promise<boolean> {
   const user = await getCurrentUser()
   if (!user) return false
 
-  // Define permissions based on role
-  const permissions: Record<string, boolean> = {
+  // Simple role-based permissions
+  switch (permission) {
     // Admin permissions
-    [PERMISSIONS.CREATE_COURSE]: user.role === USER_ROLES.ADMIN,
-    [PERMISSIONS.MANAGE_SYSTEM]: user.role === USER_ROLES.ADMIN,
-    [PERMISSIONS.REMOVE_HEAD_TEACHER]: user.role === USER_ROLES.ADMIN,
-    [PERMISSIONS.DECLARE_PROGRAM_END]: user.role === USER_ROLES.ADMIN,
-    
-    // Head teacher permissions
-    [PERMISSIONS.ADD_TEACHER]: user.role === USER_ROLES.TEACHER && user.teacherRole === TEACHER_ROLES.HEAD,
-    [PERMISSIONS.REMOVE_TEACHER]: user.role === USER_ROLES.TEACHER && user.teacherRole === TEACHER_ROLES.HEAD,
-    [PERMISSIONS.CREATE_CLASS]: user.role === USER_ROLES.TEACHER && user.teacherRole === TEACHER_ROLES.HEAD,
-    
-    // All teacher permissions
-    [PERMISSIONS.IMPORT_STUDENTS]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.SCAN_ATTENDANCE]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.CREATE_SESSION]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.APPROVE_REASSIGNMENT]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.VIEW_ATTENDANCE]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.MODIFY_SESSION_TIMES]: user.role === USER_ROLES.TEACHER,
-    [PERMISSIONS.MANUAL_ATTENDANCE]: user.role === USER_ROLES.TEACHER,
-    
-    // Student permissions
-    [PERMISSIONS.GENERATE_QR]: user.role === USER_ROLES.STUDENT,
-    [PERMISSIONS.VIEW_OWN_ATTENDANCE]: user.role === USER_ROLES.STUDENT,
-    [PERMISSIONS.REQUEST_REASSIGNMENT]: user.role === USER_ROLES.STUDENT
-  }
+    case 'create_course':
+    case 'manage_system':
+    case 'remove_head_teacher':
+      return user.role === 'admin'
 
-  return permissions[permission] || false
+    // Head teacher permissions
+    case 'add_teacher':
+    case 'remove_teacher':
+    case 'create_class':
+      return user.role === 'teacher' && user.teacherRole === 'HEAD'
+
+    // All teacher permissions
+    case 'import_students':
+    case 'scan_attendance':
+    case 'create_session':
+    case 'approve_reassignment':
+      return user.role === 'teacher'
+
+    // Student permissions
+    case 'generate_qr':
+    case 'view_own_attendance':
+    case 'request_reassignment':
+      return user.role === 'student'
+
+    default:
+      return false
+  }
 }
 
 /**
@@ -462,18 +373,18 @@ export async function hasRole(allowedRoles: UserRole | UserRole[]): Promise<bool
  */
 export async function requireAuth(allowedRoles?: UserRole | UserRole[]): Promise<AuthUser> {
   const user = await getCurrentUser()
-  
+
   if (!user) {
-    throw new Error(ERROR_MESSAGES.AUTH.SESSION_EXPIRED)
+    throw new Error('Authentication required')
   }
-  
+
   if (allowedRoles) {
     const hasValidRole = await hasRole(allowedRoles)
     if (!hasValidRole) {
-      throw new Error(ERROR_MESSAGES.AUTH.UNAUTHORIZED)
+      throw new Error('Insufficient permissions')
     }
   }
-  
+
   return user
 }
 
@@ -486,10 +397,10 @@ export function createAuthMiddleware(allowedRoles?: UserRole | UserRole[]) {
       const user = await requireAuth(allowedRoles)
       return { user, authorized: true, error: null }
     } catch (error) {
-      return { 
-        user: null, 
-        authorized: false, 
-        error: error instanceof Error ? error.message : 'Authentication failed' 
+      return {
+        user: null,
+        authorized: false,
+        error: error instanceof Error ? error.message : 'Authentication failed'
       }
     }
   }
@@ -500,11 +411,11 @@ export function createAuthMiddleware(allowedRoles?: UserRole | UserRole[]) {
  */
 export function getRoleRedirectPath(role: UserRole): string {
   switch (role) {
-    case USER_ROLES.ADMIN:
+    case 'admin':
       return '/admin'
-    case USER_ROLES.TEACHER:
+    case 'teacher':
       return '/teacher'
-    case USER_ROLES.STUDENT:
+    case 'student':
       return '/student'
     default:
       return '/login'
@@ -515,14 +426,14 @@ export function getRoleRedirectPath(role: UserRole): string {
  * Check if current user is admin
  */
 export async function isAdmin(): Promise<boolean> {
-  return await hasRole(USER_ROLES.ADMIN)
+  return await hasRole('admin')
 }
 
 /**
  * Check if current user is teacher (any type)
  */
 export async function isTeacher(): Promise<boolean> {
-  return await hasRole(USER_ROLES.TEACHER)
+  return await hasRole('teacher')
 }
 
 /**
@@ -530,12 +441,12 @@ export async function isTeacher(): Promise<boolean> {
  */
 export async function isHeadTeacher(): Promise<boolean> {
   const user = await getCurrentUser()
-  return user?.role === USER_ROLES.TEACHER && user?.teacherRole === TEACHER_ROLES.HEAD
+  return user?.role === 'teacher' && user?.teacherRole === 'HEAD'
 }
 
 /**
  * Check if current user is student
  */
 export async function isStudent(): Promise<boolean> {
-  return await hasRole(USER_ROLES.STUDENT)
+  return await hasRole('student')
 }

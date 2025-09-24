@@ -48,6 +48,7 @@ export const ATTENDANCE_RULES = {
 
 export const EXCEL_IMPORT = {
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+    BATCH_SIZE: 100,
   MAX_ROWS: 1000,
   ALLOWED_EXTENSIONS: ['.xlsx', '.xls', '.csv'],
 
@@ -124,7 +125,7 @@ export const ERROR_MESSAGES = {
     REQUIRED_FIELD: 'This field is required',
     INVALID_EMAIL: 'Please enter a valid email address',
     INVALID_PHONE: 'Please enter a valid phone number',
-    INVALID_STUDENT_NUMBER: 'Student number must be 3-20 characters (letters and numbers only)'
+    INVALID_STUDENT_NUMBER: 'Student number must be 3-6 characters (letters and numbers only)'
   },
 
   ATTENDANCE: {
@@ -132,7 +133,22 @@ export const ERROR_MESSAGES = {
     ALREADY_MARKED: 'Attendance already marked for this session',
     WRONG_SESSION: 'Student scanned in wrong session',
     STUDENT_NOT_FOUND: 'Student not found'
-  }
+  },
+
+    FILE_UPLOAD: {
+      FILE_TOO_LARGE: 'File size exceeds 5MB limit',
+      INVALID_FORMAT: 'Only .xlsx, .xls, and .csv files are allowed',
+      PARSING_FAILED: 'Failed to parse Excel file',
+      CORRUPTED_FILE: 'File appears to be corrupted'
+    },
+
+    REASSIGNMENT: {
+      PENDING_REQUEST_EXISTS: 'You already have a pending reassignment request',
+      MAX_REQUESTS_REACHED: 'Maximum reassignment requests reached (3 limit)',
+      SAME_DAY_ONLY: 'Can only reassign within the same day sessions',
+      SAME_CLASS_ONLY: 'Can only reassign within the same class',
+      SESSION_FULL: 'Target session is at full capacity'
+    }
 } as const
 
 export const UI_CONFIG = {

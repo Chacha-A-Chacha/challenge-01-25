@@ -10,34 +10,21 @@ import type {
   Student,
   Attendance,
   ReassignmentRequest,
-  AttendanceStatus,
-  WeekDay,
-  CourseStatus,
-  RequestStatus,
-  TeacherRole,
-  QRCodeData,
+  StudentWithSessions,
+  TeacherWithCourse,
+  CourseWithDetails,
+  ClassWithSessions,
+  StudentImportData,
   AutoAssignmentResult,
   AttendanceStats,
-  StudentImportData,
   StudentAttendanceHistory,
-  AttendanceRecord,
-  SessionWithAttendance,
-  StudentWithSessions,
-  CourseWithDetails,
-  TeacherWithCourse,
-  ClassWithSessions
+  QRCodeData,
+  WeekDay,
+  AttendanceStatus,
+  CourseStatus,
+  TeacherRole
 } from '@/types'
-import { 
-  ERROR_MESSAGES, 
-  ATTENDANCE_RULES, 
-  EXCEL_IMPORT,
-  SESSION_RULES,
-  WEEK_DAYS,
-  ATTENDANCE_STATUS,
-  REQUEST_STATUS,
-  COURSE_STATUS,
-  TEACHER_ROLES
-} from './constants'
+import { SESSION_RULES } from './constants'
 import { formatTime, parseTimeToMinutes, getStartEndOfDay } from './utils'
 
 // ============================================================================
@@ -54,53 +41,6 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient({
 })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
-
-// ============================================================================
-// TYPE GUARDS
-// ============================================================================
-
-function isTeacherWithCourse(data: unknown): data is TeacherWithCourse {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'email' in data &&
-    'role' in data
-  )
-}
-
-function isStudentWithSessions(data: unknown): data is StudentWithSessions {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'uuid' in data &&
-    'studentNumber' in data &&
-    'sessions' in data &&
-    Array.isArray((data as Record<string, unknown>).sessions)
-  )
-}
-
-function isCourseWithDetails(data: unknown): data is CourseWithDetails {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'name' in data &&
-    'headTeacher' in data
-  )
-}
-
-function isClassWithSessions(data: unknown): data is ClassWithSessions {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'name' in data &&
-    'sessions' in data &&
-    Array.isArray((data as Record<string, unknown>).sessions)
-  )
-}
 
 // ============================================================================
 // TRANSACTION HELPER
@@ -137,24 +77,15 @@ export function handlePrismaError(error: unknown): string {
           return 'Student number already exists in this class'
         }
         return 'A record with this information already exists'
-      
+
       case 'P2025':
         return 'The requested record was not found'
-      
+
       case 'P2003':
         return 'Invalid reference to related record'
-      
-      case 'P2014':
-        return 'Invalid ID provided'
-      
-      case 'P2016':
-        return 'Query interpretation error'
-      
-      case 'P2021':
-        return 'Table does not exist in the current database'
-      
+
       default:
-        return `Database error (${error.code}): ${error.message}`
+        return `Database error: ${error.message}`
     }
   }
 
@@ -173,15 +104,10 @@ export function handlePrismaError(error: unknown): string {
 // AUTHENTICATION QUERIES
 // ============================================================================
 
-/**
- * Find admin by email (case-insensitive)
- */
 export async function findAdminByEmail(email: string): Promise<Admin | null> {
   try {
     return await prisma.admin.findUnique({
-      where: { 
-        email: email.toLowerCase().trim() 
-      }
+      where: { email: email.toLowerCase().trim() }
     })
   } catch (error) {
     console.error('Error finding admin by email:', error)
@@ -189,39 +115,21 @@ export async function findAdminByEmail(email: string): Promise<Admin | null> {
   }
 }
 
-/**
- * Find teacher by email with course relations
- */
 export async function findTeacherByEmail(email: string): Promise<TeacherWithCourse | null> {
   try {
-    const result = await prisma.teacher.findUnique({
-      where: { 
-        email: email.toLowerCase().trim() 
-      },
+    return await prisma.teacher.findUnique({
+      where: { email: email.toLowerCase().trim() },
       include: {
         course: true,
         headCourse: true
       }
     })
-
-    if (!result) return null
-
-    // Type guard validation
-    if (isTeacherWithCourse(result)) {
-      return result
-    }
-
-    console.warn('Teacher query result does not match expected type')
-    return null
   } catch (error) {
     console.error('Error finding teacher by email:', error)
     return null
   }
 }
 
-/**
- * Find student by multiple authentication methods
- */
 export async function findStudentByCredentials(
   studentNumber: string,
   phoneNumber?: string,
@@ -232,16 +140,10 @@ export async function findStudentByCredentials(
       studentNumber: studentNumber.toUpperCase().trim()
     }
 
-    // Add additional criteria if provided
-    if (phoneNumber) {
-      baseWhere.phoneNumber = phoneNumber.trim()
-    }
-    
-    if (email) {
-      baseWhere.email = email.toLowerCase().trim()
-    }
+    if (phoneNumber) baseWhere.phoneNumber = phoneNumber.trim()
+    if (email) baseWhere.email = email.toLowerCase().trim()
 
-    const result = await prisma.student.findFirst({
+    return await prisma.student.findFirst({
       where: baseWhere,
       include: {
         class: {
@@ -253,28 +155,15 @@ export async function findStudentByCredentials(
         sessions: true
       }
     })
-
-    if (!result) return null
-
-    // Type guard validation
-    if (isStudentWithSessions(result)) {
-      return result
-    }
-
-    console.warn('Student query result does not match expected type')
-    return null
   } catch (error) {
     console.error('Error finding student by credentials:', error)
     return null
   }
 }
 
-/**
- * Find student by UUID (for QR code validation)
- */
 export async function findStudentByUUID(uuid: string): Promise<StudentWithSessions | null> {
   try {
-    const result = await prisma.student.findUnique({
+    return await prisma.student.findUnique({
       where: { uuid },
       include: {
         class: {
@@ -286,16 +175,6 @@ export async function findStudentByUUID(uuid: string): Promise<StudentWithSessio
         sessions: true
       }
     })
-
-    if (!result) return null
-
-    // Type guard validation
-    if (isStudentWithSessions(result)) {
-      return result
-    }
-
-    console.warn('Student UUID query result does not match expected type')
-    return null
   } catch (error) {
     console.error('Error finding student by UUID:', error)
     return null
@@ -306,9 +185,6 @@ export async function findStudentByUUID(uuid: string): Promise<StudentWithSessio
 // COURSE MANAGEMENT
 // ============================================================================
 
-/**
- * Create course with head teacher (atomic operation)
- */
 export async function createCourseWithHeadTeacher(
   courseName: string,
   headTeacherEmail: string,
@@ -319,7 +195,7 @@ export async function createCourseWithHeadTeacher(
     const existingTeacher = await tx.teacher.findUnique({
       where: { email: headTeacherEmail.toLowerCase().trim() }
     })
-    
+
     if (existingTeacher) {
       throw new Error('Email address is already in use')
     }
@@ -329,7 +205,7 @@ export async function createCourseWithHeadTeacher(
       data: {
         email: headTeacherEmail.toLowerCase().trim(),
         password: hashedPassword,
-        role: TEACHER_ROLES.HEAD as TeacherRole
+        role: 'HEAD' as TeacherRole
       }
     })
 
@@ -338,7 +214,7 @@ export async function createCourseWithHeadTeacher(
       data: {
         name: courseName.trim(),
         headTeacherId: headTeacher.id,
-        status: COURSE_STATUS.ACTIVE as CourseStatus
+        status: 'ACTIVE' as CourseStatus
       },
       include: {
         headTeacher: true,
@@ -368,27 +244,15 @@ export async function createCourseWithHeadTeacher(
       }
     })
 
-    // Validate results with type guards
-    if (!isCourseWithDetails(courseResult)) {
-      throw new Error('Invalid course creation result')
-    }
-
-    if (!isTeacherWithCourse(teacherResult)) {
-      throw new Error('Invalid teacher creation result')
-    }
-
-    return { 
-      course: courseResult, 
-      teacher: teacherResult 
+    return {
+      course: courseResult as CourseWithDetails,
+      teacher: teacherResult as TeacherWithCourse
     }
   })
 }
 
-/**
- * Get accessible courses for user based on role
- */
 export async function getAccessibleCourses(
-  userId: string, 
+  userId: string,
   userRole: string
 ): Promise<CourseWithDetails[]> {
   try {
@@ -444,109 +308,23 @@ export async function getAccessibleCourses(
     }
 
     const results = await prisma.course.findMany(courseQuery)
-    
-    // Filter results through type guard
-    return results.filter(isCourseWithDetails)
+    return results as CourseWithDetails[]
   } catch (error) {
     console.error('Error getting accessible courses:', error)
     return []
   }
 }
 
-/**
- * Update course status or information
- */
-export async function updateCourse(
-  courseId: string,
-  updates: Partial<Pick<Course, 'name' | 'endDate' | 'status'>>
-): Promise<CourseWithDetails> {
-  try {
-    const result = await prisma.course.update({
-      where: { id: courseId },
-      data: updates,
-      include: {
-        headTeacher: true,
-        teachers: true,
-        classes: {
-          include: {
-            sessions: true,
-            students: true
-          }
-        },
-        _count: {
-          select: {
-            teachers: true,
-            classes: true
-          }
-        }
-      }
-    })
-
-    if (!isCourseWithDetails(result)) {
-      throw new Error('Invalid course update result')
-    }
-
-    return result
-  } catch (error) {
-    throw new Error(handlePrismaError(error))
-  }
-}
-
-/**
- * Remove head teacher and deactivate course
- */
-export async function removeHeadTeacherAndDeactivateCourse(courseId: string): Promise<void> {
-  return withTransaction(async (tx) => {
-    const course = await tx.course.findUnique({
-      where: { id: courseId },
-      include: { headTeacher: true }
-    })
-
-    if (!course) {
-      throw new Error('Course not found')
-    }
-
-    // Remove head teacher
-    await tx.teacher.delete({
-      where: { id: course.headTeacherId }
-    })
-
-    // Deactivate course
-    await tx.course.update({
-      where: { id: courseId },
-      data: { 
-        status: COURSE_STATUS.INACTIVE as CourseStatus,
-        endDate: new Date()
-      }
-    })
-  })
-}
-
 // ============================================================================
 // CLASS AND SESSION MANAGEMENT
 // ============================================================================
 
-/**
- * Create class with validation
- */
 export async function createClass(
   courseId: string,
   name: string,
   capacity: number
 ): Promise<ClassWithSessions> {
   try {
-    // Check for duplicate class name in course
-    const existingClass = await prisma.class.findFirst({
-      where: {
-        courseId,
-        name: name.trim()
-      }
-    })
-
-    if (existingClass) {
-      throw new Error('Class name already exists in this course')
-    }
-
     const result = await prisma.class.create({
       data: {
         name: name.trim(),
@@ -566,19 +344,12 @@ export async function createClass(
       }
     })
 
-    if (!isClassWithSessions(result)) {
-      throw new Error('Invalid class creation result')
-    }
-
-    return result
+    return result as ClassWithSessions
   } catch (error) {
     throw new Error(handlePrismaError(error))
   }
 }
 
-/**
- * Validate session time doesn't conflict
- */
 export async function validateSessionTime(
   classId: string,
   day: WeekDay,
@@ -597,16 +368,9 @@ export async function validateSessionTime(
 
     const duration = endMinutes - startMinutes
     if (duration < SESSION_RULES.MIN_DURATION_MINUTES) {
-      return { 
-        isValid: false, 
-        conflictMessage: `Session must be at least ${SESSION_RULES.MIN_DURATION_MINUTES} minutes long` 
-      }
-    }
-
-    if (duration > SESSION_RULES.MAX_DURATION_MINUTES) {
-      return { 
-        isValid: false, 
-        conflictMessage: `Session cannot exceed ${SESSION_RULES.MAX_DURATION_MINUTES} minutes` 
+      return {
+        isValid: false,
+        conflictMessage: `Session must be at least ${SESSION_RULES.MIN_DURATION_MINUTES} minutes long`
       }
     }
 
@@ -628,25 +392,19 @@ export async function validateSessionTime(
               { startTime: { lt: endTime } },
               { endTime: { gte: endTime } }
             ]
-          },
-          {
-            AND: [
-              { startTime: { gte: startTime } },
-              { endTime: { lte: endTime } }
-            ]
           }
         ]
       }
     })
 
     if (conflictingSessions.length > 0) {
-      const conflictTimes = conflictingSessions.map(s => 
+      const conflictTimes = conflictingSessions.map(s =>
         `${formatTime(s.startTime)} - ${formatTime(s.endTime)}`
       ).join(', ')
-      
-      return { 
-        isValid: false, 
-        conflictMessage: `Session conflicts with existing sessions: ${conflictTimes}` 
+
+      return {
+        isValid: false,
+        conflictMessage: `Session conflicts with existing sessions: ${conflictTimes}`
       }
     }
 
@@ -657,9 +415,6 @@ export async function validateSessionTime(
   }
 }
 
-/**
- * Create session with conflict validation
- */
 export async function createSession(
   classId: string,
   day: WeekDay,
@@ -668,7 +423,6 @@ export async function createSession(
   capacity: number
 ): Promise<Session> {
   try {
-    // Validate session time
     const validation = await validateSessionTime(classId, day, startTime, endTime)
     if (!validation.isValid) {
       throw new Error(validation.conflictMessage)
@@ -688,47 +442,12 @@ export async function createSession(
   }
 }
 
-/**
- * Get session capacity information
- */
-export async function getSessionCapacityInfo(sessionId: string): Promise<{
-  capacity: number
-  enrolled: number
-  available: number
-} | null> {
-  try {
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        _count: {
-          select: { students: true }
-        }
-      }
-    })
-
-    if (!session) return null
-
-    return {
-      capacity: session.capacity,
-      enrolled: session._count.students,
-      available: session.capacity - session._count.students
-    }
-  } catch (error) {
-    console.error('Error getting session capacity info:', error)
-    return null
-  }
-}
-
 // ============================================================================
 // STUDENT MANAGEMENT
 // ============================================================================
 
-/**
- * Auto-assign students to sessions with balanced distribution
- */
 export async function autoAssignStudentsToSessions(classId: string): Promise<AutoAssignmentResult> {
   return withTransaction(async (tx) => {
-    // Get unassigned students
     const unassignedStudents = await tx.student.findMany({
       where: {
         classId,
@@ -746,7 +465,6 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
       }
     }
 
-    // Get available sessions grouped by day
     const sessions = await tx.session.findMany({
       where: { classId },
       include: {
@@ -758,8 +476,8 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
       ]
     })
 
-    const saturdaySessions = sessions.filter(s => s.day === WEEK_DAYS.SATURDAY)
-    const sundaySessions = sessions.filter(s => s.day === WEEK_DAYS.SUNDAY)
+    const saturdaySessions = sessions.filter(s => s.day === 'SATURDAY')
+    const sundaySessions = sessions.filter(s => s.day === 'SUNDAY')
 
     if (saturdaySessions.length === 0 || sundaySessions.length === 0) {
       return {
@@ -788,11 +506,10 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
 
     // Assign students to sessions with load balancing
     for (const student of unassignedStudents) {
-      // Find Saturday session with lowest enrollment that has capacity
       const availableSaturday = saturdaySessions
         .filter(s => {
-          const currentEnrollment = sessionEnrollment.get(s.id)
-          return typeof currentEnrollment === 'number' && currentEnrollment < s.capacity
+          const currentEnrollment = sessionEnrollment.get(s.id) ?? 0
+          return currentEnrollment < s.capacity
         })
         .sort((a, b) => {
           const enrollmentA = sessionEnrollment.get(a.id) ?? 0
@@ -800,11 +517,10 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
           return enrollmentA - enrollmentB
         })[0]
 
-      // Find Sunday session with lowest enrollment that has capacity
       const availableSunday = sundaySessions
         .filter(s => {
-          const currentEnrollment = sessionEnrollment.get(s.id)
-          return typeof currentEnrollment === 'number' && currentEnrollment < s.capacity
+          const currentEnrollment = sessionEnrollment.get(s.id) ?? 0
+          return currentEnrollment < s.capacity
         })
         .sort((a, b) => {
           const enrollmentA = sessionEnrollment.get(a.id) ?? 0
@@ -819,7 +535,6 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
       }
 
       try {
-        // Connect student to both sessions
         await tx.student.update({
           where: { id: student.id },
           data: {
@@ -861,13 +576,10 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
   })
 }
 
-/**
- * Bulk import students from Excel data
- */
 export async function bulkImportStudents(
   studentsData: StudentImportData[],
   classId: string
-): Promise<{ 
+): Promise<{
   success: number
   failed: number
   errors: string[]
@@ -881,7 +593,6 @@ export async function bulkImportStudents(
       students: [] as Student[]
     }
 
-    // Validate class exists
     const classExists = await tx.class.findUnique({
       where: { id: classId }
     })
@@ -890,10 +601,10 @@ export async function bulkImportStudents(
       throw new Error('Class not found')
     }
 
-    // Process in batches to avoid overwhelming the database
-    const batchSize = EXCEL_IMPORT.BATCH_SIZE
+    // Process in batches
+    const batchSize = 100 // Process students in batches of 100
     const batches = []
-    
+
     for (let i = 0; i < studentsData.length; i += batchSize) {
       batches.push(studentsData.slice(i, i + batchSize))
     }
@@ -901,7 +612,7 @@ export async function bulkImportStudents(
     for (const batch of batches) {
       const batchPromises = batch.map(async (studentData, index) => {
         try {
-          // Check for duplicate within the same class
+          // Check for duplicates
           const existingStudent = await tx.student.findFirst({
             where: {
               studentNumber: studentData.student_number.toUpperCase().trim(),
@@ -911,26 +622,10 @@ export async function bulkImportStudents(
 
           if (existingStudent) {
             results.failed++
-            results.errors.push(`Row ${index + 1}: Student ${studentData.student_number} already exists in this class`)
+            results.errors.push(`Row ${index + 1}: Student ${studentData.student_number} already exists`)
             return null
           }
 
-          // Check for email conflicts across all students
-          if (studentData.email) {
-            const emailConflict = await tx.student.findFirst({
-              where: {
-                email: studentData.email.toLowerCase().trim()
-              }
-            })
-
-            if (emailConflict) {
-              results.failed++
-              results.errors.push(`Row ${index + 1}: Email ${studentData.email} is already in use`)
-              return null
-            }
-          }
-
-          // Create student with generated UUID
           const student = await tx.student.create({
             data: {
               studentNumber: studentData.student_number.toUpperCase().trim(),
@@ -950,12 +645,11 @@ export async function bulkImportStudents(
         } catch (error: unknown) {
           results.failed++
           const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-          results.errors.push(`Row ${index + 1}: Failed to import ${studentData.student_number}: ${errorMessage}`)
+          results.errors.push(`Row ${index + 1}: ${errorMessage}`)
           return null
         }
       })
 
-      // Wait for batch to complete
       await Promise.all(batchPromises)
     }
 
@@ -963,79 +657,10 @@ export async function bulkImportStudents(
   })
 }
 
-/**
- * Reassign student to different sessions
- */
-export async function reassignStudentToSessions(
-  studentId: string,
-  saturdaySessionId: string,
-  sundaySessionId: string
-): Promise<void> {
-  return withTransaction(async (tx) => {
-    // Validate student exists
-    const student = await tx.student.findUnique({
-      where: { id: studentId },
-      include: { sessions: true }
-    })
-
-    if (!student) {
-      throw new Error('Student not found')
-    }
-
-    // Validate sessions exist and are in the same class
-    const [saturdaySession, sundaySession] = await Promise.all([
-      tx.session.findUnique({ where: { id: saturdaySessionId } }),
-      tx.session.findUnique({ where: { id: sundaySessionId } })
-    ])
-
-    if (!saturdaySession || !sundaySession) {
-      throw new Error('One or more sessions not found')
-    }
-
-    if (saturdaySession.classId !== student.classId || sundaySession.classId !== student.classId) {
-      throw new Error('Sessions must be in the same class as the student')
-    }
-
-    if (saturdaySession.day !== WEEK_DAYS.SATURDAY || sundaySession.day !== WEEK_DAYS.SUNDAY) {
-      throw new Error('Invalid session day assignments')
-    }
-
-    // Check capacity
-    const [satCapacity, sunCapacity] = await Promise.all([
-      getSessionCapacityInfo(saturdaySessionId),
-      getSessionCapacityInfo(sundaySessionId)
-    ])
-
-    if (!satCapacity || !sunCapacity) {
-      throw new Error('Unable to check session capacity')
-    }
-
-    if (satCapacity.available <= 0 || sunCapacity.available <= 0) {
-      throw new Error('One or more sessions are at full capacity')
-    }
-
-    // Disconnect from current sessions and connect to new ones
-    await tx.student.update({
-      where: { id: studentId },
-      data: {
-        sessions: {
-          set: [
-            { id: saturdaySessionId },
-            { id: sundaySessionId }
-          ]
-        }
-      }
-    })
-  })
-}
-
 // ============================================================================
 // ATTENDANCE MANAGEMENT
 // ============================================================================
 
-/**
- * Mark attendance for student with QR validation
- */
 export async function markAttendanceFromQR(
   qrData: QRCodeData,
   sessionId: string,
@@ -1046,10 +671,9 @@ export async function markAttendanceFromQR(
   message: string
 }> {
   return withTransaction(async (tx) => {
-    // Find student by UUID
     const student = await tx.student.findUnique({
       where: { uuid: qrData.uuid },
-      include: { 
+      include: {
         sessions: true,
         class: { include: { sessions: true } }
       }
@@ -1059,12 +683,10 @@ export async function markAttendanceFromQR(
       throw new Error('Student not found')
     }
 
-    // Validate student number matches
-    if (student.studentNumber !== qrData.studentId) {
+    if (student.studentNumber !== qrData.student_id) {
       throw new Error('QR code data mismatch')
     }
 
-    // Get session information
     const session = await tx.session.findUnique({
       where: { id: sessionId }
     })
@@ -1073,20 +695,19 @@ export async function markAttendanceFromQR(
       throw new Error('Session not found')
     }
 
-    // Check if today is the correct day for this session
+    // Check if today is correct day and within time window
     const today = new Date()
-    const dayOfWeek = today.getDay() // 0 = Sunday, 6 = Saturday
-    const sessionDay = session.day === WEEK_DAYS.SATURDAY ? 6 : 0
-    
+    const dayOfWeek = today.getDay()
+    const sessionDay = session.day === 'SATURDAY' ? 6 : 0
+
     if (dayOfWeek !== sessionDay) {
       throw new Error('QR code can only be scanned on the correct session day')
     }
 
-    // Check if current time is within session window
     const currentTime = today.getHours() * 60 + today.getMinutes()
     const sessionStart = parseTimeToMinutes(session.startTime) - SESSION_RULES.EARLY_ENTRY_MINUTES
     const sessionEnd = parseTimeToMinutes(session.endTime) + SESSION_RULES.LATE_ENTRY_MINUTES
-    
+
     if (currentTime < sessionStart || currentTime > sessionEnd) {
       throw new Error('QR code can only be scanned during session time window')
     }
@@ -1110,18 +731,17 @@ export async function markAttendanceFromQR(
 
     const isAssignedToSession = student.sessions.some(s => s.id === sessionId)
     const isCorrectClass = student.class?.sessions?.some(s => s.id === sessionId) ?? false
-    
+
     if (isAssignedToSession) {
-      status = ATTENDANCE_STATUS.PRESENT as AttendanceStatus
+      status = 'PRESENT' as AttendanceStatus
       message = 'Attendance marked successfully'
     } else if (isCorrectClass) {
-      status = ATTENDANCE_STATUS.WRONG_SESSION as AttendanceStatus
+      status = 'WRONG_SESSION' as AttendanceStatus
       message = 'Student scanned in wrong session but marked present'
     } else {
       throw new Error('Student is not enrolled in this class')
     }
 
-    // Create or update attendance record
     const attendanceData = {
       studentId: student.id,
       sessionId,
@@ -1159,123 +779,6 @@ export async function markAttendanceFromQR(
   })
 }
 
-/**
- * Mark manual attendance
- */
-export async function markManualAttendance(
-  studentId: string,
-  sessionId: string,
-  status: AttendanceStatus,
-  teacherId: string,
-  date?: Date
-): Promise<Attendance> {
-  return withTransaction(async (tx) => {
-    const targetDate = date || new Date()
-    const { start: dayStart, end: dayEnd } = getStartEndOfDay(targetDate)
-
-    // Check for existing attendance
-    const existing = await tx.attendance.findFirst({
-      where: {
-        studentId,
-        sessionId,
-        date: {
-          gte: dayStart,
-          lt: dayEnd
-        }
-      }
-    })
-
-    const attendanceData = {
-      studentId,
-      sessionId,
-      date: dayStart,
-      status,
-      teacherId,
-      scanTime: null // Manual marking doesn't have scan time
-    }
-
-    if (existing) {
-      return await tx.attendance.update({
-        where: { id: existing.id },
-        data: attendanceData,
-        include: {
-          student: true,
-          session: true,
-          markedBy: true
-        }
-      })
-    } else {
-      return await tx.attendance.create({
-        data: attendanceData,
-        include: {
-          student: true,
-          session: true,
-          markedBy: true
-        }
-      })
-    }
-  })
-}
-
-/**
- * Auto-mark absent students after session
- */
-export async function autoMarkAbsentStudents(
-  sessionId: string, 
-  date: Date
-): Promise<{ marked: number }> {
-  return withTransaction(async (tx) => {
-    const session = await tx.session.findUnique({
-      where: { id: sessionId },
-      include: { students: true }
-    })
-
-    if (!session) {
-      throw new Error('Session not found')
-    }
-
-    const { start: dayStart, end: dayEnd } = getStartEndOfDay(date)
-
-    // Get existing attendance for this session and date
-    const existingAttendance = await tx.attendance.findMany({
-      where: {
-        sessionId,
-        date: {
-          gte: dayStart,
-          lt: dayEnd
-        }
-      },
-      select: { studentId: true }
-    })
-
-    const presentStudentIds = new Set(existingAttendance.map(a => a.studentId))
-    
-    // Find students without attendance records
-    const absentStudents = session.students.filter(
-      student => !presentStudentIds.has(student.id)
-    )
-
-    if (absentStudents.length === 0) {
-      return { marked: 0 }
-    }
-
-    // Create absence records
-    const absentRecords = await tx.attendance.createMany({
-      data: absentStudents.map(student => ({
-        studentId: student.id,
-        sessionId,
-        date: dayStart,
-        status: ATTENDANCE_STATUS.ABSENT as AttendanceStatus
-      }))
-    })
-
-    return { marked: absentRecords.count }
-  })
-}
-
-/**
- * Get attendance statistics for a session
- */
 export async function getSessionAttendanceStats(
   sessionId: string,
   date?: Date
@@ -1307,9 +810,9 @@ export async function getSessionAttendanceStats(
     }
 
     const totalStudents = session._count.students
-    const presentCount = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.PRESENT).length
-    const absentCount = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.ABSENT).length
-    const wrongSessionCount = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.WRONG_SESSION).length
+    const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT').length
+    const absentCount = attendanceRecords.filter(a => a.status === 'ABSENT').length
+    const wrongSessionCount = attendanceRecords.filter(a => a.status === 'WRONG_SESSION').length
 
     return {
       totalStudents,
@@ -1326,280 +829,10 @@ export async function getSessionAttendanceStats(
   }
 }
 
-/**
- * Get student attendance history
- */
-export async function getStudentAttendanceHistory(
-  studentId: string,
-  limit = 50
-): Promise<StudentAttendanceHistory> {
-  try {
-    const [student, attendanceRecords] = await Promise.all([
-      prisma.student.findUnique({
-        where: { id: studentId },
-        include: {
-          class: true,
-          sessions: true
-        }
-      }),
-      prisma.attendance.findMany({
-        where: { studentId },
-        include: {
-          session: true
-        },
-        orderBy: { date: 'desc' },
-        take: limit
-      })
-    ])
-
-    if (!student) {
-      throw new Error('Student not found')
-    }
-
-    const totalSessions = attendanceRecords.length
-    const presentSessions = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.PRESENT).length
-    const absentSessions = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.ABSENT).length
-    const wrongSessionCount = attendanceRecords.filter(a => a.status === ATTENDANCE_STATUS.WRONG_SESSION).length
-
-    // Calculate attendance streak
-    let currentStreak = 0
-    let longestStreak = 0
-    let streakType: 'present' | 'absent' = 'present'
-    let tempStreak = 0
-    let tempType: 'present' | 'absent' = 'present'
-
-    for (const record of attendanceRecords) {
-      const isPresent = record.status === ATTENDANCE_STATUS.PRESENT
-      
-      if (currentStreak === 0) {
-        currentStreak = 1
-        streakType = isPresent ? 'present' : 'absent'
-        tempStreak = 1
-        tempType = streakType
-      } else if ((streakType === 'present' && isPresent) || (streakType === 'absent' && !isPresent)) {
-        currentStreak++
-        tempStreak++
-      } else {
-        longestStreak = Math.max(longestStreak, tempStreak)
-        currentStreak = 1
-        streakType = isPresent ? 'present' : 'absent'
-        tempStreak = 1
-        tempType = streakType
-      }
-    }
-
-    longestStreak = Math.max(longestStreak, tempStreak)
-
-    return {
-      student,
-      attendanceRecords,
-      attendanceRate: totalSessions > 0 ? Math.round((presentSessions / totalSessions) * 100) : 0,
-      totalSessions,
-      presentSessions,
-      absentSessions,
-      wrongSessionCount,
-      streak: {
-        current: currentStreak,
-        longest: longestStreak,
-        type: tempType
-      }
-    }
-  } catch (error) {
-    console.error('Error getting student attendance history:', error)
-    throw new Error(handlePrismaError(error))
-  }
-}
-
 // ============================================================================
-// REASSIGNMENT MANAGEMENT
+// UTILITY FUNCTIONS
 // ============================================================================
 
-/**
- * Validate reassignment request
- */
-export async function validateReassignmentRequest(
-  studentId: string,
-  fromSessionId: string,
-  toSessionId: string
-): Promise<{ isValid: boolean; message?: string }> {
-  try {
-    const [student, fromSession, toSession] = await Promise.all([
-      prisma.student.findUnique({
-        where: { id: studentId },
-        include: { 
-          sessions: true,
-          reassignmentRequests: {
-            where: { status: REQUEST_STATUS.PENDING }
-          }
-        }
-      }),
-      prisma.session.findUnique({ 
-        where: { id: fromSessionId },
-        include: { _count: { select: { students: true } } }
-      }),
-      prisma.session.findUnique({ 
-        where: { id: toSessionId },
-        include: { _count: { select: { students: true } } }
-      })
-    ])
-
-    if (!student || !fromSession || !toSession) {
-      return { isValid: false, message: 'Student or session not found' }
-    }
-
-    // Check if student has pending requests
-    if (student.reassignmentRequests.length > 0) {
-      return { isValid: false, message: ERROR_MESSAGES.REASSIGNMENT.PENDING_REQUEST_EXISTS }
-    }
-
-    // Check total requests limit
-    const totalRequests = await prisma.reassignmentRequest.count({
-      where: { studentId }
-    })
-
-    if (totalRequests >= ATTENDANCE_RULES.MAX_REASSIGNMENT_REQUESTS) {
-      return { isValid: false, message: ERROR_MESSAGES.REASSIGNMENT.MAX_REQUESTS_REACHED }
-    }
-
-    // Validate same day
-    if (fromSession.day !== toSession.day) {
-      return { isValid: false, message: ERROR_MESSAGES.REASSIGNMENT.SAME_DAY_ONLY }
-    }
-
-    // Validate same class
-    if (fromSession.classId !== toSession.classId) {
-      return { isValid: false, message: ERROR_MESSAGES.REASSIGNMENT.SAME_CLASS_ONLY }
-    }
-
-    // Check if student is actually assigned to the from session
-    const isAssignedToFromSession = student.sessions.some(s => s.id === fromSessionId)
-    if (!isAssignedToFromSession) {
-      return { isValid: false, message: 'Student is not assigned to the source session' }
-    }
-
-    // Check capacity of target session
-    if (toSession._count.students >= toSession.capacity) {
-      return { isValid: false, message: ERROR_MESSAGES.REASSIGNMENT.SESSION_FULL }
-    }
-
-    return { isValid: true }
-  } catch (error) {
-    console.error('Error validating reassignment request:', error)
-    return { isValid: false, message: 'Error validating reassignment request' }
-  }
-}
-
-/**
- * Create reassignment request
- */
-export async function createReassignmentRequest(
-  studentId: string,
-  fromSessionId: string,
-  toSessionId: string,
-  reason?: string
-): Promise<ReassignmentRequest> {
-  return withTransaction(async (tx) => {
-    // Validate the request
-    const validation = await validateReassignmentRequest(studentId, fromSessionId, toSessionId)
-    if (!validation.isValid) {
-      throw new Error(validation.message)
-    }
-
-    return await tx.reassignmentRequest.create({
-      data: {
-        studentId,
-        fromSessionId,
-        toSessionId,
-        status: REQUEST_STATUS.PENDING as RequestStatus
-      },
-      include: {
-        student: true,
-        fromSession: true,
-        toSession: true
-      }
-    })
-  })
-}
-
-/**
- * Process reassignment request (approve/deny)
- */
-export async function processReassignmentRequest(
-  requestId: string,
-  status: typeof REQUEST_STATUS.APPROVED | typeof REQUEST_STATUS.DENIED,
-  teacherId: string
-): Promise<ReassignmentRequest> {
-  return withTransaction(async (tx) => {
-    const request = await tx.reassignmentRequest.findUnique({
-      where: { id: requestId },
-      include: {
-        student: true,
-        fromSession: true,
-        toSession: true
-      }
-    })
-
-    if (!request) {
-      throw new Error('Reassignment request not found')
-    }
-
-    if (request.status !== REQUEST_STATUS.PENDING) {
-      throw new Error('Request has already been processed')
-    }
-
-    // Update request status
-    const updatedRequest = await tx.reassignmentRequest.update({
-      where: { id: requestId },
-      data: {
-        status: status as RequestStatus,
-        teacherId
-      },
-      include: {
-        student: true,
-        fromSession: true,
-        toSession: true,
-        approvedBy: true
-      }
-    })
-
-    // If approved, update student's session assignment
-    if (status === REQUEST_STATUS.APPROVED) {
-      // Get student's current sessions
-      const studentSessions = await tx.student.findUnique({
-        where: { id: request.studentId },
-        include: { sessions: true }
-      })
-
-      if (studentSessions) {
-        // Replace the from session with the to session
-        const updatedSessionIds = studentSessions.sessions
-          .filter(s => s.id !== request.fromSessionId)
-          .map(s => ({ id: s.id }))
-        
-        updatedSessionIds.push({ id: request.toSessionId })
-
-        await tx.student.update({
-          where: { id: request.studentId },
-          data: {
-            sessions: {
-              set: updatedSessionIds
-            }
-          }
-        })
-      }
-    }
-
-    return updatedRequest
-  })
-}
-
-// ============================================================================
-// REPORTING AND ANALYTICS
-// ============================================================================
-
-/**
- * Get comprehensive database statistics
- */
 export async function getDatabaseStats(): Promise<{
   admins: number
   courses: number
@@ -1649,18 +882,13 @@ export async function getDatabaseStats(): Promise<{
   }
 }
 
-/**
- * Health check for database connectivity
- */
-export async function healthCheck(): Promise<{ 
+export async function healthCheck(): Promise<{
   database: boolean
   timestamp: string
-  version?: string 
 }> {
   try {
-    // Simple query to test connectivity
     await prisma.$queryRaw`SELECT 1 as test`
-    
+
     return {
       database: true,
       timestamp: new Date().toISOString()
@@ -1674,31 +902,5 @@ export async function healthCheck(): Promise<{
   }
 }
 
-/**
- * Cleanup old attendance records (optional maintenance function)
- */
-export async function cleanupOldRecords(olderThanDays = 365): Promise<{ deleted: number }> {
-  try {
-    const cutoffDate = new Date()
-    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays)
-
-    const result = await prisma.attendance.deleteMany({
-      where: {
-        date: {
-          lt: cutoffDate
-        }
-      }
-    })
-
-    return { deleted: result.count }
-  } catch (error) {
-    console.error('Error cleaning up old records:', error)
-    throw new Error(handlePrismaError(error))
-  }
-}
-
-// Export the Prisma client for direct use when needed
 export default prisma
-
-// Re-export Prisma types for convenience
 export type { Prisma } from '@prisma/client'
