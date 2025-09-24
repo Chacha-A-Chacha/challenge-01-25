@@ -13,22 +13,22 @@ model Admin {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
-  
+
   @@map("admins")
 }
 
 model Course {
-  id           String   @id @default(cuid())
-  name         String
-  headTeacher  Teacher  @relation("HeadTeacher", fields: [headTeacherId], references: [id])
-  headTeacherId String  @unique
-  endDate      DateTime?
-  status       CourseStatus @default(ACTIVE)
-  createdAt    DateTime @default(now())
-  
-  teachers     Teacher[] @relation("CourseTeachers")
-  classes      Class[]
-  
+  id            String       @id @default(cuid())
+  name          String
+  headTeacher   Teacher      @relation("HeadTeacher", fields: [headTeacherId], references: [id])
+  headTeacherId String       @unique
+  endDate       DateTime?
+  status        CourseStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+
+  teachers Teacher[] @relation("CourseTeachers")
+  classes  Class[]
+
   @@map("courses")
 }
 
@@ -40,11 +40,11 @@ model Teacher {
   courseId  String?
   role      TeacherRole @default(ADDITIONAL)
   createdAt DateTime    @default(now())
-  
-  headCourse Course? @relation("HeadTeacher")
+
+  headCourse        Course?               @relation("HeadTeacher")
   attendanceRecords Attendance[]
   approvedRequests  ReassignmentRequest[]
-  
+
   @@map("teachers")
 }
 
@@ -55,57 +55,58 @@ model Class {
   course    Course   @relation(fields: [courseId], references: [id])
   courseId  String
   createdAt DateTime @default(now())
-  
-  sessions  Session[]
-  students  Student[]
-  
+
+  sessions Session[]
+  students Student[]
+
   @@map("classes")
 }
 
 model Session {
-  id        String    @id @default(cuid())
-  class     Class     @relation(fields: [classId], references: [id])
+  id        String   @id @default(cuid())
+  class     Class    @relation(fields: [classId], references: [id])
   classId   String
   day       WeekDay
-  startTime DateTime  // e.g., "09:00:00"
-  endTime   DateTime  // e.g., "11:00:00" 
+  startTime DateTime // e.g., "09:00:00"
+  endTime   DateTime // e.g., "11:00:00" 
   capacity  Int
-  createdAt DateTime  @default(now())
-  
+  createdAt DateTime @default(now())
+
   // Students assigned to this specific session
-  saturdayStudents    Student[] @relation("SaturdayStudents")
-  sundayStudents      Student[] @relation("SundayStudents")
-  attendances         Attendance[]
-  fromRequests       ReassignmentRequest[] @relation("FromSession")
-  toRequests         ReassignmentRequest[] @relation("ToSession")
-  
+  saturdayStudents Student[]             @relation("SaturdayStudents")
+  sundayStudents   Student[]             @relation("SundayStudents")
+  attendances      Attendance[]
+  fromRequests     ReassignmentRequest[] @relation("FromSession")
+  toRequests       ReassignmentRequest[] @relation("ToSession")
+
   @@map("sessions")
 }
 
 model Student {
-  id            String   @id @default(cuid())
-  uuid          String   @unique @default(cuid())
+  id            String  @id @default(cuid())
+  uuid          String  @unique @default(cuid())
   studentNumber String
+  surname       String
   firstName     String
   lastName      String?
-  email         String   @unique
+  email         String  @unique
   phoneNumber   String?
-  
+
   // Class membership (for course organization and reassignment limits)
-  class         Class    @relation(fields: [classId], references: [id])
-  classId       String
-  
+  class   Class  @relation(fields: [classId], references: [id])
+  classId String
+
   // Specific session assignments within the class
-  saturdaySession Session? @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
+  saturdaySession   Session? @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
   saturdaySessionId String?
-  sundaySession   Session? @relation("SundayStudents", fields: [sundaySessionId], references: [id])
-  sundaySessionId String?
-  
-  createdAt     DateTime @default(now())
-  
-  attendances           Attendance[]
-  reassignmentRequests  ReassignmentRequest[]
-  
+  sundaySession     Session? @relation("SundayStudents", fields: [sundaySessionId], references: [id])
+  sundaySessionId   String?
+
+  createdAt DateTime @default(now())
+
+  attendances          Attendance[]
+  reassignmentRequests ReassignmentRequest[]
+
   @@unique([studentNumber, classId])
   @@map("students")
 }
@@ -121,7 +122,7 @@ model Attendance {
   scanTime  DateTime?
   markedBy  Teacher?         @relation(fields: [teacherId], references: [id])
   teacherId String?
-  
+
   @@unique([studentId, sessionId, date])
   @@map("attendances")
 }
@@ -138,7 +139,7 @@ model ReassignmentRequest {
   requestedAt   DateTime      @default(now())
   approvedBy    Teacher?      @relation(fields: [teacherId], references: [id])
   teacherId     String?
-  
+
   @@map("reassignment_requests")
 }
 

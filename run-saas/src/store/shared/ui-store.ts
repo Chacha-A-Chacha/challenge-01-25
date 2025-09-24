@@ -1,246 +1,413 @@
-// store/shared/ui-store.ts
+// store/ui-store.ts
 import { create } from 'zustand'
-import type { Notification, Modal, LoadingState, NotificationType } from '@/types'
+import { persist } from 'zustand/middleware'
+import type {
+  BaseStoreState,
+  NotificationType
+} from '@/types'
 
-interface UIState {
-  // Notifications
-  notifications: Notification[]
-  maxNotifications: number
-  
-  // Modals
-  modals: Modal[]
-  
-  // Loading states
-  globalLoading: LoadingState
-  componentLoading: Record<string, LoadingState>
-  
-  // Layout state
+// ============================================================================
+// TYPES - Only what's needed for UI state
+// ============================================================================
+
+interface UINotification {
+  id: string
+  type: NotificationType
+  title: string
+  message: string
+  duration?: number
+  persistent?: boolean
+}
+
+interface UIModal {
+  id: string
+  component: string
+  props?: Record<string, unknown>
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  persistent?: boolean
+}
+
+interface UITheme {
+  mode: 'light' | 'dark' | 'system'
+  compactMode: boolean
+}
+
+interface UILayout {
   sidebarOpen: boolean
   sidebarCollapsed: boolean
-  
-  // Theme and preferences
-  theme: 'light' | 'dark' | 'system'
-  compactMode: boolean
-  
-  // Mobile responsiveness
-  isMobile: boolean
-  screenSize: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
-  
+}
+
+// ============================================================================
+// STORE INTERFACE
+// ============================================================================
+
+interface UIState extends BaseStoreState {
+  // Core UI state
+  notifications: UINotification[]
+  modals: UIModal[]
+  theme: UITheme
+  layout: UILayout
+
+  // Simple loading state
+  isGlobalLoading: boolean
+  globalLoadingMessage?: string
+
   // Notification actions
-  addNotification: (notification: Omit<Notification, 'id'>) => string
+  addNotification: (notification: Omit<UINotification, 'id'>) => string
   removeNotification: (id: string) => void
   clearNotifications: () => void
-  clearNotificationsByType: (type: NotificationType) => void
-  
+
   // Modal actions
-  openModal: (modal: Omit<Modal, 'id'>) => string
+  openModal: (modal: Omit<UIModal, 'id'>) => string
   closeModal: (id: string) => void
   closeAllModals: () => void
-  isModalOpen: (component: string) => boolean
-  
+
   // Loading actions
   setGlobalLoading: (loading: boolean, message?: string) => void
-  setComponentLoading: (componentId: string, loading: boolean, message?: string) => void
-  clearComponentLoading: (componentId: string) => void
-  clearAllLoading: () => void
-  
+
   // Layout actions
   setSidebarOpen: (open: boolean) => void
   setSidebarCollapsed: (collapsed: boolean) => void
   toggleSidebar: () => void
-  toggleSidebarCollapse: () => void
-  
+
   // Theme actions
-  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  setThemeMode: (mode: 'light' | 'dark' | 'system') => void
   setCompactMode: (compact: boolean) => void
-  
-  // Responsive actions
-  setScreenSize: (size: 'sm' | 'md' | 'lg' | 'xl' | '2xl') => void
-  setIsMobile: (mobile: boolean) => void
-  
-  // Utility actions
+
+  // Convenience methods
   showSuccess: (title: string, message: string) => void
   showError: (title: string, message: string) => void
   showWarning: (title: string, message: string) => void
   showInfo: (title: string, message: string) => void
+
+  // Utils
+  reset: () => void
 }
 
-export const useUIStore = create<UIState>((set, get) => ({
-  // Initial state
-  notifications: [],
-  maxNotifications: 5,
-  
-  modals: [],
-  
-  globalLoading: { isLoading: false },
-  componentLoading: {},
-  
-  sidebarOpen: true,
-  sidebarCollapsed: false,
-  
-  theme: 'system',
-  compactMode: false,
-  
-  isMobile: false,
-  screenSize: 'lg',
-  
-  // Notification management
-  addNotification: (notification) => {
-    const id = Math.random().toString(36).substring(7)
-    const newNotification: Notification = { ...notification, id }
-    
-    set((state) => {
-      const updatedNotifications = [newNotification, ...state.notifications]
-      
-      // Limit number of notifications
-      if (updatedNotifications.length > state.maxNotifications) {
-        updatedNotifications.splice(state.maxNotifications)
-      }
-      
-      return { notifications: updatedNotifications }
-    })
-    
-    // Auto-remove after duration (default 5 seconds)
-    if (notification.duration !== 0) {
-      setTimeout(() => {
-        get().removeNotification(id)
-      }, notification.duration || 5000)
-    }
-    
-    return id
-  },
-  
-  removeNotification: (id) => set((state) => ({
-    notifications: state.notifications.filter(n => n.id !== id)
-  })),
-  
-  clearNotifications: () => set({ notifications: [] }),
-  
-  clearNotificationsByType: (type) => set((state) => ({
-    notifications: state.notifications.filter(n => n.type !== type)
-  })),
-  
-  // Modal management
-  openModal: (modal) => {
-    const id = Math.random().toString(36).substring(7)
-    const newModal: Modal = { ...modal, id }
-    
-    set((state) => ({
-      modals: [...state.modals, newModal]
-    }))
-    
-    return id
-  },
-  
-  closeModal: (id) => set((state) => ({
-    modals: state.modals.filter(m => m.id !== id)
-  })),
-  
-  closeAllModals: () => set({ modals: [] }),
-  
-  isModalOpen: (component) => {
-    return get().modals.some(m => m.component === component)
-  },
-  
-  // Loading state management
-  setGlobalLoading: (loading, message) => set({
-    globalLoading: { isLoading: loading, message }
-  }),
-  
-  setComponentLoading: (componentId, loading, message) => set((state) => ({
-    componentLoading: {
-      ...state.componentLoading,
-      [componentId]: { isLoading: loading, message }
-    }
-  })),
-  
-  clearComponentLoading: (componentId) => set((state) => {
-    const newComponentLoading = { ...state.componentLoading }
-    delete newComponentLoading[componentId]
-    return { componentLoading: newComponentLoading }
-  }),
-  
-  clearAllLoading: () => set({
-    globalLoading: { isLoading: false },
-    componentLoading: {}
-  }),
-  
-  // Layout management
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
-  
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  toggleSidebarCollapse: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
-  
-  // Theme management
-  setTheme: (theme) => set({ theme }),
-  setCompactMode: (compact) => set({ compactMode: compact }),
-  
-  // Responsive management
-  setScreenSize: (size) => set({ screenSize: size }),
-  setIsMobile: (mobile) => set({ isMobile: mobile }),
-  
-  // Convenience notification methods
-  showSuccess: (title, message) => {
-    get().addNotification({
-      type: 'success',
-      title,
-      message,
-      duration: 4000
-    })
-  },
-  
-  showError: (title, message) => {
-    get().addNotification({
-      type: 'error',
-      title,
-      message,
-      duration: 6000
-    })
-  },
-  
-  showWarning: (title, message) => {
-    get().addNotification({
-      type: 'warning',
-      title,
-      message,
-      duration: 5000
-    })
-  },
-  
-  showInfo: (title, message) => {
-    get().addNotification({
-      type: 'info',
-      title,
-      message,
-      duration: 4000
-    })
-  }
-}))
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
-// Selectors for performance optimization
-export const useNotifications = () => useUIStore(state => state.notifications)
-export const useModals = () => useUIStore(state => state.modals)
-export const useGlobalLoading = () => useUIStore(state => state.globalLoading)
-export const useComponentLoading = (componentId: string) => 
-  useUIStore(state => state.componentLoading[componentId] || { isLoading: false })
-export const useSidebar = () => useUIStore(state => ({
-  isOpen: state.sidebarOpen,
-  isCollapsed: state.sidebarCollapsed,
-  setOpen: state.setSidebarOpen,
-  setCollapsed: state.setSidebarCollapsed,
-  toggle: state.toggleSidebar,
-  toggleCollapse: state.toggleSidebarCollapse
-}))
-export const useTheme = () => useUIStore(state => ({
-  theme: state.theme,
-  compactMode: state.compactMode,
-  setTheme: state.setTheme,
-  setCompactMode: state.setCompactMode
-}))
-export const useResponsive = () => useUIStore(state => ({
-  isMobile: state.isMobile,
-  screenSize: state.screenSize,
-  setIsMobile: state.setIsMobile,
-  setScreenSize: state.setScreenSize
-}))
+const DEFAULT_THEME: UITheme = {
+  mode: 'system',
+  compactMode: false
+}
+
+const DEFAULT_LAYOUT: UILayout = {
+  sidebarOpen: true,
+  sidebarCollapsed: false
+}
+
+const MAX_NOTIFICATIONS = 5
+const DEFAULT_NOTIFICATION_DURATION = 5000
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function generateUIId(): string {
+  return `ui_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+}
+
+function shouldAutoRemove(notification: UINotification): boolean {
+  return !notification.persistent && notification.duration !== 0
+}
+
+// ============================================================================
+// STORE IMPLEMENTATION
+// ============================================================================
+
+export const useUIStore = create<UIState>()(
+  persist(
+    (set, get) => ({
+      // Base state
+      isLoading: false,
+      error: null,
+      lastUpdated: null,
+
+      // Core UI state
+      notifications: [],
+      modals: [],
+      theme: DEFAULT_THEME,
+      layout: DEFAULT_LAYOUT,
+
+      // Loading state
+      isGlobalLoading: false,
+      globalLoadingMessage: undefined,
+
+      // ============================================================================
+      // NOTIFICATION ACTIONS
+      // ============================================================================
+
+      addNotification: (notification) => {
+        const id = generateUIId()
+        const newNotification: UINotification = {
+          ...notification,
+          id,
+          duration: notification.duration ?? DEFAULT_NOTIFICATION_DURATION
+        }
+
+        set(state => {
+          const updatedNotifications = [newNotification, ...state.notifications]
+
+          // Limit number of notifications
+          if (updatedNotifications.length > MAX_NOTIFICATIONS) {
+            updatedNotifications.splice(MAX_NOTIFICATIONS)
+          }
+
+          return {
+            notifications: updatedNotifications,
+            lastUpdated: new Date()
+          }
+        })
+
+        // Auto-remove after duration
+        if (shouldAutoRemove(newNotification)) {
+          setTimeout(() => {
+            get().removeNotification(id)
+          }, newNotification.duration)
+        }
+
+        return id
+      },
+
+      removeNotification: (id) => {
+        set(state => ({
+          notifications: state.notifications.filter(n => n.id !== id),
+          lastUpdated: new Date()
+        }))
+      },
+
+      clearNotifications: () => {
+        set({
+          notifications: [],
+          lastUpdated: new Date()
+        })
+      },
+
+      // ============================================================================
+      // MODAL ACTIONS
+      // ============================================================================
+
+      openModal: (modal) => {
+        const id = generateUIId()
+        const newModal: UIModal = {
+          ...modal,
+          id,
+          size: modal.size ?? 'md'
+        }
+
+        set(state => ({
+          modals: [...state.modals, newModal],
+          lastUpdated: new Date()
+        }))
+
+        return id
+      },
+
+      closeModal: (id) => {
+        set(state => ({
+          modals: state.modals.filter(m => m.id !== id),
+          lastUpdated: new Date()
+        }))
+      },
+
+      closeAllModals: () => {
+        set({
+          modals: [],
+          lastUpdated: new Date()
+        })
+      },
+
+      // ============================================================================
+      // LOADING ACTIONS
+      // ============================================================================
+
+      setGlobalLoading: (loading, message) => {
+        set({
+          isGlobalLoading: loading,
+          globalLoadingMessage: loading ? message : undefined,
+          lastUpdated: new Date()
+        })
+      },
+
+      // ============================================================================
+      // LAYOUT ACTIONS
+      // ============================================================================
+
+      setSidebarOpen: (open) => {
+        set(state => ({
+          layout: { ...state.layout, sidebarOpen: open },
+          lastUpdated: new Date()
+        }))
+      },
+
+      setSidebarCollapsed: (collapsed) => {
+        set(state => ({
+          layout: { ...state.layout, sidebarCollapsed: collapsed },
+          lastUpdated: new Date()
+        }))
+      },
+
+      toggleSidebar: () => {
+        set(state => ({
+          layout: { ...state.layout, sidebarOpen: !state.layout.sidebarOpen },
+          lastUpdated: new Date()
+        }))
+      },
+
+      // ============================================================================
+      // THEME ACTIONS
+      // ============================================================================
+
+      setThemeMode: (mode) => {
+        set(state => ({
+          theme: { ...state.theme, mode },
+          lastUpdated: new Date()
+        }))
+      },
+
+      setCompactMode: (compact) => {
+        set(state => ({
+          theme: { ...state.theme, compactMode: compact },
+          lastUpdated: new Date()
+        }))
+      },
+
+      // ============================================================================
+      // CONVENIENCE METHODS
+      // ============================================================================
+
+      showSuccess: (title, message) => {
+        get().addNotification({
+          type: 'success',
+          title,
+          message,
+          duration: 4000
+        })
+      },
+
+      showError: (title, message) => {
+        get().addNotification({
+          type: 'error',
+          title,
+          message,
+          duration: 6000
+        })
+      },
+
+      showWarning: (title, message) => {
+        get().addNotification({
+          type: 'warning',
+          title,
+          message,
+          duration: 5000
+        })
+      },
+
+      showInfo: (title, message) => {
+        get().addNotification({
+          type: 'info',
+          title,
+          message,
+          duration: 4000
+        })
+      },
+
+      // ============================================================================
+      // UTILITIES
+      // ============================================================================
+
+      reset: () => {
+        set({
+          notifications: [],
+          modals: [],
+          theme: DEFAULT_THEME,
+          layout: DEFAULT_LAYOUT,
+          isGlobalLoading: false,
+          globalLoadingMessage: undefined,
+          isLoading: false,
+          error: null,
+          lastUpdated: null
+        })
+      }
+    }),
+    {
+      name: 'ui-store',
+      partialize: (state) => ({
+        // Persist user preferences only
+        theme: state.theme,
+        layout: state.layout
+        // Don't persist notifications, modals, or loading states
+      })
+    }
+  )
+)
+
+// ============================================================================
+// CONVENIENCE HOOKS
+// ============================================================================
+
+/**
+ * Hook for notifications
+ */
+export function useNotifications() {
+  return useUIStore(state => ({
+    notifications: state.notifications,
+    addNotification: state.addNotification,
+    removeNotification: state.removeNotification,
+    clearNotifications: state.clearNotifications,
+    showSuccess: state.showSuccess,
+    showError: state.showError,
+    showWarning: state.showWarning,
+    showInfo: state.showInfo
+  }))
+}
+
+/**
+ * Hook for modals
+ */
+export function useModals() {
+  return useUIStore(state => ({
+    modals: state.modals,
+    openModal: state.openModal,
+    closeModal: state.closeModal,
+    closeAllModals: state.closeAllModals
+  }))
+}
+
+/**
+ * Hook for loading state
+ */
+export function useGlobalLoading() {
+  return useUIStore(state => ({
+    isLoading: state.isGlobalLoading,
+    message: state.globalLoadingMessage,
+    setLoading: state.setGlobalLoading
+  }))
+}
+
+/**
+ * Hook for layout state
+ */
+export function useLayout() {
+  return useUIStore(state => ({
+    sidebarOpen: state.layout.sidebarOpen,
+    sidebarCollapsed: state.layout.sidebarCollapsed,
+    setSidebarOpen: state.setSidebarOpen,
+    setSidebarCollapsed: state.setSidebarCollapsed,
+    toggleSidebar: state.toggleSidebar
+  }))
+}
+
+/**
+ * Hook for theme state
+ */
+export function useTheme() {
+  return useUIStore(state => ({
+    mode: state.theme.mode,
+    compactMode: state.theme.compactMode,
+    setThemeMode: state.setThemeMode,
+    setCompactMode: state.setCompactMode
+  }))
+}

@@ -1,151 +1,87 @@
-// store/admin/course-store.ts
+// store/course-store.ts
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { 
-  Course,
+import type {
   CourseWithDetails,
-  TeacherWithCourse,
   CourseStatus,
-  TeacherRole,
   BaseStoreState,
   ApiResponse,
-  CourseFormData,
-  CourseUpdateData,
-  CourseStats,
-  PaginationState
+  UpdateInput
 } from '@/types'
-import { 
-  COURSE_STATUS,
-  TEACHER_ROLES,
-  USER_ROLES,
-  PERMISSIONS,
-  ERROR_MESSAGES,
-  API_ROUTES,
-  BUSINESS_RULES
+import {
+  API_ROUTES
 } from '@/lib/constants'
-import { 
+import {
   validateForm,
   createCourseSchema,
-  updateCourseSchema,
-  courseNameSchema,
-  teacherEmailSchema 
+  updateCourseSchema
 } from '@/lib/validations'
-import { 
-  formatDate,
-  createApiResponse,
-  isValidEmail,
-  sanitizeInput,
-  generateTempPassword,
-  hashPassword
+import {
+  handleApiError,
+  fetchWithTimeout
 } from '@/lib/utils'
 
 // ============================================================================
-// COURSE STORE INTERFACE
+// TYPES - Only what's needed for this store
 // ============================================================================
 
-interface CourseState extends BaseStoreState {
-  // Course data
-  courses: CourseWithDetails[]
-  selectedCourse: CourseWithDetails | null
-  
-  // Course creation state
-  isCreating: boolean
-  createError: string | null
-  creationProgress: {
-    step: 'validating' | 'creating_teacher' | 'creating_course' | 'complete'
-    message: string
-  } | null
-  
-  // Course management state
-  isUpdating: boolean
-  updateError: string | null
-  isDeletingHeadTeacher: boolean
-  deleteHeadTeacherError: string | null
-  
-  // Filtering and search
-  searchQuery: string
-  statusFilter: CourseStatus | 'all'
-  sortBy: 'name' | 'createdAt' | 'status' | 'studentCount'
+interface CourseFormData {
+  courseName: string
+  headTeacherEmail: string
+  headTeacherPassword: string
+}
+
+interface CourseFilters {
+  search: string
+  status: CourseStatus | 'all'
+  sortBy: 'name' | 'createdAt' | 'status'
   sortOrder: 'asc' | 'desc'
-  pagination: PaginationState
-  
-  // Statistics
-  stats: CourseStats | null
-  
-  // Actions - Data Management
-  loadCourses: () => Promise<void>
-  refreshCourses: () => Promise<void>
-  loadCourseStats: () => Promise<void>
-  
-  // Actions - Course Creation (Admin Only)
-  createCourseWithHeadTeacher: (data: CourseFormData) => Promise<{
-    success: boolean
-    course?: CourseWithDetails
-    teacher?: TeacherWithCourse
-    error?: string
-  }>
-  validateCourseCreationData: (data: CourseFormData) => {
-    isValid: boolean
-    errors: Record<string, string>
-  }
-  
-  // Actions - Course Management
-  updateCourse: (courseId: string, updates: CourseUpdateData) => Promise<boolean>
-  setCourseEndDate: (courseId: string, endDate: Date) => Promise<boolean>
-  updateCourseStatus: (courseId: string, status: CourseStatus) => Promise<boolean>
-  
-  // Actions - Head Teacher Management  
-  removeHeadTeacherAndDeactivate: (courseId: string, reason?: string) => Promise<boolean>
-  changeHeadTeacher: (courseId: string, newTeacherEmail: string) => Promise<boolean>
-  
-  // Actions - Selection and Filtering
-  selectCourse: (course: CourseWithDetails | null) => void
-  setSearchQuery: (query: string) => void
-  setStatusFilter: (status: CourseStatus | 'all') => void
-  setSorting: (sortBy: CourseState['sortBy'], order: 'asc' | 'desc') => void
-  
-  // Actions - Pagination
-  setPage: (page: number) => void
-  setPageSize: (size: number) => void
-  
-  // Getters - Data Access
-  getCourseById: (id: string) => CourseWithDetails | undefined
-  getActiveCourses: () => CourseWithDetails[]
-  getInactiveCourses: () => CourseWithDetails[]
-  getCoursesByStatus: (status: CourseStatus) => CourseWithDetails[]
-  getFilteredCourses: () => CourseWithDetails[]
-  getPaginatedCourses: () => CourseWithDetails[]
-  
-  // Getters - Statistics
-  getTotalCourses: () => number
-  getActiveCoursesCount: () => number
-  getInactiveCoursesCount: () => number
-  getTotalStudentsAcrossAllCourses: () => number
-  getTotalTeachersAcrossAllCourses: () => number
-  getAverageStudentsPerCourse: () => number
-  
-  // Getters - Business Logic
-  canCreateCourse: () => boolean
-  canRemoveHeadTeacher: (courseId: string) => boolean
-  canUpdateCourse: (courseId: string) => boolean
-  isCourseFull: (courseId: string) => boolean
-  getCourseCapacityInfo: (courseId: string) => {
-    totalCapacity: number
-    usedCapacity: number
-    availableCapacity: number
-    utilizationRate: number
-  }
-  
-  // Utility Actions
-  exportCourseData: (courseId?: string) => any[]
-  generateCourseReport: (courseId: string) => Promise<any>
-  clearErrors: () => void
-  resetFilters: () => void
-  resetState: () => void
+}
+
+interface CoursePagination {
+  page: number
+  limit: number
+  total: number
 }
 
 // ============================================================================
-// COURSE STORE IMPLEMENTATION
+// STORE INTERFACE
+// ============================================================================
+
+interface CourseState extends BaseStoreState {
+  // Core data
+  courses: CourseWithDetails[]
+  selectedCourse: CourseWithDetails | null
+
+  // UI state
+  filters: CourseFilters
+  pagination: CoursePagination
+
+  // Loading states
+  isCreating: boolean
+  isUpdating: boolean
+  isDeleting: boolean
+
+  // Actions
+  loadCourses: () => Promise<void>
+  createCourse: (data: CourseFormData) => Promise<CourseWithDetails | null>
+  updateCourse: (id: string, data: UpdateInput<CourseWithDetails>) => Promise<boolean>
+  selectCourse: (course: CourseWithDetails | null) => void
+  setFilters: (filters: Partial<CourseFilters>) => void
+  setPagination: (pagination: Partial<CoursePagination>) => void
+
+  // Computed
+  getFilteredCourses: () => CourseWithDetails[]
+  getCourseById: (id: string) => CourseWithDetails | undefined
+
+  // Utils
+  clearErrors: () => void
+  reset: () => void
+}
+
+// ============================================================================
+// STORE IMPLEMENTATION
 // ============================================================================
 
 export const useCourseStore = create<CourseState>()(
@@ -155,538 +91,184 @@ export const useCourseStore = create<CourseState>()(
       isLoading: false,
       error: null,
       lastUpdated: null,
-      
+
       courses: [],
       selectedCourse: null,
-      
-      isCreating: false,
-      createError: null,
-      creationProgress: null,
-      
-      isUpdating: false,
-      updateError: null,
-      isDeletingHeadTeacher: false,
-      deleteHeadTeacherError: null,
-      
-      searchQuery: '',
-      statusFilter: 'all',
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
+
+      filters: {
+        search: '',
+        status: 'all',
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      },
+
       pagination: {
         page: 1,
         limit: 20,
-        total: 0,
-        hasMore: false
+        total: 0
       },
-      
-      stats: null,
-      
+
+      isCreating: false,
+      isUpdating: false,
+      isDeleting: false,
+
       // ============================================================================
-      // DATA LOADING ACTIONS
+      // ACTIONS
       // ============================================================================
-      
+
       loadCourses: async () => {
         set({ isLoading: true, error: null })
-        
+
         try {
-          const response = await fetch(API_ROUTES.COURSES, {
-            headers: { 'Content-Type': 'application/json' }
-          })
-          
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-          }
-          
+          const response = await fetchWithTimeout(API_ROUTES.COURSES)
           const result: ApiResponse<CourseWithDetails[]> = await response.json()
-          
+
           if (result.success && result.data) {
-            set({ 
+            set({
               courses: result.data,
               isLoading: false,
               lastUpdated: new Date(),
-              pagination: {
-                ...get().pagination,
-                total: result.data.length
-              }
+              pagination: { ...get().pagination, total: result.data.length }
             })
-            
-            // Load stats after courses are loaded
-            get().loadCourseStats()
           } else {
-            throw new Error(result.error || ERROR_MESSAGES.COURSE.LOAD_FAILED)
+            throw new Error(result.error || 'Failed to load courses')
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.COURSE.LOAD_FAILED
-          set({ 
-            error: errorMessage,
+          set({
+            error: handleApiError(error).error,
             isLoading: false
           })
-          console.error('Failed to load courses:', error)
         }
       },
-      
-      refreshCourses: async () => {
-        // Refresh without showing loading state
-        const currentState = get()
-        await currentState.loadCourses()
-      },
-      
-      loadCourseStats: async () => {
+
+      createCourse: async (data) => {
+        set({ isCreating: true, error: null })
+
         try {
-          const response = await fetch(API_ROUTES.COURSE_STATS)
-          
-          if (response.ok) {
-            const result: ApiResponse<CourseStats> = await response.json()
-            
-            if (result.success && result.data) {
-              set({ stats: result.data })
-            }
+          // Validate data
+          const validation = validateForm(createCourseSchema, data)
+          if (!validation.isValid || !validation.data) {
+            throw new Error(Object.values(validation.errors)[0] || 'Invalid data')
           }
-        } catch (error) {
-          console.error('Failed to load course stats:', error)
-          // Don't update error state for stats failure
-        }
-      },
-      
-      // ============================================================================
-      // COURSE CREATION ACTIONS
-      // ============================================================================
-      
-      validateCourseCreationData: (data) => {
-        const errors: Record<string, string> = {}
-        
-        // Validate course name
-        const nameValidation = validateForm(courseNameSchema, { name: data.courseName })
-        if (!nameValidation.isValid) {
-          errors.courseName = 'Course name must be 2-100 characters long'
-        }
-        
-        // Check for duplicate course name
-        const existingCourse = get().courses.find(
-          course => course.name.toLowerCase() === data.courseName.toLowerCase()
-        )
-        if (existingCourse) {
-          errors.courseName = ERROR_MESSAGES.COURSE.DUPLICATE_NAME
-        }
-        
-        // Validate teacher email
-        const emailValidation = validateForm(teacherEmailSchema, { email: data.headTeacherEmail })
-        if (!emailValidation.isValid) {
-          errors.headTeacherEmail = 'Please enter a valid email address'
-        }
-        
-        // Check for duplicate teacher email
-        const allTeachers = get().courses.flatMap(course => [
-          course.headTeacher,
-          ...course.teachers
-        ])
-        const existingTeacher = allTeachers.find(
-          teacher => teacher.email.toLowerCase() === data.headTeacherEmail.toLowerCase()
-        )
-        if (existingTeacher) {
-          errors.headTeacherEmail = ERROR_MESSAGES.TEACHER.EMAIL_ALREADY_EXISTS
-        }
-        
-        // Validate password if provided
-        if (data.temporaryPassword && data.temporaryPassword.length < 8) {
-          errors.temporaryPassword = 'Password must be at least 8 characters long'
-        }
-        
-        return {
-          isValid: Object.keys(errors).length === 0,
-          errors
-        }
-      },
-      
-      createCourseWithHeadTeacher: async (data) => {
-        set({ 
-          isCreating: true, 
-          createError: null,
-          creationProgress: {
-            step: 'validating',
-            message: 'Validating course data...'
-          }
-        })
-        
-        try {
-          // Validate input data
-          const validation = get().validateCourseCreationData(data)
-          if (!validation.isValid) {
-            const firstError = Object.values(validation.errors)[0]
-            throw new Error(firstError)
-          }
-          
-          // Sanitize inputs
-          const sanitizedData = {
-            courseName: sanitizeInput(data.courseName),
-            headTeacherEmail: sanitizeInput(data.headTeacherEmail).toLowerCase(),
-            temporaryPassword: data.temporaryPassword || generateTempPassword()
-          }
-          
-          set({
-            creationProgress: {
-              step: 'creating_teacher',
-              message: 'Creating head teacher account...'
-            }
-          })
-          
-          // Create course with head teacher (atomic operation)
-          const createPayload = {
-            courseName: sanitizedData.courseName,
-            headTeacherEmail: sanitizedData.headTeacherEmail,
-            temporaryPassword: sanitizedData.temporaryPassword
-          }
-          
-          set({
-            creationProgress: {
-              step: 'creating_course',
-              message: 'Creating course and linking teacher...'
-            }
-          })
-          
-          const response = await fetch(API_ROUTES.COURSES, {
+
+          const response = await fetchWithTimeout(API_ROUTES.COURSES, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(createPayload)
+            body: JSON.stringify(validation.data)
           })
-          
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
-          }
-          
-          const result: ApiResponse<{
-            course: CourseWithDetails
-            teacher: TeacherWithCourse
-          }> = await response.json()
-          
+
+          const result: ApiResponse<{ course: CourseWithDetails }> = await response.json()
+
           if (result.success && result.data) {
-            const { course, teacher } = result.data
-            
-            set({
-              creationProgress: {
-                step: 'complete',
-                message: 'Course created successfully!'
-              }
-            })
-            
-            // Add new course to store
-            set((state) => ({
-              courses: [course, ...state.courses],
-              selectedCourse: course,
+            const newCourse = result.data.course
+
+            set(state => ({
+              courses: [newCourse, ...state.courses],
+              selectedCourse: newCourse,
               isCreating: false,
-              creationProgress: null,
               lastUpdated: new Date(),
-              pagination: {
-                ...state.pagination,
-                total: state.pagination.total + 1
-              }
+              pagination: { ...state.pagination, total: state.pagination.total + 1 }
             }))
-            
-            // Refresh stats
-            get().loadCourseStats()
-            
-            return {
-              success: true,
-              course,
-              teacher
-            }
+
+            return newCourse
           } else {
-            throw new Error(result.error || ERROR_MESSAGES.COURSE.CREATE_FAILED)
+            throw new Error(result.error || 'Failed to create course')
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.COURSE.CREATE_FAILED
-          
-          set({ 
-            createError: errorMessage,
-            isCreating: false,
-            creationProgress: null
+          set({
+            error: handleApiError(error).error,
+            isCreating: false
           })
-          
-          console.error('Failed to create course:', error)
-          
-          return {
-            success: false,
-            error: errorMessage
-          }
+          return null
         }
       },
-      
-      // ============================================================================
-      // COURSE MANAGEMENT ACTIONS
-      // ============================================================================
-      
-      updateCourse: async (courseId, updates) => {
-        set({ isUpdating: true, updateError: null })
-        
+
+      updateCourse: async (id, updates) => {
+        set({ isUpdating: true, error: null })
+
         try {
-          // Validate updates
           const validation = validateForm(updateCourseSchema, updates)
           if (!validation.isValid || !validation.data) {
-            throw new Error('Invalid course update data')
+            throw new Error('Invalid update data')
           }
-          
-          const response = await fetch(API_ROUTES.COURSE_BY_ID(courseId), {
+
+          const response = await fetchWithTimeout(`${API_ROUTES.COURSES}/${id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(validation.data)
           })
-          
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || `HTTP ${response.status}`)
-          }
-          
+
           const result: ApiResponse<CourseWithDetails> = await response.json()
-          
+
           if (result.success && result.data) {
-            // Update course in store
-            set((state) => ({
+            set(state => ({
               courses: state.courses.map(course =>
-                course.id === courseId ? result.data! : course
+                course.id === id ? result.data! : course
               ),
-              selectedCourse: state.selectedCourse?.id === courseId 
-                ? result.data 
+              selectedCourse: state.selectedCourse?.id === id
+                ? result.data
                 : state.selectedCourse,
               isUpdating: false,
               lastUpdated: new Date()
             }))
-            
+
             return true
           } else {
-            throw new Error(result.error || ERROR_MESSAGES.COURSE.UPDATE_FAILED)
+            throw new Error(result.error || 'Failed to update course')
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.COURSE.UPDATE_FAILED
-          
-          set({ 
-            updateError: errorMessage,
+          set({
+            error: handleApiError(error).error,
             isUpdating: false
           })
-          
-          console.error('Failed to update course:', error)
           return false
         }
       },
-      
-      setCourseEndDate: async (courseId, endDate) => {
-        return get().updateCourse(courseId, { endDate })
-      },
-      
-      updateCourseStatus: async (courseId, status) => {
-        return get().updateCourse(courseId, { status })
-      },
-      
-      removeHeadTeacherAndDeactivate: async (courseId, reason) => {
-        set({ isDeletingHeadTeacher: true, deleteHeadTeacherError: null })
-        
-        try {
-          const course = get().getCourseById(courseId)
-          if (!course) {
-            throw new Error(ERROR_MESSAGES.COURSE.NOT_FOUND)
-          }
-          
-          if (course.status === COURSE_STATUS.INACTIVE) {
-            throw new Error(ERROR_MESSAGES.COURSE.ALREADY_INACTIVE)
-          }
-          
-          const payload = reason ? { reason } : {}
-          
-          const response = await fetch(API_ROUTES.REMOVE_HEAD_TEACHER(courseId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          })
-          
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || `HTTP ${response.status}`)
-          }
-          
-          const result: ApiResponse<void> = await response.json()
-          
-          if (result.success) {
-            // Update course status in store
-            set((state) => ({
-              courses: state.courses.map(c =>
-                c.id === courseId 
-                  ? { 
-                      ...c, 
-                      status: COURSE_STATUS.INACTIVE as CourseStatus,
-                      endDate: new Date()
-                    }
-                  : c
-              ),
-              selectedCourse: state.selectedCourse?.id === courseId 
-                ? { 
-                    ...state.selectedCourse, 
-                    status: COURSE_STATUS.INACTIVE as CourseStatus,
-                    endDate: new Date()
-                  }
-                : state.selectedCourse,
-              isDeletingHeadTeacher: false,
-              lastUpdated: new Date()
-            }))
-            
-            // Refresh stats
-            get().loadCourseStats()
-            
-            return true
-          } else {
-            throw new Error(result.error || ERROR_MESSAGES.TEACHER.REMOVE_HEAD_TEACHER_FAILED)
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.TEACHER.REMOVE_HEAD_TEACHER_FAILED
-          
-          set({ 
-            deleteHeadTeacherError: errorMessage,
-            isDeletingHeadTeacher: false
-          })
-          
-          console.error('Failed to remove head teacher:', error)
-          return false
-        }
-      },
-      
-      changeHeadTeacher: async (courseId, newTeacherEmail) => {
-        set({ isUpdating: true, updateError: null })
-        
-        try {
-          if (!isValidEmail(newTeacherEmail)) {
-            throw new Error('Invalid email address')
-          }
-          
-          const response = await fetch(API_ROUTES.CHANGE_HEAD_TEACHER(courseId), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              newHeadTeacherEmail: newTeacherEmail.toLowerCase().trim() 
-            })
-          })
-          
-          if (!response.ok) {
-            const errorData = await response.json()
-            throw new Error(errorData.error || `HTTP ${response.status}`)
-          }
-          
-          const result: ApiResponse<CourseWithDetails> = await response.json()
-          
-          if (result.success && result.data) {
-            // Update course in store
-            set((state) => ({
-              courses: state.courses.map(course =>
-                course.id === courseId ? result.data! : course
-              ),
-              selectedCourse: state.selectedCourse?.id === courseId 
-                ? result.data 
-                : state.selectedCourse,
-              isUpdating: false,
-              lastUpdated: new Date()
-            }))
-            
-            return true
-          } else {
-            throw new Error(result.error || ERROR_MESSAGES.TEACHER.CHANGE_HEAD_TEACHER_FAILED)
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : ERROR_MESSAGES.TEACHER.CHANGE_HEAD_TEACHER_FAILED
-          
-          set({ 
-            updateError: errorMessage,
-            isUpdating: false
-          })
-          
-          console.error('Failed to change head teacher:', error)
-          return false
-        }
-      },
-      
-      // ============================================================================
-      // SELECTION AND FILTERING ACTIONS
-      // ============================================================================
-      
+
       selectCourse: (course) => {
         set({ selectedCourse: course })
       },
-      
-      setSearchQuery: (query) => {
-        set({ 
-          searchQuery: query,
-          pagination: { ...get().pagination, page: 1 }
-        })
-      },
-      
-      setStatusFilter: (status) => {
-        set({ 
-          statusFilter: status,
-          pagination: { ...get().pagination, page: 1 }
-        })
-      },
-      
-      setSorting: (sortBy, order) => {
-        set({ 
-          sortBy,
-          sortOrder: order,
-          pagination: { ...get().pagination, page: 1 }
-        })
-      },
-      
-      setPage: (page) => {
-        set((state) => ({
-          pagination: { ...state.pagination, page }
+
+      setFilters: (newFilters) => {
+        set(state => ({
+          filters: { ...state.filters, ...newFilters },
+          pagination: { ...state.pagination, page: 1 } // Reset pagination on filter change
         }))
       },
-      
-      setPageSize: (size) => {
-        set((state) => ({
-          pagination: { ...state.pagination, limit: size, page: 1 }
+
+      setPagination: (newPagination) => {
+        set(state => ({
+          pagination: { ...state.pagination, ...newPagination }
         }))
       },
-      
+
       // ============================================================================
-      // GETTER FUNCTIONS
+      // COMPUTED VALUES
       // ============================================================================
-      
-      getCourseById: (id) => {
-        return get().courses.find(course => course.id === id)
-      },
-      
-      getActiveCourses: () => {
-        return get().courses.filter(course => course.status === COURSE_STATUS.ACTIVE)
-      },
-      
-      getInactiveCourses: () => {
-        return get().courses.filter(course => course.status === COURSE_STATUS.INACTIVE)
-      },
-      
-      getCoursesByStatus: (status) => {
-        return get().courses.filter(course => course.status === status)
-      },
-      
+
       getFilteredCourses: () => {
-        const { courses, searchQuery, statusFilter, sortBy, sortOrder } = get()
-        
-        let filtered = courses
-        
-        // Apply search filter
-        if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase()
+        const { courses, filters } = get()
+        let filtered = [...courses]
+
+        // Search filter
+        if (filters.search.trim()) {
+          const query = filters.search.toLowerCase()
           filtered = filtered.filter(course =>
             course.name.toLowerCase().includes(query) ||
             course.headTeacher.email.toLowerCase().includes(query)
           )
         }
-        
-        // Apply status filter
-        if (statusFilter !== 'all') {
-          filtered = filtered.filter(course => course.status === statusFilter)
+
+        // Status filter
+        if (filters.status !== 'all') {
+          filtered = filtered.filter(course => course.status === filters.status)
         }
-        
-        // Apply sorting
+
+        // Sort
         filtered.sort((a, b) => {
           let comparison = 0
-          
-          switch (sortBy) {
+
+          switch (filters.sortBy) {
             case 'name':
               comparison = a.name.localeCompare(b.name)
               break
@@ -696,231 +278,55 @@ export const useCourseStore = create<CourseState>()(
             case 'status':
               comparison = a.status.localeCompare(b.status)
               break
-            case 'studentCount':
-              const aCount = a.classes.reduce((sum, cls) => sum + cls.students.length, 0)
-              const bCount = b.classes.reduce((sum, cls) => sum + cls.students.length, 0)
-              comparison = aCount - bCount
-              break
           }
-          
-          return sortOrder === 'asc' ? comparison : -comparison
+
+          return filters.sortOrder === 'asc' ? comparison : -comparison
         })
-        
+
         return filtered
       },
-      
-      getPaginatedCourses: () => {
-        const { pagination } = get()
-        const filtered = get().getFilteredCourses()
-        
-        const startIndex = (pagination.page - 1) * pagination.limit
-        const endIndex = startIndex + pagination.limit
-        
-        // Update pagination state
-        set((state) => ({
-          pagination: {
-            ...state.pagination,
-            total: filtered.length,
-            hasMore: endIndex < filtered.length
-          }
-        }))
-        
-        return filtered.slice(startIndex, endIndex)
+
+      getCourseById: (id) => {
+        return get().courses.find(course => course.id === id)
       },
-      
-      // Statistics getters
-      getTotalCourses: () => get().courses.length,
-      
-      getActiveCoursesCount: () => get().getActiveCourses().length,
-      
-      getInactiveCoursesCount: () => get().getInactiveCourses().length,
-      
-      getTotalStudentsAcrossAllCourses: () => {
-        return get().courses.reduce((total, course) => {
-          return total + course.classes.reduce((classTotal, cls) => {
-            return classTotal + cls.students.length
-          }, 0)
-        }, 0)
-      },
-      
-      getTotalTeachersAcrossAllCourses: () => {
-        return get().courses.reduce((total, course) => {
-          return total + 1 + course.teachers.length // Head teacher + additional teachers
-        }, 0)
-      },
-      
-      getAverageStudentsPerCourse: () => {
-        const totalCourses = get().getTotalCourses()
-        const totalStudents = get().getTotalStudentsAcrossAllCourses()
-        return totalCourses > 0 ? Math.round(totalStudents / totalCourses) : 0
-      },
-      
-      // Business logic getters
-      canCreateCourse: () => {
-        // Add business logic for course creation limits if any
-        return true
-      },
-      
-      canRemoveHeadTeacher: (courseId) => {
-        const course = get().getCourseById(courseId)
-        return course?.status === COURSE_STATUS.ACTIVE
-      },
-      
-      canUpdateCourse: (courseId) => {
-        const course = get().getCourseById(courseId)
-        return course?.status === COURSE_STATUS.ACTIVE
-      },
-      
-      isCourseFull: (courseId) => {
-        const course = get().getCourseById(courseId)
-        if (!course) return false
-        
-        const totalCapacity = course.classes.reduce((sum, cls) => sum + cls.capacity, 0)
-        const totalStudents = course.classes.reduce((sum, cls) => sum + cls.students.length, 0)
-        
-        return totalStudents >= totalCapacity
-      },
-      
-      getCourseCapacityInfo: (courseId) => {
-        const course = get().getCourseById(courseId)
-        
-        if (!course) {
-          return {
-            totalCapacity: 0,
-            usedCapacity: 0,
-            availableCapacity: 0,
-            utilizationRate: 0
-          }
-        }
-        
-        const totalCapacity = course.classes.reduce((sum, cls) => sum + cls.capacity, 0)
-        const usedCapacity = course.classes.reduce((sum, cls) => sum + cls.students.length, 0)
-        const availableCapacity = totalCapacity - usedCapacity
-        const utilizationRate = totalCapacity > 0 ? Math.round((usedCapacity / totalCapacity) * 100) : 0
-        
-        return {
-          totalCapacity,
-          usedCapacity,
-          availableCapacity,
-          utilizationRate
-        }
-      },
-      
+
       // ============================================================================
-      // UTILITY ACTIONS
+      // UTILITIES
       // ============================================================================
-      
-      exportCourseData: (courseId) => {
-        const courses = courseId ? [get().getCourseById(courseId)].filter(Boolean) : get().courses
-        
-        return courses.map(course => ({
-          id: course.id,
-          name: course.name,
-          status: course.status,
-          headTeacher: course.headTeacher.email,
-          additionalTeachers: course.teachers.length,
-          totalClasses: course.classes.length,
-          totalStudents: course.classes.reduce((sum, cls) => sum + cls.students.length, 0),
-          totalCapacity: course.classes.reduce((sum, cls) => sum + cls.capacity, 0),
-          createdAt: formatDate(course.createdAt),
-          endDate: course.endDate ? formatDate(course.endDate) : null
-        }))
-      },
-      
-      generateCourseReport: async (courseId) => {
-        const course = get().getCourseById(courseId)
-        if (!course) {
-          throw new Error(ERROR_MESSAGES.COURSE.NOT_FOUND)
-        }
-        
-        // Generate comprehensive course report
-        return {
-          course: {
-            id: course.id,
-            name: course.name,
-            status: course.status,
-            createdAt: course.createdAt,
-            endDate: course.endDate
-          },
-          teachers: {
-            headTeacher: course.headTeacher,
-            additionalTeachers: course.teachers,
-            total: 1 + course.teachers.length
-          },
-          classes: course.classes.map(cls => ({
-            id: cls.id,
-            name: cls.name,
-            capacity: cls.capacity,
-            studentsCount: cls.students.length,
-            sessionsCount: cls.sessions.length,
-            utilizationRate: cls.capacity > 0 ? Math.round((cls.students.length / cls.capacity) * 100) : 0
-          })),
-          statistics: get().getCourseCapacityInfo(courseId),
-          generatedAt: new Date().toISOString()
-        }
-      },
-      
+
       clearErrors: () => {
-        set({ 
-          error: null,
-          createError: null,
-          updateError: null,
-          deleteHeadTeacherError: null
-        })
+        set({ error: null })
       },
-      
-      resetFilters: () => {
-        set({
-          searchQuery: '',
-          statusFilter: 'all',
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
-          pagination: {
-            page: 1,
-            limit: 20,
-            total: 0,
-            hasMore: false
-          }
-        })
-      },
-      
-      resetState: () => {
+
+      reset: () => {
         set({
           courses: [],
           selectedCourse: null,
-          isCreating: false,
-          createError: null,
-          creationProgress: null,
-          isUpdating: false,
-          updateError: null,
-          isDeletingHeadTeacher: false,
-          deleteHeadTeacherError: null,
-          searchQuery: '',
-          statusFilter: 'all',
-          sortBy: 'createdAt',
-          sortOrder: 'desc',
+          filters: {
+            search: '',
+            status: 'all',
+            sortBy: 'createdAt',
+            sortOrder: 'desc'
+          },
           pagination: {
             page: 1,
             limit: 20,
-            total: 0,
-            hasMore: false
+            total: 0
           },
-          stats: null,
           isLoading: false,
+          isCreating: false,
+          isUpdating: false,
+          isDeleting: false,
           error: null,
           lastUpdated: null
         })
       }
     }),
     {
-      name: 'course-storage',
+      name: 'course-store',
       partialize: (state) => ({
-        // Only persist essential data, not loading states
         selectedCourse: state.selectedCourse,
-        searchQuery: state.searchQuery,
-        statusFilter: state.statusFilter,
-        sortBy: state.sortBy,
-        sortOrder: state.sortOrder,
+        filters: state.filters,
         pagination: state.pagination
       })
     }
