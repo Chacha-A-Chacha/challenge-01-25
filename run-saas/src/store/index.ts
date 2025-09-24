@@ -4,94 +4,84 @@
 // AUTHENTICATION STORES
 // ============================================================================
 export { 
-  useAuthStore 
+  useAuthStore,
+  useAuth,
+  useLogin
 } from './auth/auth-store'
 
 // ============================================================================
 // ADMIN STORES
 // ============================================================================
-export { 
-  useCourseStore,
-  useCourses,
-  useSelectedCourse,
-  useCourseStats,
-  useActiveCourses,
-  useCourseCreation
+export {
+  useCourseStore
 } from './admin/course-store'
 
 // ============================================================================
 // TEACHER STORES
 // ============================================================================
-export { 
+export {
   useAttendanceStore,
-  useCurrentSession,
-  useTodayAttendance,
-  useAttendanceStats,
-  useScanningState
+  useSessionAttendance,
+  useQRScanner,
+  useAttendanceActions
 } from './teacher/attendance-store'
 
-export { 
+export {
   useClassStore,
   useClasses,
-  useSelectedClass,
-  useSessionsByClass,
+  useClassActions,
   useClassSessions,
-  useClassCreation,
-  useSessionCreation
+  useClassFilters
 } from './teacher/class-store'
 
-export { 
+export {
   useStudentStore,
   useStudents,
-  useSelectedStudent,
-  useStudentStats,
+  useStudentActions,
   useStudentImport,
-  useStudentAssignment
+  useStudentFilters
 } from './teacher/student-store'
 
 // ============================================================================
 // STUDENT STORES
 // ============================================================================
-export { 
+export {
   useQRStore,
   useQRCode,
-  useQRGeneration,
   useQRSettings
 } from './student/qr-store'
 
-export { 
+export {
   useScheduleStore,
   useStudentSchedule,
-  useCurrentSession as useStudentCurrentSession,
+  useCurrentSession,
   useAttendanceHistory
 } from './student/schedule-store'
 
-export { 
+export {
   useReassignmentStore,
   useReassignmentRequests,
-  useReassignmentOptions,
-  useReassignmentActions
+  useReassignmentActions,
+  useReassignmentOptions
 } from './student/reassignment-store'
 
 // ============================================================================
 // SHARED STORES
 // ============================================================================
-export { 
+export {
   useUIStore,
   useNotifications,
   useModals,
   useGlobalLoading,
-  useComponentLoading,
-  useSidebar,
-  useTheme,
-  useResponsive
+  useLayout,
+  useTheme
 } from './shared/ui-store'
 
-export { 
+export {
   useOfflineStore,
-  useConnectionStatus,
-  usePendingData,
-  useSyncControls
+  useOfflineData,
+  useOfflineSync,
+  useOfflineConfig
 } from './shared/offline-store'
 
 // ============================================================================
@@ -108,73 +98,36 @@ import { useUIStore } from './shared/ui-store'
  * Should be called in the root component or layout
  */
 export const useStoreInitialization = () => {
-  const { checkSession, updateLastActivity } = useAuthStore()
-  const { setOnlineStatus } = useOfflineStore()
-  const { setScreenSize, setIsMobile } = useUIStore()
+  const { syncSession } = useAuthStore()
+  const { updateNetworkStatus } = useOfflineStore()
+  const { setThemeMode } = useUIStore()
 
   useEffect(() => {
-    // Initialize auth session check
-    const sessionValid = checkSession()
-    if (!sessionValid) {
-      useAuthStore.getState().logout()
+    // Initialize network status detection
+    const updateOnlineStatus = () => {
+      updateNetworkStatus(navigator.onLine)
     }
 
-    // Set up periodic session validation
-    const sessionInterval = setInterval(() => {
-      const isValid = useAuthStore.getState().checkSession()
-      if (!isValid) {
-        useAuthStore.getState().logout()
+    updateOnlineStatus()
+    window.addEventListener('online', updateOnlineStatus)
+    window.addEventListener('offline', updateOnlineStatus)
+
+    // Initialize theme from system preference
+    if (typeof window !== 'undefined') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const handleThemeChange = (e: MediaQueryListEvent) => {
+        setThemeMode('system')
       }
-    }, 60000) // Check every minute
 
-    // Set up activity tracking
-    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart']
-    const updateActivity = () => {
-      if (useAuthStore.getState().isAuthenticated) {
-        updateLastActivity()
-      }
-    }
+      mediaQuery.addEventListener('change', handleThemeChange)
 
-    activityEvents.forEach(event => {
-      document.addEventListener(event, updateActivity, true)
-    })
-
-    // Initialize online/offline detection
-    setOnlineStatus(navigator.onLine)
-
-    // Initialize responsive breakpoints
-    const updateScreenSize = () => {
-      const width = window.innerWidth
-      if (width < 640) {
-        setScreenSize('sm')
-        setIsMobile(true)
-      } else if (width < 768) {
-        setScreenSize('md')
-        setIsMobile(true)
-      } else if (width < 1024) {
-        setScreenSize('lg')
-        setIsMobile(false)
-      } else if (width < 1280) {
-        setScreenSize('xl')
-        setIsMobile(false)
-      } else {
-        setScreenSize('2xl')
-        setIsMobile(false)
+      return () => {
+        window.removeEventListener('online', updateOnlineStatus)
+        window.removeEventListener('offline', updateOnlineStatus)
+        mediaQuery.removeEventListener('change', handleThemeChange)
       }
     }
-
-    updateScreenSize()
-    window.addEventListener('resize', updateScreenSize)
-
-    // Cleanup
-    return () => {
-      clearInterval(sessionInterval)
-      activityEvents.forEach(event => {
-        document.removeEventListener(event, updateActivity, true)
-      })
-      window.removeEventListener('resize', updateScreenSize)
-    }
-  }, [checkSession, updateLastActivity, setOnlineStatus, setScreenSize, setIsMobile])
+  }, [syncSession, updateNetworkStatus, setThemeMode])
 }
 
 /**
@@ -182,7 +135,7 @@ export const useStoreInitialization = () => {
  * Returns only the stores relevant to the current user's role
  */
 export const useRoleBasedStores = () => {
-  const { user, isAdmin, isTeacher, isStudent } = useAuthStore()
+  const { user } = useAuthStore()
 
   return {
     // Universal stores
@@ -191,19 +144,19 @@ export const useRoleBasedStores = () => {
     offline: useOfflineStore,
 
     // Admin stores
-    ...(isAdmin() && {
+    ...(user?.role === 'admin' && {
       courses: useCourseStore
     }),
 
     // Teacher stores
-    ...(isTeacher() && {
+    ...(user?.role === 'teacher' && {
       classes: useClassStore,
       students: useStudentStore,
       attendance: useAttendanceStore
     }),
 
     // Student stores
-    ...(isStudent() && {
+    ...(user?.role === 'student' && {
       qr: useQRStore,
       schedule: useScheduleStore,
       reassignment: useReassignmentStore
@@ -221,54 +174,30 @@ export const useRoleBasedStores = () => {
 export const useClearAllStores = () => {
   return () => {
     // Clear persisted data
-    localStorage.removeItem('auth-storage')
-    localStorage.removeItem('qr-storage')
-    localStorage.removeItem('offline-storage')
-    localStorage.removeItem('reassignment-storage')
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth-store')
+      localStorage.removeItem('qr-store')
+      localStorage.removeItem('offline-store')
+      localStorage.removeItem('reassignment-store')
+      localStorage.removeItem('course-store')
+      localStorage.removeItem('class-store')
+      localStorage.removeItem('student-store')
+      localStorage.removeItem('attendance-store')
+      localStorage.removeItem('schedule-store')
+      localStorage.removeItem('ui-store')
+    }
 
     // Reset store states
-    useAuthStore.getState().logout()
-    useUIStore.getState().clearNotifications()
-    useUIStore.getState().closeAllModals()
-    useOfflineStore.getState().clearPendingData()
-    useOfflineStore.getState().clearFailedSyncs()
-
-    // Reset other stores to initial state
-    useCourseStore.setState({
-      courses: [],
-      selectedCourse: null,
-      isLoading: false,
-      error: null
-    })
-
-    useClassStore.setState({
-      classes: [],
-      sessions: [],
-      selectedClass: null,
-      selectedSession: null,
-      isLoading: false,
-      error: null
-    })
-
-    useStudentStore.setState({
-      students: [],
-      selectedStudent: null,
-      isLoading: false,
-      error: null,
-      importResult: null
-    })
-
-    useAttendanceStore.getState().resetState()
-    useQRStore.getState().clearQRCode()
-    
-    useScheduleStore.setState({
-      schedule: null,
-      saturdaySession: null,
-      sundaySession: null,
-      attendanceHistory: [],
-      isLoading: false,
-      error: null
-    })
+    useAuthStore.getState().reset()
+    useUIStore.getState().reset()
+    useOfflineStore.getState().reset()
+    useCourseStore.getState().reset()
+    useClassStore.getState().reset()
+    useStudentStore.getState().reset()
+    useAttendanceStore.getState().reset()
+    useQRStore.getState().reset()
+    useScheduleStore.getState().reset()
+    useReassignmentStore.getState().reset()
   }
 }
 
@@ -279,17 +208,17 @@ export const useClearAllStores = () => {
 export const useLogStoreStates = () => {
   if (process.env.NODE_ENV === 'development') {
     return () => {
-      console.group('Store States')
-      console.log('Auth:', useAuthStore.getState())
-      console.log('UI:', useUIStore.getState())
-      console.log('Offline:', useOfflineStore.getState())
-      console.log('Courses:', useCourseStore.getState())
-      console.log('Classes:', useClassStore.getState())
-      console.log('Students:', useStudentStore.getState())
-      console.log('Attendance:', useAttendanceStore.getState())
-      console.log('QR:', useQRStore.getState())
-      console.log('Schedule:', useScheduleStore.getState())
-      console.log('Reassignment:', useReassignmentStore.getState())
+      console.group('📊 Store States')
+      console.log('🔐 Auth:', useAuthStore.getState())
+      console.log('🎨 UI:', useUIStore.getState())
+      console.log('📱 Offline:', useOfflineStore.getState())
+      console.log('🎓 Courses:', useCourseStore.getState())
+      console.log('📚 Classes:', useClassStore.getState())
+      console.log('👥 Students:', useStudentStore.getState())
+      console.log('✅ Attendance:', useAttendanceStore.getState())
+      console.log('📱 QR:', useQRStore.getState())
+      console.log('📅 Schedule:', useScheduleStore.getState())
+      console.log('🔄 Reassignment:', useReassignmentStore.getState())
       console.groupEnd()
     }
   }
@@ -297,11 +226,72 @@ export const useLogStoreStates = () => {
 }
 
 // ============================================================================
+// CONVENIENCE HOOK COLLECTIONS
+// ============================================================================
+
+/**
+ * Collection of all admin-related hooks
+ */
+export const useAdminHooks = () => ({
+  courses: useCourseStore,
+  ui: useUIStore,
+  auth: useAuthStore
+})
+
+/**
+ * Collection of all teacher-related hooks
+ */
+export const useTeacherHooks = () => ({
+  // Core teacher functionality
+  classes: useClasses,
+  classActions: useClassActions,
+  classSessions: useClassSessions,
+  classFilters: useClassFilters,
+
+  students: useStudents,
+  studentActions: useStudentActions,
+  studentImport: useStudentImport,
+  studentFilters: useStudentFilters,
+
+  attendance: useSessionAttendance,
+  qrScanner: useQRScanner,
+  attendanceActions: useAttendanceActions,
+
+  // Shared functionality
+  ui: useUIStore,
+  auth: useAuthStore,
+  offline: useOfflineStore
+})
+
+/**
+ * Collection of all student-related hooks
+ */
+export const useStudentHooks = () => ({
+  // Core student functionality
+  qr: useQRCode,
+  qrSettings: useQRSettings,
+
+  schedule: useStudentSchedule,
+  currentSession: useCurrentSession,
+  attendanceHistory: useAttendanceHistory,
+
+  reassignmentRequests: useReassignmentRequests,
+  reassignmentActions: useReassignmentActions,
+  reassignmentOptions: useReassignmentOptions,
+
+  // Shared functionality
+  ui: useUIStore,
+  auth: useAuthStore,
+  offline: useOfflineStore
+})
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
-// Re-export commonly used types
+// Re-export commonly used types for convenience
 export type {
+  // Core entities
   AuthUser,
   Course,
   Class,
@@ -309,8 +299,16 @@ export type {
   Student,
   Attendance,
   ReassignmentRequest,
+
+  // Business types
   QRCodeData,
   StudentSchedule,
+  AttendanceRecord,
+
+  // UI types
   Notification,
-  Modal
+  Modal,
+
+  // State types
+  BaseStoreState
 } from '@/types'
