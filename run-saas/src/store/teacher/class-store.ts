@@ -1,464 +1,605 @@
 // store/teacher/class-store.ts
 import { create } from 'zustand'
-import type { 
-  Class, 
-  Session, 
-  ClassFormData, 
-  SessionFormData,
+import { persist } from 'zustand/middleware'
+import type {
+  BaseStoreState,
+  Class,
+  Session,
+  Student,
   WeekDay,
-  EntityStoreState,
-  ApiResponse 
+  ApiResponse
 } from '@/types'
+import { API_ROUTES } from '@/lib/constants'
+import { fetchWithTimeout } from '@/lib/utils'
 
-interface ClassState extends EntityStoreState<Class> {
-  // Class management
-  classes: Class[]
-  selectedClass: Class | null
-  
-  // Session management
+// ============================================================================
+// TYPES - Only what's needed for class state
+// ============================================================================
+
+interface ClassWithDetails extends Class {
   sessions: Session[]
-  selectedSession: Session | null
-  sessionsByClass: Record<string, Session[]>
-  
-  // Form states
-  isCreatingClass: boolean
-  isCreatingSession: boolean
-  createClassError: string | null
-  createSessionError: string | null
-  
-  // Actions - Class management
+  students: Student[]
+  _count: {
+    sessions: number
+    students: number
+  }
+}
+
+interface SessionFormData {
+  day: WeekDay
+  startTime: string
+  endTime: string
+  capacity: number
+}
+
+interface ClassFilters {
+  search: string
+  sortBy: 'name' | 'capacity' | 'createdAt'
+  sortOrder: 'asc' | 'desc'
+}
+
+// ============================================================================
+// STORE INTERFACE
+// ============================================================================
+
+interface ClassState extends BaseStoreState {
+  // Core data
+  classes: ClassWithDetails[]
+  selectedClass: ClassWithDetails | null
+
+  // UI state
+  filters: ClassFilters
+
+  // Loading states
+  isCreating: boolean
+  isUpdating: boolean
+
+  // Actions
   loadClasses: () => Promise<void>
-  createClass: (data: ClassFormData) => Promise<boolean>
+  createClass: (name: string, capacity: number) => Promise<ClassWithDetails | null>
   updateClass: (id: string, updates: Partial<Class>) => Promise<boolean>
   deleteClass: (id: string) => Promise<boolean>
-  
-  // Actions - Session management
+  selectClass: (classItem: ClassWithDetails | null) => void
+
+  // Session actions
   loadSessions: (classId: string) => Promise<void>
-  createSession: (classId: string, data: SessionFormData) => Promise<boolean>
-  updateSession: (id: string, updates: Partial<Session>) => Promise<boolean>
-  deleteSession: (id: string) => Promise<boolean>
-  validateSessionTime: (classId: string, day: WeekDay, startTime: string, endTime: string, excludeId?: string) => boolean
-  
-  // Selection
-  selectClass: (classObj: Class | null) => void
-  selectSession: (session: Session | null) => void
-  
-  // Getters
-  getClassById: (id: string) => Class | undefined
-  getSessionById: (id: string) => Session | undefined
+  createSession: (classId: string, sessionData: SessionFormData) => Promise<boolean>
+  deleteSession: (sessionId: string) => Promise<boolean>
+
+  // Computed
+  getFilteredClasses: () => ClassWithDetails[]
+  getClassById: (id: string) => ClassWithDetails | undefined
   getSessionsByClass: (classId: string) => Session[]
   getSaturdaySessions: (classId: string) => Session[]
   getSundaySessions: (classId: string) => Session[]
-  getClassCapacityUsage: (classId: string) => { total: number; used: number; available: number }
-  hasTimeConflict: (classId: string, day: WeekDay, startTime: string, endTime: string, excludeId?: string) => boolean
+
+  // Utils
+  setFilters: (filters: Partial<ClassFilters>) => void
+  clearErrors: () => void
+  reset: () => void
 }
 
-export const useClassStore = create<ClassState>((set, get) => ({
-  // Initial state
-  isLoading: false,
-  error: null,
-  lastUpdated: null,
-  
-  items: [],
-  classes: [],
-  selectedItem: null,
-  selectedClass: null,
-  searchQuery: '',
-  filters: {},
-  pagination: {
-    page: 1,
-    limit: 20,
-    total: 0,
-    hasMore: false
-  },
-  
-  sessions: [],
-  selectedSession: null,
-  sessionsByClass: {},
-  
-  isCreatingClass: false,
-  isCreatingSession: false,
-  createClassError: null,
-  createSessionError: null,
-  
-  // Load classes for current course
-  loadClasses: async () => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch('/api/classes')
-      const data: ApiResponse<Class[]> = await response.json()
-      
-      if (data.success && data.data) {
-        set({ 
-          classes: data.data,
-          items: data.data,
-          isLoading: false,
-          lastUpdated: new Date()
-        })
-      } else {
-        throw new Error(data.error || 'Failed to load classes')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-    }
-  },
-  
-  // Create new class
-  createClass: async (data) => {
-    set({ isCreatingClass: true, createClassError: null })
-    
-    try {
-      const response = await fetch('/api/classes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      })
-      
-      const result: ApiResponse<Class> = await response.json()
-      
-      if (result.success && result.data) {
-        set((state) => ({
-          classes: [...state.classes, result.data!],
-          items: [...state.items, result.data!],
-          isCreatingClass: false,
-          lastUpdated: new Date()
-        }))
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to create class')
-      }
-    } catch (error) {
-      set({ 
-        createClassError: error instanceof Error ? error.message : 'Unknown error',
-        isCreatingClass: false
-      })
-      return false
-    }
-  },
-  
-  // Update class
-  updateClass: async (id, updates) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch(`/api/classes/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      })
-      
-      const result: ApiResponse<Class> = await response.json()
-      
-      if (result.success && result.data) {
-        set((state) => ({
-          classes: state.classes.map(cls => 
-            cls.id === id ? { ...cls, ...result.data } : cls
-          ),
-          items: state.items.map(cls => 
-            cls.id === id ? { ...cls, ...result.data } : cls
-          ),
-          selectedClass: state.selectedClass?.id === id 
-            ? { ...state.selectedClass, ...result.data } 
-            : state.selectedClass,
-          isLoading: false,
-          lastUpdated: new Date()
-        }))
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to update class')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-      return false
-    }
-  },
-  
-  // Delete class
-  deleteClass: async (id) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch(`/api/classes/${id}`, {
-        method: 'DELETE'
-      })
-      
-      const result: ApiResponse = await response.json()
-      
-      if (result.success) {
-        set((state) => ({
-          classes: state.classes.filter(cls => cls.id !== id),
-          items: state.items.filter(cls => cls.id !== id),
-          selectedClass: state.selectedClass?.id === id ? null : state.selectedClass,
-          // Also remove sessions for this class
-          sessions: state.sessions.filter(session => session.classId !== id),
-          sessionsByClass: Object.fromEntries(
-            Object.entries(state.sessionsByClass).filter(([classId]) => classId !== id)
-          ),
-          isLoading: false,
-          lastUpdated: new Date()
-        }))
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to delete class')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-      return false
-    }
-  },
-  
-  // Load sessions for a class
-  loadSessions: async (classId) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch(`/api/sessions?classId=${classId}`)
-      const data: ApiResponse<Session[]> = await response.json()
-      
-      if (data.success && data.data) {
-        set((state) => ({ 
-          sessions: data.data!,
-          sessionsByClass: {
-            ...state.sessionsByClass,
-            [classId]: data.data!
-          },
-          isLoading: false,
-          lastUpdated: new Date()
-        }))
-      } else {
-        throw new Error(data.error || 'Failed to load sessions')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-    }
-  },
-  
-  // Create new session
-  createSession: async (classId, data) => {
-    set({ isCreatingSession: true, createSessionError: null })
-    
-    // Validate session time doesn't conflict
-    if (get().hasTimeConflict(classId, data.day, data.startTime, data.endTime)) {
-      set({ 
-        createSessionError: 'Session time conflicts with existing session',
-        isCreatingSession: false
-      })
-      return false
-    }
-    
-    try {
-      const response = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, classId })
-      })
-      
-      const result: ApiResponse<Session> = await response.json()
-      
-      if (result.success && result.data) {
-        set((state) => ({
-          sessions: [...state.sessions, result.data!],
-          sessionsByClass: {
-            ...state.sessionsByClass,
-            [classId]: [...(state.sessionsByClass[classId] || []), result.data!]
-          },
-          isCreatingSession: false,
-          lastUpdated: new Date()
-        }))
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to create session')
-      }
-    } catch (error) {
-      set({ 
-        createSessionError: error instanceof Error ? error.message : 'Unknown error',
-        isCreatingSession: false
-      })
-      return false
-    }
-  },
-  
-  // Update session
-  updateSession: async (id, updates) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch(`/api/sessions/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      })
-      
-      const result: ApiResponse<Session> = await response.json()
-      
-      if (result.success && result.data) {
-        set((state) => {
-          const updatedSessions = state.sessions.map(session => 
-            session.id === id ? { ...session, ...result.data } : session
-          )
-          
-          // Update sessionsByClass
-          const updatedSessionsByClass = { ...state.sessionsByClass }
-          Object.keys(updatedSessionsByClass).forEach(classId => {
-            updatedSessionsByClass[classId] = updatedSessionsByClass[classId].map(session =>
-              session.id === id ? { ...session, ...result.data } : session
-            )
-          })
-          
-          return {
-            sessions: updatedSessions,
-            sessionsByClass: updatedSessionsByClass,
-            selectedSession: state.selectedSession?.id === id 
-              ? { ...state.selectedSession, ...result.data } 
-              : state.selectedSession,
-            isLoading: false,
-            lastUpdated: new Date()
-          }
-        })
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to update session')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-      return false
-    }
-  },
-  
-  // Delete session
-  deleteSession: async (id) => {
-    set({ isLoading: true, error: null })
-    
-    try {
-      const response = await fetch(`/api/sessions/${id}`, {
-        method: 'DELETE'
-      })
-      
-      const result: ApiResponse = await response.json()
-      
-      if (result.success) {
-        set((state) => {
-          const filteredSessions = state.sessions.filter(session => session.id !== id)
-          
-          // Update sessionsByClass
-          const updatedSessionsByClass = { ...state.sessionsByClass }
-          Object.keys(updatedSessionsByClass).forEach(classId => {
-            updatedSessionsByClass[classId] = updatedSessionsByClass[classId].filter(
-              session => session.id !== id
-            )
-          })
-          
-          return {
-            sessions: filteredSessions,
-            sessionsByClass: updatedSessionsByClass,
-            selectedSession: state.selectedSession?.id === id ? null : state.selectedSession,
-            isLoading: false,
-            lastUpdated: new Date()
-          }
-        })
-        return true
-      } else {
-        throw new Error(result.error || 'Failed to delete session')
-      }
-    } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        isLoading: false
-      })
-      return false
-    }
-  },
-  
-  // Validate session time
-  validateSessionTime: (classId, day, startTime, endTime, excludeId) => {
-    return !get().hasTimeConflict(classId, day, startTime, endTime, excludeId)
-  },
-  
-  // Selection
-  selectClass: (classObj) => set({ 
-    selectedClass: classObj,
-    selectedItem: classObj
-  }),
-  
-  selectSession: (session) => set({ selectedSession: session }),
-  
-  // Getters
-  getClassById: (id) => get().classes.find(c => c.id === id),
-  getSessionById: (id) => get().sessions.find(s => s.id === id),
-  getSessionsByClass: (classId) => get().sessionsByClass[classId] || [],
-  
-  getSaturdaySessions: (classId) => 
-    get().getSessionsByClass(classId).filter(s => s.day === WeekDay.SATURDAY),
-  
-  getSundaySessions: (classId) => 
-    get().getSessionsByClass(classId).filter(s => s.day === WeekDay.SUNDAY),
-  
-  getClassCapacityUsage: (classId) => {
-    const sessions = get().getSessionsByClass(classId)
-    const totalCapacity = sessions.reduce((sum, session) => sum + session.capacity, 0)
-    const usedCapacity = sessions.reduce((sum, session) => sum + (session.students?.length || 0), 0)
-    
-    return {
-      total: totalCapacity,
-      used: usedCapacity,
-      available: totalCapacity - usedCapacity
-    }
-  },
-  
-  hasTimeConflict: (classId, day, startTime, endTime, excludeId) => {
-    const sessions = get().getSessionsByClass(classId)
-    
-    return sessions.some(session => {
-      if (excludeId && session.id === excludeId) return false
-      if (session.day !== day) return false
-      
-      // Check for time overlap
-      const sessionStart = session.startTime
-      const sessionEnd = session.endTime
-      
-      return (
-        (startTime >= sessionStart && startTime < sessionEnd) ||
-        (endTime > sessionStart && endTime <= sessionEnd) ||
-        (startTime <= sessionStart && endTime >= sessionEnd)
-      )
-    })
-  }
-}))
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
-// Selectors for performance
-export const useClasses = () => useClassStore(state => state.classes)
-export const useSelectedClass = () => useClassStore(state => state.selectedClass)
-export const useSessionsByClass = (classId: string) => 
-  useClassStore(state => state.getSessionsByClass(classId))
-export const useClassSessions = (classId: string) => useClassStore(state => ({
-  saturday: state.getSaturdaySessions(classId),
-  sunday: state.getSundaySessions(classId),
-  all: state.getSessionsByClass(classId)
-}))
-export const useClassCreation = () => useClassStore(state => ({
-  isCreating: state.isCreatingClass,
-  error: state.createClassError,
-  createClass: state.createClass
-}))
-export const useSessionCreation = () => useClassStore(state => ({
-  isCreating: state.isCreatingSession,
-  error: state.createSessionError,
-  createSession: state.createSession,
-  validateTime: state.validateSessionTime
-}))
+const DEFAULT_FILTERS: ClassFilters = {
+  search: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc'
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function parseTimeToMinutes(timeStr: string): number {
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  return hours * 60 + minutes
+}
+
+function hasTimeConflict(
+  existingSessions: Session[],
+  day: WeekDay,
+  startTime: string,
+  endTime: string,
+  excludeId?: string
+): boolean {
+  const startMinutes = parseTimeToMinutes(startTime)
+  const endMinutes = parseTimeToMinutes(endTime)
+
+  return existingSessions.some(session => {
+    if (excludeId && session.id === excludeId) return false
+    if (session.day !== day) return false
+
+    const sessionStart = parseTimeToMinutes(session.startTime)
+    const sessionEnd = parseTimeToMinutes(session.endTime)
+
+    return (
+      (startMinutes >= sessionStart && startMinutes < sessionEnd) ||
+      (endMinutes > sessionStart && endMinutes <= sessionEnd) ||
+      (startMinutes <= sessionStart && endMinutes >= sessionEnd)
+    )
+  })
+}
+
+// ============================================================================
+// STORE IMPLEMENTATION
+// ============================================================================
+
+export const useClassStore = create<ClassState>()(
+  persist(
+    (set, get) => ({
+      // Base state
+      isLoading: false,
+      error: null,
+      lastUpdated: null,
+
+      // Core data
+      classes: [],
+      selectedClass: null,
+
+      // UI state
+      filters: DEFAULT_FILTERS,
+
+      // Loading states
+      isCreating: false,
+      isUpdating: false,
+
+      // ============================================================================
+      // ACTIONS
+      // ============================================================================
+
+      loadClasses: async () => {
+        set({ isLoading: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(API_ROUTES.CLASSES)
+
+          if (!response.ok) {
+            throw new Error(`Failed to load classes: ${response.status}`)
+          }
+
+          const result: ApiResponse<ClassWithDetails[]> = await response.json()
+
+          if (result.success && result.data) {
+            set({
+              classes: result.data,
+              isLoading: false,
+              lastUpdated: new Date()
+            })
+          } else {
+            throw new Error(result.error || 'Failed to load classes')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load classes'
+          set({
+            error: errorMessage,
+            isLoading: false
+          })
+        }
+      },
+
+      createClass: async (name, capacity) => {
+        set({ isCreating: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(API_ROUTES.CLASSES, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, capacity })
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to create class: ${response.status}`)
+          }
+
+          const result: ApiResponse<ClassWithDetails> = await response.json()
+
+          if (result.success && result.data) {
+            const newClass = result.data
+
+            set(state => ({
+              classes: [newClass, ...state.classes],
+              selectedClass: newClass,
+              isCreating: false,
+              lastUpdated: new Date()
+            }))
+
+            return newClass
+          } else {
+            throw new Error(result.error || 'Failed to create class')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to create class'
+          set({
+            error: errorMessage,
+            isCreating: false
+          })
+          return null
+        }
+      },
+
+      updateClass: async (id, updates) => {
+        set({ isUpdating: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(`${API_ROUTES.CLASSES}/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to update class: ${response.status}`)
+          }
+
+          const result: ApiResponse<ClassWithDetails> = await response.json()
+
+          if (result.success && result.data) {
+            set(state => ({
+              classes: state.classes.map(cls =>
+                cls.id === id ? result.data! : cls
+              ),
+              selectedClass: state.selectedClass?.id === id
+                ? result.data
+                : state.selectedClass,
+              isUpdating: false,
+              lastUpdated: new Date()
+            }))
+
+            return true
+          } else {
+            throw new Error(result.error || 'Failed to update class')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to update class'
+          set({
+            error: errorMessage,
+            isUpdating: false
+          })
+          return false
+        }
+      },
+
+      deleteClass: async (id) => {
+        set({ isLoading: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(`${API_ROUTES.CLASSES}/${id}`, {
+            method: 'DELETE'
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to delete class: ${response.status}`)
+          }
+
+          const result: ApiResponse<void> = await response.json()
+
+          if (result.success) {
+            set(state => ({
+              classes: state.classes.filter(cls => cls.id !== id),
+              selectedClass: state.selectedClass?.id === id ? null : state.selectedClass,
+              isLoading: false,
+              lastUpdated: new Date()
+            }))
+
+            return true
+          } else {
+            throw new Error(result.error || 'Failed to delete class')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to delete class'
+          set({
+            error: errorMessage,
+            isLoading: false
+          })
+          return false
+        }
+      },
+
+      selectClass: (classItem) => {
+        set({ selectedClass: classItem })
+      },
+
+      // ============================================================================
+      // SESSION ACTIONS
+      // ============================================================================
+
+      loadSessions: async (classId) => {
+        const classToUpdate = get().classes.find(cls => cls.id === classId)
+        if (!classToUpdate) return
+
+        set({ isLoading: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(`${API_ROUTES.SESSIONS}?classId=${classId}`)
+
+          if (!response.ok) {
+            throw new Error(`Failed to load sessions: ${response.status}`)
+          }
+
+          const result: ApiResponse<Session[]> = await response.json()
+
+          if (result.success && result.data) {
+            set(state => ({
+              classes: state.classes.map(cls =>
+                cls.id === classId
+                  ? { ...cls, sessions: result.data! }
+                  : cls
+              ),
+              selectedClass: state.selectedClass?.id === classId
+                ? { ...state.selectedClass, sessions: result.data! }
+                : state.selectedClass,
+              isLoading: false,
+              lastUpdated: new Date()
+            }))
+          } else {
+            throw new Error(result.error || 'Failed to load sessions')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load sessions'
+          set({
+            error: errorMessage,
+            isLoading: false
+          })
+        }
+      },
+
+      createSession: async (classId, sessionData) => {
+        const classItem = get().classes.find(cls => cls.id === classId)
+        if (!classItem) {
+          set({ error: 'Class not found' })
+          return false
+        }
+
+        // Check for time conflicts
+        if (hasTimeConflict(classItem.sessions, sessionData.day, sessionData.startTime, sessionData.endTime)) {
+          set({ error: 'Session time conflicts with existing session' })
+          return false
+        }
+
+        set({ isCreating: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(API_ROUTES.SESSIONS, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...sessionData, classId })
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to create session: ${response.status}`)
+          }
+
+          const result: ApiResponse<Session> = await response.json()
+
+          if (result.success && result.data) {
+            const newSession = result.data
+
+            set(state => ({
+              classes: state.classes.map(cls =>
+                cls.id === classId
+                  ? { ...cls, sessions: [...cls.sessions, newSession] }
+                  : cls
+              ),
+              selectedClass: state.selectedClass?.id === classId
+                ? { ...state.selectedClass, sessions: [...state.selectedClass.sessions, newSession] }
+                : state.selectedClass,
+              isCreating: false,
+              lastUpdated: new Date()
+            }))
+
+            return true
+          } else {
+            throw new Error(result.error || 'Failed to create session')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
+          set({
+            error: errorMessage,
+            isCreating: false
+          })
+          return false
+        }
+      },
+
+      deleteSession: async (sessionId) => {
+        set({ isLoading: true, error: null })
+
+        try {
+          const response = await fetchWithTimeout(`${API_ROUTES.SESSIONS}/${sessionId}`, {
+            method: 'DELETE'
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to delete session: ${response.status}`)
+          }
+
+          const result: ApiResponse<void> = await response.json()
+
+          if (result.success) {
+            set(state => ({
+              classes: state.classes.map(cls => ({
+                ...cls,
+                sessions: cls.sessions.filter(session => session.id !== sessionId)
+              })),
+              selectedClass: state.selectedClass
+                ? {
+                    ...state.selectedClass,
+                    sessions: state.selectedClass.sessions.filter(session => session.id !== sessionId)
+                  }
+                : state.selectedClass,
+              isLoading: false,
+              lastUpdated: new Date()
+            }))
+
+            return true
+          } else {
+            throw new Error(result.error || 'Failed to delete session')
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to delete session'
+          set({
+            error: errorMessage,
+            isLoading: false
+          })
+          return false
+        }
+      },
+
+      // ============================================================================
+      // COMPUTED VALUES
+      // ============================================================================
+
+      getFilteredClasses: () => {
+        const { classes, filters } = get()
+        let filtered = [...classes]
+
+        // Search filter
+        if (filters.search.trim()) {
+          const query = filters.search.toLowerCase()
+          filtered = filtered.filter(cls =>
+            cls.name.toLowerCase().includes(query)
+          )
+        }
+
+        // Sort
+        filtered.sort((a, b) => {
+          let comparison = 0
+
+          switch (filters.sortBy) {
+            case 'name':
+              comparison = a.name.localeCompare(b.name)
+              break
+            case 'capacity':
+              comparison = a.capacity - b.capacity
+              break
+            case 'createdAt':
+              comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              break
+          }
+
+          return filters.sortOrder === 'asc' ? comparison : -comparison
+        })
+
+        return filtered
+      },
+
+      getClassById: (id) => {
+        return get().classes.find(cls => cls.id === id)
+      },
+
+      getSessionsByClass: (classId) => {
+        const classItem = get().classes.find(cls => cls.id === classId)
+        return classItem?.sessions || []
+      },
+
+      getSaturdaySessions: (classId) => {
+        return get().getSessionsByClass(classId).filter(s => s.day === 'SATURDAY')
+      },
+
+      getSundaySessions: (classId) => {
+        return get().getSessionsByClass(classId).filter(s => s.day === 'SUNDAY')
+      },
+
+      // ============================================================================
+      // UTILITIES
+      // ============================================================================
+
+      setFilters: (newFilters) => {
+        set(state => ({
+          filters: { ...state.filters, ...newFilters }
+        }))
+      },
+
+      clearErrors: () => {
+        set({ error: null })
+      },
+
+      reset: () => {
+        set({
+          classes: [],
+          selectedClass: null,
+          filters: DEFAULT_FILTERS,
+          isCreating: false,
+          isUpdating: false,
+          isLoading: false,
+          error: null,
+          lastUpdated: null
+        })
+      }
+    }),
+    {
+      name: 'class-store',
+      partialize: (state) => ({
+        // Only persist user preferences
+        selectedClass: state.selectedClass,
+        filters: state.filters
+        // Don't persist: classes data, loading states, errors
+      })
+    }
+  )
+)
+
+// ============================================================================
+// CONVENIENCE HOOKS
+// ============================================================================
+
+/**
+ * Hook for class data and operations
+ */
+export function useClasses() {
+  return useClassStore(state => ({
+    classes: state.classes,
+    filteredClasses: state.getFilteredClasses(),
+    selectedClass: state.selectedClass,
+    isLoading: state.isLoading,
+    error: state.error,
+    loadClasses: state.loadClasses,
+    selectClass: state.selectClass,
+    getClassById: state.getClassById
+  }))
+}
+
+/**
+ * Hook for class management actions
+ */
+export function useClassActions() {
+  return useClassStore(state => ({
+    isCreating: state.isCreating,
+    isUpdating: state.isUpdating,
+    createClass: state.createClass,
+    updateClass: state.updateClass,
+    deleteClass: state.deleteClass,
+    error: state.error,
+    clearErrors: state.clearErrors
+  }))
+}
+
+/**
+ * Hook for session management
+ */
+export function useClassSessions() {
+  return useClassStore(state => ({
+    getSessionsByClass: state.getSessionsByClass,
+    getSaturdaySessions: state.getSaturdaySessions,
+    getSundaySessions: state.getSundaySessions,
+    loadSessions: state.loadSessions,
+    createSession: state.createSession,
+    deleteSession: state.deleteSession,
+    isCreating: state.isCreating,
+    isLoading: state.isLoading
+  }))
+}
+
+/**
+ * Hook for filtering and search
+ */
+export function useClassFilters() {
+  return useClassStore(state => ({
+    filters: state.filters,
+    setFilters: state.setFilters,
+    filteredClasses: state.getFilteredClasses()
+  }))
+}
