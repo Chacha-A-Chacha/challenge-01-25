@@ -6,7 +6,7 @@ import type {
   StudentImportData,
   QRCodeData
 } from '@/types'
-import { VALIDATION_RULES, REQUEST_TIMEOUTS, ERROR_MESSAGES } from './constants'
+import { REQUEST_TIMEOUTS, ERROR_MESSAGES } from './constants'
 
 /**
  * Merge Tailwind classes with clsx functionality

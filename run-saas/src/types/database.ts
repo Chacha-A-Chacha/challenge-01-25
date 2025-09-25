@@ -1,6 +1,6 @@
 // types/database.ts
 import type { CourseStatus, WeekDay, AttendanceStatus, RequestStatus } from './enums'
-import type { TeacherRole } from './auth'
+import type { TeacherRole } from './enums'
 
 // Base entity interfaces matching Prisma schema exactly
 export interface Admin {

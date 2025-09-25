@@ -1,8 +1,8 @@
 // types/hooks.ts
 import type { AttendanceStatus, NotificationType } from './enums'
-import type { Student, Session, Attendance } from './database'
-import type { AttendanceRecord, AttendanceStats, QRScanResult } from './business'
-import type { StudentImportData, StudentImportResult, FieldProps, ValidationError } from './forms'
+import type { Student, Session } from './database'
+import type { AttendanceRecord, AttendanceStats } from './business'
+import type { StudentImportData, StudentImportResult, FieldProps } from './forms'
 import type { Notification } from './ui'
 
 export interface UseAttendanceReturn {
