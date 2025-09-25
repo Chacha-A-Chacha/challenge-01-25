@@ -3,21 +3,16 @@ import { PrismaClient, Prisma } from '@prisma/client'
 import { PrismaClientKnownRequestError, PrismaClientValidationError } from '@prisma/client/runtime/library'
 import type {
   Admin,
-  Course,
-  Teacher,
-  Class,
-  Session,
-  Student,
-  Attendance,
-  ReassignmentRequest,
-  StudentWithSessions,
   TeacherWithCourse,
+  StudentWithSessions,
   CourseWithDetails,
   ClassWithSessions,
+  Session,
+  Attendance,
+  Student,
   StudentImportData,
   AutoAssignmentResult,
   AttendanceStats,
-  StudentAttendanceHistory,
   QRCodeData,
   WeekDay,
   AttendanceStatus,
@@ -398,7 +393,7 @@ export async function validateSessionTime(
     })
 
     if (conflictingSessions.length > 0) {
-      const conflictTimes = conflictingSessions.map(s =>
+      const conflictTimes = conflictingSessions.map((s: Session) =>
         `${formatTime(s.startTime)} - ${formatTime(s.endTime)}`
       ).join(', ')
 
@@ -476,8 +471,8 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
       ]
     })
 
-    const saturdaySessions = sessions.filter(s => s.day === 'SATURDAY')
-    const sundaySessions = sessions.filter(s => s.day === 'SUNDAY')
+    const saturdaySessions = sessions.filter((s: Session & { _count: { students: number } }) => s.day === 'SATURDAY')
+    const sundaySessions = sessions.filter((s: Session & { _count: { students: number } }) => s.day === 'SUNDAY')
 
     if (saturdaySessions.length === 0 || sundaySessions.length === 0) {
       return {
@@ -500,29 +495,29 @@ export async function autoAssignStudentsToSessions(classId: string): Promise<Aut
 
     // Track current enrollment for balanced assignment
     const sessionEnrollment = new Map<string, number>()
-    sessions.forEach(session => {
+    sessions.forEach((session: Session & { _count: { students: number } }) => {
       sessionEnrollment.set(session.id, session._count.students)
     })
 
     // Assign students to sessions with load balancing
     for (const student of unassignedStudents) {
       const availableSaturday = saturdaySessions
-        .filter(s => {
+        .filter((s: Session & { _count: { students: number } }) => {
           const currentEnrollment = sessionEnrollment.get(s.id) ?? 0
           return currentEnrollment < s.capacity
         })
-        .sort((a, b) => {
+        .sort((a: Session & { _count: { students: number } }, b: Session & { _count: { students: number } }): number => {
           const enrollmentA = sessionEnrollment.get(a.id) ?? 0
           const enrollmentB = sessionEnrollment.get(b.id) ?? 0
           return enrollmentA - enrollmentB
         })[0]
 
       const availableSunday = sundaySessions
-        .filter(s => {
+        .filter((s: Session & { _count: { students: number } }) => {
           const currentEnrollment = sessionEnrollment.get(s.id) ?? 0
           return currentEnrollment < s.capacity
         })
-        .sort((a, b) => {
+        .sort((a: Session & { _count: { students: number } }, b: Session & { _count: { students: number } }): number => {
           const enrollmentA = sessionEnrollment.get(a.id) ?? 0
           const enrollmentB = sessionEnrollment.get(b.id) ?? 0
           return enrollmentA - enrollmentB
@@ -602,7 +597,7 @@ export async function bulkImportStudents(
     }
 
     // Process in batches
-    const batchSize = 100 // Process students in batches of 100
+    const batchSize = 100
     const batches = []
 
     for (let i = 0; i < studentsData.length; i += batchSize) {
@@ -729,8 +724,8 @@ export async function markAttendanceFromQR(
     let status: AttendanceStatus
     let message: string
 
-    const isAssignedToSession = student.sessions.some(s => s.id === sessionId)
-    const isCorrectClass = student.class?.sessions?.some(s => s.id === sessionId) ?? false
+    const isAssignedToSession = student.sessions.some((s: Session) => s.id === sessionId)
+    const isCorrectClass = student.class?.sessions?.some((s: Session) => s.id === sessionId) ?? false
 
     if (isAssignedToSession) {
       status = 'PRESENT' as AttendanceStatus
@@ -810,9 +805,9 @@ export async function getSessionAttendanceStats(
     }
 
     const totalStudents = session._count.students
-    const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT').length
-    const absentCount = attendanceRecords.filter(a => a.status === 'ABSENT').length
-    const wrongSessionCount = attendanceRecords.filter(a => a.status === 'WRONG_SESSION').length
+    const presentCount = attendanceRecords.filter((a: Attendance) => a.status === 'PRESENT').length
+    const absentCount = attendanceRecords.filter((a: Attendance) => a.status === 'ABSENT').length
+    const wrongSessionCount = attendanceRecords.filter((a: Attendance) => a.status === 'WRONG_SESSION').length
 
     return {
       totalStudents,
