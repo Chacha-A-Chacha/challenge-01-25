@@ -1,135 +1,205 @@
 // hooks/teacher/useQRScanner.ts
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNotifications } from '@/hooks/ui'
-import { useAttendance } from './useAttendance'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useAttendanceStore } from '@/store/teacher/attendance-store'
+import { useNotifications } from '@/store/shared/ui-store'
+
+interface QRScannerOptions {
+  sessionId?: string
+  facingMode?: 'user' | 'environment'
+  onScanSuccess?: (result: string) => void
+  onScanError?: (error: string) => void
+}
 
 /**
- * QR code scanning functionality
+ * QR Scanner hook for camera/hardware interaction
+ * Handles camera permissions, video stream management, and QR detection
+ * Uses attendance store for actual QR processing
  */
-export function useQRScanner(sessionId?: string) {
+export function useQRScanner(options: QRScannerOptions = {}) {
+  const { sessionId, facingMode = 'environment', onScanSuccess, onScanError } = options
+
   const [isScanning, setIsScanning] = useState(false)
   const [hasPermission, setHasPermission] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isInitializing, setIsInitializing] = useState(false)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const { showError } = useNotifications()
-  const { scanQRCode } = useAttendance(sessionId)
+  const scannerRef = useRef<any>(null) // For QR detection library
+
+  const { scanQRCode } = useAttendanceStore()
+  const { showError, showSuccess } = useNotifications()
 
   // Request camera permission
-  const requestPermission = useCallback(async () => {
+  const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } // Use back camera on mobile
+      setIsInitializing(true)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode }
       })
-      
+
       setHasPermission(true)
       setError(null)
-      
-      // Stop the test stream
+
+      // Stop the test stream immediately
       stream.getTracks().forEach(track => track.stop())
-      
+
       return true
     } catch (error) {
       setHasPermission(false)
-      setError('Camera permission denied')
-      showError('Camera Access', 'Please allow camera access to scan QR codes')
+      const errorMessage = error instanceof Error ? error.message : 'Camera permission denied'
+      setError(errorMessage)
+      showError('Camera Access Denied', 'Please allow camera access to scan QR codes')
       return false
+    } finally {
+      setIsInitializing(false)
     }
-  }, [showError])
+  }, [facingMode, showError])
 
-  // Start scanning
-  const startScanning = useCallback(async () => {
+  // Start video stream and scanning
+  const startScanning = useCallback(async (): Promise<boolean> => {
     if (!hasPermission) {
       const granted = await requestPermission()
       if (!granted) return false
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' }
+      setIsInitializing(true)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode,
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
       })
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
         setIsScanning(true)
         setError(null)
+
+        // Start video playback
+        await videoRef.current.play()
       }
-      
+
       return true
     } catch (error) {
-      setError('Failed to start camera')
-      showError('Camera Error', 'Failed to access camera')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start camera'
+      setError(errorMessage)
+      showError('Camera Error', errorMessage)
       return false
+    } finally {
+      setIsInitializing(false)
     }
-  }, [hasPermission, requestPermission, showError])
+  }, [hasPermission, requestPermission, facingMode, showError])
 
-  // Stop scanning
+  // Stop video stream and scanning
   const stopScanning = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
-    
+
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
-    
+
+    if (scannerRef.current) {
+      // Stop QR detection if using a library like @zxing/library
+      try {
+        scannerRef.current.reset?.()
+      } catch (error) {
+        console.warn('Failed to reset QR scanner:', error)
+      }
+    }
+
     setIsScanning(false)
+    setError(null)
   }, [])
 
-  // Handle QR code detection
+  // Handle successful QR code detection
   const handleQRDetection = useCallback(async (qrData: string) => {
-    const success = await scanQRCode(qrData)
-    
-    if (success) {
-      // Brief pause before allowing next scan
-      setTimeout(() => {
-        // Could add visual feedback here
-      }, 1000)
-    }
-  }, [scanQRCode])
-
-  // QR code detection using a library like @zxing/library
-  const initializeScanner = useCallback(() => {
-    if (!isScanning || !videoRef.current) return
-
-    // This would typically use a QR scanning library
-    // For brevity, showing the pattern
-    const detectQR = async () => {
-      try {
-        // Simulate QR detection
-        // In reality, you'd use @zxing/library or similar
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-        
-        if (context && videoRef.current) {
-          canvas.width = videoRef.current.videoWidth
-          canvas.height = videoRef.current.videoHeight
-          context.drawImage(videoRef.current, 0, 0)
-          
-          // QR detection logic would go here
-          // const result = await codeReader.decodeFromCanvas(canvas)
-          // if (result) handleQRDetection(result.getText())
+    try {
+      if (sessionId) {
+        // Use store to process the QR code
+        const success = await scanQRCode(qrData)
+        if (success) {
+          showSuccess('Attendance Marked', 'QR code scanned successfully')
+          onScanSuccess?.(qrData)
+        } else {
+          onScanError?.('Failed to process QR code')
         }
-      } catch (error) {
-        // QR detection failed - continue scanning
+      } else {
+        // No session selected, just return the QR data
+        onScanSuccess?.(qrData)
       }
-      
-      if (isScanning) {
-        requestAnimationFrame(detectQR)
-      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'QR processing failed'
+      showError('QR Scan Error', errorMessage)
+      onScanError?.(errorMessage)
     }
-    
-    detectQR()
-  }, [isScanning, handleQRDetection])
+  }, [sessionId, scanQRCode, showSuccess, showError, onScanSuccess, onScanError])
 
-  // Initialize scanner when scanning starts
-  useEffect(() => {
+  // Manual QR code input (for testing or manual entry)
+  const processQRCode = useCallback(async (qrData: string) => {
+    await handleQRDetection(qrData)
+  }, [handleQRDetection])
+
+  // Switch camera (front/back)
+  const switchCamera = useCallback(async () => {
+    const newFacingMode = facingMode === 'environment' ? 'user' : 'environment'
+
     if (isScanning) {
-      initializeScanner()
+      stopScanning()
+      // Wait a bit for cleanup
+      setTimeout(() => {
+        // This would require reinitializing with new facing mode
+        // For now, just inform the user to restart
+        showError('Camera Switch', 'Please stop and restart scanning to switch camera')
+      }, 100)
     }
-  }, [isScanning, initializeScanner])
+  }, [facingMode, isScanning, stopScanning, showError])
+
+  // Initialize QR detection when scanning starts
+  useEffect(() => {
+    if (isScanning && videoRef.current) {
+      // Here you would initialize a QR detection library like @zxing/library
+      // Example pattern:
+      /*
+      import { BrowserQRCodeReader } from '@zxing/library'
+
+      const codeReader = new BrowserQRCodeReader()
+      scannerRef.current = codeReader
+
+      codeReader.decodeFromVideoDevice(
+        undefined, // Use default camera
+        videoRef.current,
+        (result, error) => {
+          if (result) {
+            handleQRDetection(result.getText())
+          }
+          // Continue scanning even after successful detection
+        }
+      )
+      */
+
+      // For now, we'll just set up the reference
+      scannerRef.current = {
+        reset: () => {} // Placeholder
+      }
+    }
+
+    return () => {
+      if (scannerRef.current?.reset) {
+        try {
+          scannerRef.current.reset()
+        } catch (error) {
+          console.warn('QR scanner cleanup error:', error)
+        }
+      }
+    }
+  }, [isScanning, handleQRDetection])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -138,19 +208,51 @@ export function useQRScanner(sessionId?: string) {
     }
   }, [stopScanning])
 
+  // Check initial permission state
+  useEffect(() => {
+    const checkPermission = async () => {
+      try {
+        const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
+        setHasPermission(permission.state === 'granted')
+
+        // Listen for permission changes
+        permission.addEventListener('change', () => {
+          setHasPermission(permission.state === 'granted')
+          if (permission.state === 'denied' && isScanning) {
+            stopScanning()
+          }
+        })
+      } catch (error) {
+        // Permissions API not supported, will check on first use
+        console.warn('Permissions API not supported')
+      }
+    }
+
+    checkPermission()
+  }, [isScanning, stopScanning])
+
   return {
     // State
     isScanning,
     hasPermission,
     error,
+    isInitializing,
+
+    // Refs for UI components
     videoRef,
-    
+
     // Actions
     startScanning,
     stopScanning,
     requestPermission,
-    
-    // Manual QR input for testing
-    processQRCode: handleQRDetection
+    processQRCode,
+    switchCamera,
+
+    // Helpers
+    clearError: () => setError(null),
+    canScan: hasPermission && !isInitializing,
+
+    // Camera info
+    facingMode
   }
 }

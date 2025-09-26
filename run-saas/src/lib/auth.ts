@@ -26,6 +26,7 @@ import {
   studentLoginSchema,
   validateForm
 } from "./validations"
+import { PERMISSIONS } from "./constants"
 
 // ============================================================================
 // GENERIC INTERFACES (DRY PRINCIPLE)
@@ -444,36 +445,6 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
   return user
 }
 
-// ============================================================================
-// ROLE-BASED PERMISSIONS
-// ============================================================================
-
-/**
- * Permission definitions for role-based access control
- */
-const PERMISSIONS = {
-  // Admin permissions
-  CREATE_COURSE: 'create_course',
-  MANAGE_SYSTEM: 'manage_system',
-  REMOVE_HEAD_TEACHER: 'remove_head_teacher',
-
-  // Head teacher permissions
-  ADD_TEACHER: 'add_teacher',
-  REMOVE_TEACHER: 'remove_teacher',
-  CREATE_CLASS: 'create_class',
-
-  // All teacher permissions
-  IMPORT_STUDENTS: 'import_students',
-  SCAN_ATTENDANCE: 'scan_attendance',
-  CREATE_SESSION: 'create_session',
-  APPROVE_REASSIGNMENT: 'approve_reassignment',
-
-  // Student permissions
-  GENERATE_QR: 'generate_qr',
-  VIEW_OWN_ATTENDANCE: 'view_own_attendance',
-  REQUEST_REASSIGNMENT: 'request_reassignment'
-} as const
-
 /**
  * Check if user has specific permission based on role
  */
@@ -597,6 +568,3 @@ export async function isHeadTeacher(): Promise<boolean> {
 export async function isStudent(): Promise<boolean> {
   return await hasRole(USER_ROLES.STUDENT)
 }
-
-// Export permissions for use in components/API routes
-export { PERMISSIONS }

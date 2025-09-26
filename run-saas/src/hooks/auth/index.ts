@@ -1,6 +1,6 @@
-// hooks/auth/index.ts - Barrel export
-export { useAuth } from './useAuth'
-export { useLogin } from './useLogin'
-export { useLogout } from './useLogout'
+
+// hooks/auth/index.ts
 export { usePermissions } from './usePermissions'
-export { useSessionManager } from './useSessionManager'
+
+// Re-export auth store hooks for convenience
+export { useAuth, useLogin } from '@/store/auth/auth-store'

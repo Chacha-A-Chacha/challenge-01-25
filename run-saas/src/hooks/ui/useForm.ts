@@ -1,22 +1,41 @@
 // hooks/ui/useForm.ts
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { validateForm } from '@/lib/validations'
-import { debounce } from '@/lib/utils'
-import type { z } from 'zod'
+import type { ZodType } from 'zod'
 
-interface UseFormOptions<T> {
+interface UseFormOptions<T extends Record<string, unknown>> {
   initialValues?: Partial<T>
-  validationSchema?: z.ZodSchema<T>
+  // Use precise Zod type (no deprecated ZodTypeAny, no 'any' generics)
+  validationSchema?: ZodType<T>
   validateOnChange?: boolean
   validateOnBlur?: boolean
-  debounceMs?: number
   onSubmit?: (data: T) => Promise<void> | void
+  onSuccess?: (data: T) => void
+  onError?: (error: string) => void
+}
+
+interface TextFieldProps {
+  name: string
+  value: string | number | readonly string[]
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void
+  onBlur: () => void
+  error?: string
+  disabled: boolean
+}
+
+interface CheckboxFieldProps {
+  name: string
+  checked: boolean
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  onBlur: () => void
+  error?: string
+  disabled: boolean
 }
 
 /**
- * Form state and validation management
+ * Form management hook with validation support (Zod-typed, no 'any')
  */
-export function useForm<T extends Record<string, any>>(
+export function useForm<T extends Record<string, unknown>>(
   options: UseFormOptions<T> = {}
 ) {
   const {
@@ -24,181 +43,202 @@ export function useForm<T extends Record<string, any>>(
     validationSchema,
     validateOnChange = false,
     validateOnBlur = true,
-    debounceMs = 300,
-    onSubmit
+    onSubmit,
+    onSuccess,
+    onError
   } = options
 
-  const [values, setValues] = useState<Partial<T>>(initialValues)
+  const [values, setValuesState] = useState<Partial<T>>(initialValues) // renamed to avoid TS2451
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isValidating, setIsValidating] = useState(false)
 
-  // Debounced validation
-  const debouncedValidate = useCallback(
-    debounce(async (data: Partial<T>) => {
-      if (!validationSchema) return
+  // Validate a single field
+  const validateField = useCallback(
+    (name: keyof T, value: unknown): boolean => {
+      if (!validationSchema) return true
 
-      setIsValidating(true)
-      const { isValid, errors: validationErrors } = validateForm(validationSchema, data)
-      
-      if (!isValid) {
-        setErrors(validationErrors)
+      // Validate a partial with just this field
+      const { isValid, errors: validationErrors } = validateForm(validationSchema, { [name]: value })
+      const key = String(name)
+
+      if (isValid || !validationErrors[key]) {
+        setErrors(prev => ({ ...prev, [key]: '' }))
+        return true
       } else {
-        setErrors({})
+        setErrors(prev => ({ ...prev, [key]: validationErrors[key] }))
+        return false
       }
-      setIsValidating(false)
-    }, debounceMs),
-    [validationSchema, debounceMs]
+    },
+    [validationSchema]
   )
 
-  // Validate immediately (without debounce)
-  const validate = useCallback(async (data: Partial<T> = values) => {
+  // Validate entire form
+  const validateAll = useCallback((): boolean => {
     if (!validationSchema) return true
-
-    const { isValid, errors: validationErrors } = validateForm(validationSchema, data)
+    const { isValid, errors: validationErrors } = validateForm(validationSchema, values)
     setErrors(validationErrors)
     return isValid
-  }, [validationSchema, values])
+  }, [values, validationSchema])
 
-  // Set field value
-  const setValue = useCallback((name: keyof T, value: any) => {
-    setValues(prev => ({ ...prev, [name]: value }))
-    
-    if (validateOnChange) {
-      const newValues = { ...values, [name]: value }
-      debouncedValidate(newValues)
-    }
-  }, [values, validateOnChange, debouncedValidate])
+  // Set a single field value (fully typed, no any)
+  const setValue = useCallback(
+    <K extends keyof T>(name: K, value: T[K]) => {
+      setValuesState(prev => ({ ...prev, [name]: value }))
 
-  // Set multiple values
-  const setValues = useCallback((newValues: Partial<T>) => {
-    setValues(prev => ({ ...prev, ...newValues }))
-    
-    if (validateOnChange) {
-      const mergedValues = { ...values, ...newValues }
-      debouncedValidate(mergedValues)
-    }
-  }, [values, validateOnChange, debouncedValidate])
+      const key = String(name)
+      if (errors[key]) {
+        setErrors(prev => ({ ...prev, [key]: '' }))
+      }
 
-  // Mark field as touched
-  const setTouched = useCallback((name: keyof T, isTouched: boolean = true) => {
-    setTouched(prev => ({ ...prev, [name]: isTouched }))
-    
-    if (validateOnBlur && isTouched) {
-      debouncedValidate(values)
-    }
-  }, [validateOnBlur, values, debouncedValidate])
+      if (validateOnChange) {
+        // Defer to next tick to avoid blocking input
+        setTimeout(() => validateField(name, value), 0)
+      }
+    },
+    [errors, validateOnChange, validateField]
+  )
 
-  // Get field props for input components
-  const getFieldProps = useCallback((name: keyof T) => ({
-    name: name as string,
-    value: values[name] || '',
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setValue(name, e.target.value),
-    onBlur: () => setTouched(name, true),
-    error: touched[name as string] ? errors[name as string] : undefined,
-    isInvalid: !!(touched[name as string] && errors[name as string])
-  }), [values, errors, touched, setValue, setTouched])
+  // Set multiple values at once
+  const setValues = useCallback(
+    (newValues: Partial<T>) => {
+      setValuesState(prev => ({ ...prev, ...newValues }))
 
-  // Submit handler
-  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
-    e?.preventDefault()
-    
-    if (!onSubmit) return
-    
-    setIsSubmitting(true)
-    
-    // Mark all fields as touched
-    const allFieldNames = Object.keys(values)
-    const touchedState = allFieldNames.reduce((acc, field) => {
-      acc[field] = true
-      return acc
-    }, {} as Record<string, boolean>)
-    setTouched(touchedState)
-    
-    // Validate
-    const isValid = await validate(values)
-    
-    if (isValid) {
+      const changedFields = Object.keys(newValues)
+      if (changedFields.some(field => errors[field])) {
+        setErrors(prev => {
+          const next = { ...prev }
+          for (const field of changedFields) {
+            if (next[field]) next[field] = ''
+          }
+          return next
+        })
+      }
+    },
+    [errors]
+  )
+
+  const setFieldError = useCallback((name: keyof T, error: string) => {
+    setErrors(prev => ({ ...prev, [String(name)]: error }))
+  }, [])
+
+  const clearFieldError = useCallback((name: keyof T) => {
+    setErrors(prev => ({ ...prev, [String(name)]: '' }))
+  }, [])
+
+  const clearErrors = useCallback(() => {
+    setErrors({})
+  }, [])
+
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault()
+      if (!validateAll() || !onSubmit) return
+
+      setIsSubmitting(true)
       try {
         await onSubmit(values as T)
+        onSuccess?.(values as T)
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Form submission failed'
+        onError?.(errorMessage)
+        // eslint-disable-next-line no-console
         console.error('Form submission error:', error)
+      } finally {
+        setIsSubmitting(false)
       }
-    }
-    
-    setIsSubmitting(false)
-  }, [onSubmit, values, validate, setTouched])
+    },
+    [validateAll, onSubmit, values, onSuccess, onError]
+  )
 
-  // Reset form
-  const reset = useCallback((newInitialValues?: Partial<T>) => {
-    const resetValues = newInitialValues || initialValues
-    setValues(resetValues)
-    setErrors({})
-    setTouched({})
-    setIsSubmitting(false)
-    setIsValidating(false)
-  }, [initialValues])
+  const reset = useCallback(
+    (newValues?: Partial<T>) => {
+      const resetValues = newValues ?? initialValues
+      setValuesState(resetValues)
+      setErrors({})
+      setTouched({})
+      setIsSubmitting(false)
+    },
+    [initialValues]
+  )
 
-  // Check if form is valid
-  const isValid = Object.keys(errors).length === 0
-  const hasErrors = Object.keys(errors).length > 0
+  const getFieldProps = useCallback(
+    (name: keyof T): TextFieldProps => ({
+      name: String(name),
+      // always provide a string-ish value to text/select controls
+      value: String(values[name] ?? ''),
+      onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        // e.target.value is string; cast via unknown to keep ESLint happy (no 'any')
+        setValue(name, (e.target.value as unknown) as T[typeof name])
+      },
+      onBlur: () => {
+        const key = String(name)
+        setTouched(prev => ({ ...prev, [key]: true }))
+        if (validateOnBlur) {
+          validateField(name, values[name] as unknown)
+        }
+      },
+      error: touched[String(name)] ? errors[String(name)] : undefined,
+      disabled: isSubmitting
+    }),
+    [values, errors, touched, isSubmitting, setValue, validateField, validateOnBlur]
+  )
+
+  const getCheckboxProps = useCallback(
+    (name: keyof T): CheckboxFieldProps => ({
+      name: String(name),
+      checked: Boolean(values[name]),
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+        // boolean cast without 'any'
+        setValue(name, (e.target.checked as unknown) as T[typeof name])
+      },
+      onBlur: () => {
+        const key = String(name)
+        setTouched(prev => ({ ...prev, [key]: true }))
+      },
+      error: touched[String(name)] ? errors[String(name)] : undefined,
+      disabled: isSubmitting
+    }),
+    [values, errors, touched, isSubmitting, setValue]
+  )
+
+  const isValid = Object.values(errors).every(err => !err)
   const isDirty = JSON.stringify(values) !== JSON.stringify(initialValues)
+  const isTouched = Object.values(touched).some(Boolean)
+
+  const touchedFields = (Object.keys(touched) as string[]).filter(key => touched[key])
+  const changedFields = (Object.keys(values) as Array<keyof T>).filter(
+    key => values[key] !== initialValues[key]
+  ) as string[]
 
   return {
-    // Values and state
+    // state
     values,
     errors,
     touched,
     isSubmitting,
-    isValidating,
     isValid,
-    hasErrors,
     isDirty,
-    
-    // Actions
+    isTouched,
+
+    // actions
     setValue,
     setValues,
-    setTouched,
-    validate,
+    setFieldError,
+    clearFieldError,
+    clearErrors,
     handleSubmit,
     reset,
-    getFieldProps
+    validate: validateAll,
+
+    // helpers
+    getFieldProps,
+    getCheckboxProps,
+
+    // derived
+    hasErrors: Object.values(errors).some(err => err),
+    errorCount: Object.values(errors).filter(err => err).length,
+    touchedFields,
+    changedFields
   }
-}
-
-// hooks/ui/useDebounce.ts
-import { useState, useEffect } from 'react'
-
-/**
- * Debounce hook for search inputs and API calls
- */
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
-
-/**
- * Debounced callback hook
- */
-export function useDebouncedCallback<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
-): T {
-  const [debouncedCallback] = useState(() => 
-    debounce(callback, delay)
-  )
-
-  return debouncedCallback as T
 }

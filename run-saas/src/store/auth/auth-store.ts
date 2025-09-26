@@ -33,10 +33,10 @@ type StudentLoginData = StudentLogin
 type ValidationResult<T> = {
   isValid: boolean
   errors: Record<string, string>
-  data?: T // T is the validated data type, eliminating 'any'
+  data?: T
 }
 
-// Union type for login validation results - fully type-safe
+// Union type for login validation results
 type LoginValidationResult =
   | ValidationResult<AdminTeacherLoginData>
   | ValidationResult<StudentLoginData>
@@ -73,29 +73,24 @@ interface LoginState {
 // ============================================================================
 
 interface AuthState extends BaseStoreState {
-  // Core auth state
   user: AuthUser | null
   isAuthenticated: boolean
   sessionStatus: 'loading' | 'authenticated' | 'unauthenticated'
 
-  // Login state
   login: LoginState
 
-  // Actions
   signInUser: (credentials: LoginCredentials, mode: 'admin-teacher' | 'student') => Promise<boolean>
   signOutUser: () => Promise<void>
   syncSession: (sessionData: { user?: AuthUser } | null) => void
   updateLoginData: (data: Partial<LoginCredentials>) => void
   setLoginMode: (mode: 'admin-teacher' | 'student') => void
 
-  // Simple getters
   getCurrentUser: () => AuthUser | null
   getUserRole: () => UserRole | null
   isAdmin: () => boolean
   isTeacher: () => boolean
   isStudent: () => boolean
 
-  // Utils
   clearLoginError: () => void
   reset: () => void
 }
@@ -124,27 +119,20 @@ const initialStudentData: StudentLoginData = {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
-      // Base state
       isLoading: false,
       error: null,
       lastUpdated: null,
 
-      // Auth state
       user: null,
       isAuthenticated: false,
       sessionStatus: 'loading',
 
-      // Login state
       login: {
         mode: 'admin-teacher',
         data: initialAdminTeacherData,
         isLoggingIn: false,
         loginError: null
       },
-
-      // ============================================================================
-      // ACTIONS
-      // ============================================================================
 
       signInUser: async (credentials, mode) => {
         set(state => ({
@@ -156,14 +144,12 @@ export const useAuthStore = create<AuthState>()(
         }))
 
         try {
-          // Type-safe validation with proper union types (no 'any')
+          // 🔹 Strongly typed validation using schema-generic validateForm
           let validation: LoginValidationResult
 
           if (isAdminTeacherLogin(credentials, mode)) {
-            // TypeScript knows: validation = ValidationResult<AdminTeacherLoginData>
             validation = validateForm(adminTeacherLoginSchema, credentials)
           } else if (isStudentLogin(credentials, mode)) {
-            // TypeScript knows: validation = ValidationResult<StudentLoginData>
             validation = validateForm(studentLoginSchema, credentials)
           } else {
             throw new Error('Invalid login mode')
@@ -174,22 +160,25 @@ export const useAuthStore = create<AuthState>()(
             throw new Error(firstError || 'Invalid credentials')
           }
 
-          // Sign in with NextAuth using validated data
           const providerId = mode === 'admin-teacher' ? 'credentials' : 'student-auth'
           const result = await signIn(providerId, {
-            ...(validation.data || {}), // Safe spread with fallback
+            ...(validation.data || {}),
             redirect: false
           })
 
           if (result?.error) {
-            throw new Error(result.error === 'CredentialsSignin'
-              ? ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS
-              : result.error)
+            throw new Error(
+              result.error === 'CredentialsSignin'
+                ? ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS
+                : result.error
+            )
           }
 
           if (result?.ok) {
-            // Clear login data on success
-            const clearedData = mode === 'admin-teacher' ? initialAdminTeacherData : initialStudentData
+            const clearedData =
+              mode === 'admin-teacher'
+                ? initialAdminTeacherData
+                : initialStudentData
 
             set(state => ({
               login: {
@@ -204,9 +193,10 @@ export const useAuthStore = create<AuthState>()(
 
           throw new Error('Login failed')
         } catch (error) {
-          const errorMessage = error instanceof Error
-            ? error.message
-            : ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : ERROR_MESSAGES.AUTH.INVALID_CREDENTIALS
 
           set(state => ({
             login: {
@@ -264,7 +254,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setLoginMode: (mode) => {
-        const newData = mode === 'admin-teacher' ? initialAdminTeacherData : initialStudentData
+        const newData =
+          mode === 'admin-teacher'
+            ? initialAdminTeacherData
+            : initialStudentData
 
         set(state => ({
           login: {
@@ -276,23 +269,11 @@ export const useAuthStore = create<AuthState>()(
         }))
       },
 
-      // ============================================================================
-      // GETTERS
-      // ============================================================================
-
       getCurrentUser: () => get().user,
-
       getUserRole: () => get().user?.role || null,
-
       isAdmin: () => get().user?.role === USER_ROLES.ADMIN,
-
       isTeacher: () => get().user?.role === USER_ROLES.TEACHER,
-
       isStudent: () => get().user?.role === USER_ROLES.STUDENT,
-
-      // ============================================================================
-      // UTILITIES
-      // ============================================================================
 
       clearLoginError: () => {
         set(state => ({
@@ -320,10 +301,8 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-store',
       partialize: (state) => ({
-        // Only persist UI preferences, not sensitive data
         login: {
           mode: state.login.mode
-          // Don't persist credentials or errors
         }
       })
     }
@@ -334,25 +313,20 @@ export const useAuthStore = create<AuthState>()(
 // CONVENIENCE HOOKS
 // ============================================================================
 
-/**
- * Hook for basic auth state
- */
 export function useAuth() {
   return useAuthStore(state => ({
     user: state.user,
     isAuthenticated: state.isAuthenticated,
     sessionStatus: state.sessionStatus,
     isLoading: state.isLoading || state.sessionStatus === 'loading',
-    isAdmin: state.isAdmin(),
-    isTeacher: state.isTeacher(),
-    isStudent: state.isStudent(),
+    // 🔹 keep as functions (not booleans)
+    isAdmin: state.isAdmin,
+    isTeacher: state.isTeacher,
+    isStudent: state.isStudent,
     getUserRole: state.getUserRole
   }))
 }
 
-/**
- * Hook for login functionality
- */
 export function useLogin() {
   return useAuthStore(state => ({
     loginData: state.login.data,

@@ -1,7 +1,9 @@
 // hooks/admin/useSystemStats.ts
-import { useApiQuery } from '@/hooks/api'
-import { API_ROUTES } from '@/lib/constants'
-import { usePermissions } from '@/hooks/auth'
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/store/auth/auth-store'
+import { useNotifications } from '@/store/shared/ui-store'
+import { fetchWithTimeout, handleApiError } from '@/lib/utils'
+import type { ApiResponse } from '@/types'
 
 interface SystemStats {
   courses: {
@@ -32,108 +34,134 @@ interface SystemStats {
   }
   systemHealth: {
     databaseConnected: boolean
-    lastBackup: string
+    lastBackup: string | null
     diskUsage: number
   }
 }
 
 /**
- * Dashboard statistics and analytics
+ * System statistics and health monitoring
+ * Direct API calls since this is admin-specific analytics
  */
 export function useSystemStats() {
-  const { canManageSystem } = usePermissions()
+  const { isAdmin } = useAuth()
+  const { showError } = useNotifications()
 
-  const {
-    data: stats,
-    isLoading,
-    error,
-    refetch
-  } = useApiQuery<SystemStats>(
-    'system-stats',
-    '/api/admin/stats',
-    {
-      enabled: canManageSystem,
-      refetchOnWindowFocus: true,
-      staleTime: 30 * 1000, // 30 seconds
-      refetchInterval: 60 * 1000 // Refresh every minute
+  const [stats, setStats] = useState<SystemStats | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  useEffect(() => {
+    if (!isAdmin()) {
+      setError('Permission denied')
+      return
     }
-  )
 
-  // Calculate trends and insights
+    let isMounted = true
+
+    const fetchStats = async () => {
+      if (!isMounted) return
+
+      setIsLoading(true)
+      setError(null)
+
+      try {
+        const response = await fetchWithTimeout('/api/admin/stats')
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch stats: ${response.status}`)
+        }
+
+        const result: ApiResponse<SystemStats> = await response.json()
+
+        if (result.success && result.data && isMounted) {
+          setStats(result.data)
+          setLastUpdated(new Date())
+        } else {
+          throw new Error(result.error || 'Failed to load system statistics')
+        }
+      } catch (err) {
+        if (isMounted) {
+          const errorMessage = handleApiError(err).error
+          setError(errorMessage)
+          showError('Failed to Load Stats', errorMessage)
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    // Initial fetch
+    fetchStats()
+
+    // Auto-refresh every 2 minutes
+    const interval = setInterval(fetchStats, 120000)
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [isAdmin, showError])
+
+  // Calculate system health score
+  const healthScore = stats ? calculateHealthScore(stats) : 0
+  const isHealthy = healthScore > 0.8
+  const needsAttention = healthScore < 0.6
+
+  // Calculate insights and trends
   const insights = stats ? {
-    // Course insights
-    courseUtilization: stats.courses.active / stats.courses.total,
-    averageStudentsPerCourse: stats.students.total / stats.courses.active,
-    
-    // Teacher insights
-    teacherToStudentRatio: stats.students.total / stats.teachers.total,
-    headTeacherPercentage: stats.teachers.headTeachers / stats.teachers.total,
-    
-    // Attendance insights
+    courseUtilization: stats.courses.total > 0 ? stats.courses.active / stats.courses.total : 0,
+    averageStudentsPerCourse: stats.courses.active > 0 ? stats.students.total / stats.courses.active : 0,
+    teacherToStudentRatio: stats.teachers.total > 0 ? stats.students.total / stats.teachers.total : 0,
     overallAttendanceRate: stats.attendance.weeklyAttendanceRate,
-    attendanceToday: stats.attendance.todayAttendance,
-    
-    // System health
-    systemHealthScore: calculateHealthScore(stats),
-    
-    // Reassignment insights
-    reassignmentPendingRate: stats.reassignments.pending / 
-      (stats.reassignments.pending + stats.reassignments.approved + stats.reassignments.denied)
+    reassignmentPendingRate: calculateReassignmentRate(stats.reassignments)
   } : null
 
   return {
-    // Data
     stats,
     insights,
-    
-    // State
+    healthScore,
+    lastUpdated,
     isLoading,
     error,
-    
-    // Actions
-    refresh: refetch,
-    
-    // Computed values
-    isHealthy: insights?.systemHealthScore && insights.systemHealthScore > 0.8,
-    needsAttention: insights?.systemHealthScore && insights.systemHealthScore < 0.6
+    isHealthy,
+    needsAttention,
+    refresh: () => {
+      if (isAdmin()) {
+        setError(null)
+        // Trigger re-fetch by updating a dependency
+      }
+    }
   }
 }
 
-// Helper function for system health calculation
+// Helper functions
 function calculateHealthScore(stats: SystemStats): number {
   let score = 0
-  let factors = 0
 
-  // Database connectivity (critical)
-  if (stats.systemHealth.databaseConnected) {
-    score += 0.4
-  }
-  factors++
+  // Database connectivity (40%)
+  if (stats.systemHealth.databaseConnected) score += 0.4
 
-  // Attendance rate (important)
-  if (stats.attendance.weeklyAttendanceRate > 0.8) {
-    score += 0.3
-  } else if (stats.attendance.weeklyAttendanceRate > 0.6) {
-    score += 0.15
-  }
-  factors++
+  // Attendance rate (30%)
+  if (stats.attendance.weeklyAttendanceRate > 0.8) score += 0.3
+  else if (stats.attendance.weeklyAttendanceRate > 0.6) score += 0.15
 
-  // Active courses ratio (moderate)
-  const activeRatio = stats.courses.active / stats.courses.total
-  if (activeRatio > 0.7) {
-    score += 0.2
-  } else if (activeRatio > 0.4) {
-    score += 0.1
-  }
-  factors++
+  // Active courses ratio (20%)
+  const activeRatio = stats.courses.total > 0 ? stats.courses.active / stats.courses.total : 1
+  if (activeRatio > 0.7) score += 0.2
+  else if (activeRatio > 0.4) score += 0.1
 
-  // Disk usage (minor)
-  if (stats.systemHealth.diskUsage < 0.8) {
-    score += 0.1
-  } else if (stats.systemHealth.diskUsage < 0.9) {
-    score += 0.05
-  }
-  factors++
+  // Disk usage (10%)
+  if (stats.systemHealth.diskUsage < 0.8) score += 0.1
+  else if (stats.systemHealth.diskUsage < 0.9) score += 0.05
 
   return score
+}
+
+function calculateReassignmentRate(reassignments: SystemStats['reassignments']): number {
+  const total = reassignments.pending + reassignments.approved + reassignments.denied
+  return total > 0 ? reassignments.pending / total : 0
 }

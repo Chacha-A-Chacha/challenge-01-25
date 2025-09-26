@@ -1,5 +1,4 @@
-// hooks/admin/index.ts - Barrel export
+// hooks/admin/index.ts
 export { useCourses } from './useCourses'
-export { useCourseCreation } from './useCourseCreation'
 export { useSystemStats } from './useSystemStats'
 export { useTeacherManagement } from './useTeacherManagement'

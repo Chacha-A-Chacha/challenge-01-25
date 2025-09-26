@@ -36,14 +36,13 @@ export const SESSION_RULES = {
 } as const
 
 export const CLASS_RULES = {
-    MIN_CAPACITY: 5,
     MAX_CAPACITY: 100,
-    DEFAULT_CAPACITY: 25
+    DEFAULT_CAPACITY: 30
 } as const
 
 export const ATTENDANCE_RULES = {
     MAX_REASSIGNMENT_REQUESTS: 3,
-    AUTO_MARK_ABSENT_DELAY_HOURS: 2
+    AUTO_MARK_ABSENT_DELAY_HOURS: 4
 } as const
 
 export const EXCEL_IMPORT = {
@@ -100,6 +99,13 @@ export const API_ROUTES = {
         ATTENDANCE: '/api/student/attendance',
         QR_GENERATE: '/api/student/qr-generate',
         REASSIGNMENT_REQUESTS: '/api/student/reassignment-requests'
+    },
+
+    // Admin-specific routes
+    ADMIN: {
+        STATS: '/api/admin/stats',
+        TEACHERS: '/api/admin/teachers',
+        HEALTH_CHECK: '/api/admin/health'
     }
 } as const
 
@@ -112,6 +118,34 @@ export const HTTP_STATUS = {
     NOT_FOUND: 404,
     CONFLICT: 409,
     INTERNAL_SERVER_ERROR: 500
+} as const
+
+export const PERMISSIONS = {
+    // Admin permissions
+    CREATE_COURSE: 'create_course',
+    MANAGE_SYSTEM: 'manage_system',
+    REMOVE_HEAD_TEACHER: 'remove_head_teacher',
+    VIEW_ALL_COURSES: 'view_all_courses',
+    MANAGE_TEACHERS: 'manage_teachers',
+
+    // Head teacher permissions
+    ADD_TEACHER: 'add_teacher',
+    REMOVE_TEACHER: 'remove_teacher',
+    CREATE_CLASS: 'create_class',
+    MANAGE_COURSE: 'manage_course',
+
+    // All teacher permissions
+    IMPORT_STUDENTS: 'import_students',
+    SCAN_ATTENDANCE: 'scan_attendance',
+    CREATE_SESSION: 'create_session',
+    APPROVE_REASSIGNMENT: 'approve_reassignment',
+    MARK_ATTENDANCE: 'mark_attendance',
+
+    // Student permissions
+    GENERATE_QR: 'generate_qr',
+    VIEW_OWN_ATTENDANCE: 'view_own_attendance',
+    REQUEST_REASSIGNMENT: 'request_reassignment',
+    VIEW_SCHEDULE: 'view_schedule'
 } as const
 
 export const ERROR_MESSAGES = {
