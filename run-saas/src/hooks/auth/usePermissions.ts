@@ -1,107 +1,105 @@
 // hooks/auth/usePermissions.ts
 import { useAuth } from '@/store/auth/auth-store'
+import { Permission, checkPermission, hasRole as checkRole } from '@/lib/permissions'
 import type { UserRole } from '@/types'
 
 /**
- * Permission checking hook
- * Uses auth store to determine user permissions based on role and context
+ * Minimal permission hook - computes permissions on demand
+ *
+ * Usage:
+ *   const { can, isAdmin, isHeadTeacher } = usePermissions()
+ *
+ *   if (can(Permission.CREATE_COURSE)) {
+ *     // Show create course UI
+ *   }
  */
 export function usePermissions() {
-  const { user, isAdmin, isTeacher, isStudent } = useAuth()
-
-  const permissions = {
-    // Admin permissions
-    canCreateCourse: isAdmin(),
-    canManageSystem: isAdmin(),
-    canRemoveHeadTeacher: isAdmin(),
-    canViewAllCourses: isAdmin(),
-    canManageTeachers: isAdmin(),
-    canViewSystemStats: isAdmin(),
-    canResetTeacherPasswords: isAdmin(),
-    canDeactivateTeachers: isAdmin(),
-
-    // Head teacher permissions (only if teacher role is HEAD)
-    canAddTeacher: isTeacher() && user?.teacherRole === 'HEAD',
-    canRemoveTeacher: isTeacher() && user?.teacherRole === 'HEAD',
-    canCreateClass: isTeacher() && user?.teacherRole === 'HEAD',
-    canManageCourse: isTeacher() && user?.teacherRole === 'HEAD',
-    canManageAllCourseData: isTeacher() && user?.teacherRole === 'HEAD',
-
-    // All teacher permissions (HEAD and ADDITIONAL)
-    canImportStudents: isTeacher(),
-    canScanAttendance: isTeacher(),
-    canCreateSession: isTeacher(),
-    canApproveReassignment: isTeacher(),
-    canMarkAttendance: isTeacher(),
-    canViewStudents: isTeacher(),
-    canManageSessions: isTeacher(),
-    canViewAttendanceReports: isTeacher(),
-    canBulkMarkAttendance: isTeacher(),
-
-    // Student permissions
-    canGenerateQR: isStudent(),
-    canViewOwnAttendance: isStudent(),
-    canRequestReassignment: isStudent(),
-    canViewSchedule: isStudent(),
-    canViewOwnProfile: isStudent()
-  }
-
-  const hasPermission = (permission: keyof typeof permissions): boolean => {
-    return permissions[permission] || false
-  }
-
-  const hasRole = (roles: UserRole | UserRole[]): boolean => {
-    if (!user?.role) return false
-
-    const allowedRoles = Array.isArray(roles) ? roles : [roles]
-    return allowedRoles.includes(user.role)
-  }
-
-  const hasAllPermissions = (permissionList: (keyof typeof permissions)[]): boolean => {
-    return permissionList.every(permission => hasPermission(permission))
-  }
-
-  const hasAnyPermission = (permissionList: (keyof typeof permissions)[]): boolean => {
-    return permissionList.some(permission => hasPermission(permission))
-  }
-
-  const requireRole = (requiredRoles: UserRole | UserRole[]): boolean => {
-    if (!hasRole(requiredRoles)) {
-      throw new Error('Insufficient permissions')
-    }
-    return true
-  }
+  const { user } = useAuth()
 
   return {
-    // All permissions
-    ...permissions,
 
-    // Permission checking methods
-    hasPermission,
-    hasRole,
-    hasAllPermissions,
-    hasAnyPermission,
-    requireRole,
-
-    // User context
-    user,
-
-    // Role flags for convenience
-    isAdmin: isAdmin(),
-    isTeacher: isTeacher(),
-    isStudent: isStudent(),
-    isHeadTeacher: isTeacher() && user?.teacherRole === 'HEAD',
-    isAdditionalTeacher: isTeacher() && user?.teacherRole === 'ADDITIONAL',
+    // ROLE FLAGS (Computed from current user)
+    isAdmin: user?.role === 'admin',
+    isTeacher: user?.role === 'teacher',
+    isStudent: user?.role === 'student',
+    isHeadTeacher: user?.role === 'teacher' && user?.teacherRole === 'HEAD',
+    isAdditionalTeacher: user?.role === 'teacher' && user?.teacherRole === 'ADDITIONAL',
     isAuthenticated: !!user,
 
-    // Course context (for teachers)
+    // PERMISSION CHECKING (On-demand, type-safe)
+    /**
+     * Check if user has a specific permission
+     *
+     * @example
+     * if (can(Permission.CREATE_COURSE)) {
+     *   // User can create courses
+     * }
+     */
+    can: (permission: Permission): boolean => {
+      return checkPermission(user, permission)
+    },
+
+    /**
+     * Check if user has ANY of the provided permissions
+     *
+     * @example
+     * if (canAny([Permission.IMPORT_STUDENTS, Permission.CREATE_SESSION])) {
+     *   // User can do at least one of these
+     * }
+     */
+    canAny: (permissions: Permission[]): boolean => {
+      return permissions.some(p => checkPermission(user, p))
+    },
+
+    /**
+     * Check if user has ALL of the provided permissions
+     *
+     * @example
+     * if (canAll([Permission.CREATE_CLASS, Permission.ADD_TEACHER])) {
+     *   // User can do both (likely a head teacher)
+     * }
+     */
+    canAll: (permissions: Permission[]): boolean => {
+      return permissions.every(p => checkPermission(user, p))
+    },
+
+    /**
+     * Check if user has a specific role
+     *
+     * @example
+     * if (hasRole(['admin', 'teacher'])) {
+     *   // User is either admin or teacher
+     * }
+     */
+    hasRole: (roles: UserRole | UserRole[]): boolean => {
+      return checkRole(user, roles)
+    },
+
+    /**
+     * Require a specific role or throw error
+     * Useful for protecting operations
+     *
+     * @example
+     * requireRole('admin') // Throws if not admin
+     */
+    requireRole: (roles: UserRole | UserRole[]): boolean => {
+      if (!checkRole(user, roles)) {
+        throw new Error('Insufficient permissions')
+      }
+      return true
+    },
+
+
+    // CONTEXT (Current user info)
+    user,
     courseId: user?.courseId,
     classId: user?.classId,
 
-    // Permission groups for convenience
-    canManageUsers: isAdmin() || (isTeacher() && user?.teacherRole === 'HEAD'),
-    canAccessAdminFeatures: isAdmin(),
-    canAccessTeacherFeatures: isTeacher(),
-    canAccessStudentFeatures: isStudent()
+
+    // CONVENIENCE FLAGS (Common permission groups)
+    canManageUsers: user?.role === 'admin' || (user?.role === 'teacher' && user?.teacherRole === 'HEAD'),
+    canAccessAdminFeatures: user?.role === 'admin',
+    canAccessTeacherFeatures: user?.role === 'teacher',
+    canAccessStudentFeatures: user?.role === 'student',
   }
 }
