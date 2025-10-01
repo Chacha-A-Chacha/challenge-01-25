@@ -1,4 +1,7 @@
 // lib/utils.ts
+import {clsx, type ClassValue} from "clsx"
+import {twMerge} from "tailwind-merge"
+
 import type {
     ApiResponse,
     SuccessResponse,
@@ -11,9 +14,13 @@ import {REQUEST_TIMEOUTS, ERROR_MESSAGES} from './constants'
 /**
  * Merge Tailwind classes with clsx functionality
  */
-export function cn(...inputs: Array<string | undefined | null | boolean>): string {
-    return inputs.filter(Boolean).join(' ')
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs))
 }
+
+// export function cn(...inputs: Array<string | undefined | null | boolean>): string {
+//     return inputs.filter(Boolean).join(' ')
+// }
 
 /**
  * Generate status colors for attendance, requests, etc.
@@ -30,6 +37,7 @@ export function getStatusColor(status: string): string {
         'INACTIVE': 'text-gray-600 bg-gray-50',
         'COMPLETED': 'text-blue-600 bg-blue-50'
     }
+
 
     return statusColors[status] ?? 'text-gray-600 bg-gray-50'
 }

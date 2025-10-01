@@ -1,4 +1,10 @@
 // components/auth/AccessDenied.tsx
+'use client'
+
+import { useAuth } from '@/hooks'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+
 interface AccessDeniedProps {
   message?: string
   showHomeLink?: boolean
@@ -29,12 +35,12 @@ export function AccessDenied({
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
         <p className="text-gray-600 mb-6">{message}</p>
         {showHomeLink && (
-          <button
+          <Button
             onClick={handleGoHome}
             className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
           >
             Go to Dashboard
-          </button>
+          </Button>
         )}
       </div>
     </div>

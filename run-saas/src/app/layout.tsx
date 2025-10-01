@@ -1,8 +1,8 @@
 // app/layout.tsx - Root layout with providers
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { SessionProvider } from '@/components/auth/SessionProvider'
-import { Toaster } from '@/components/ui/toaster'
+import { Toaster } from '@/components/ui/sonner'
 import '@/app/globals.css'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -15,8 +15,12 @@ export const metadata: Metadata = {
   description: 'Modern student attendance management system for weekend academies',
   keywords: ['attendance', 'education', 'QR code', 'student management'],
   authors: [{ name: 'Weekend Academy' }],
-  viewport: 'width=device-width, initial-scale=1',
   robots: 'noindex, nofollow', // Private system
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 }
 
 export default function RootLayout({

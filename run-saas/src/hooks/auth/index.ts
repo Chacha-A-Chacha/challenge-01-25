@@ -3,4 +3,8 @@
 export { usePermissions } from './usePermissions'
 
 // Re-export auth store hooks for convenience
-export { useAuth, useLogin } from '@/store/auth/auth-store'
+export {
+  useAuth,
+  useStudentLogin,
+  useAdminTeacherLogin
+} from '@/store/auth/auth-store'

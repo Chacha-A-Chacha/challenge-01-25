@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLogin } from '@/hooks'
+import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,155 +13,70 @@ import { ChevronDown, ChevronRight, HelpCircle } from 'lucide-react'
 
 type AuthMethod = 'phone' | 'email' | 'name'
 
+interface StudentCredentials {
+  studentNumber: string
+  phoneNumber?: string
+  email?: string
+  firstName?: string
+  lastName?: string
+}
+
 export function StudentLoginForm() {
   const router = useRouter()
-  const {
-    loginData,
-    loginError,
-    isLoggingIn,
-    signIn,
-    updateLoginData,
-    clearLoginError
-  } = useLogin()
-
+  
+  const [credentials, setCredentials] = useState<StudentCredentials>({
+    studentNumber: ''
+  })
   const [currentMethod, setCurrentMethod] = useState<AuthMethod>('phone')
   const [showAlternatives, setShowAlternatives] = useState(false)
   const [attemptedMethods, setAttemptedMethods] = useState<Set<AuthMethod>>(new Set())
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearLoginError()
+    setError(null)
+    setIsLoading(true)
 
-    // Validate required fields based on method
-    if (!loginData.studentNumber?.trim()) {
-      return
-    }
+    try {
+      const result = await signIn('student', {
+        redirect: false,
+        studentNumber: credentials.studentNumber,
+        phoneNumber: credentials.phoneNumber || '',
+        email: credentials.email || '',
+        firstName: credentials.firstName || '',
+        lastName: credentials.lastName || ''
+      })
 
-    let hasRequiredFields = false
-    switch (currentMethod) {
-      case 'phone':
-        hasRequiredFields = !!loginData.phoneNumber?.trim()
-        break
-      case 'email':
-        hasRequiredFields = !!loginData.email?.trim()
-        break
-      case 'name':
-        hasRequiredFields = !!(loginData.firstName?.trim() && loginData.lastName?.trim())
-        break
-    }
-
-    if (!hasRequiredFields) return
-
-    const success = await signIn(loginData, 'student')
-
-    if (success) {
-      router.push('/student')
-    } else {
-      // Track failed method and show alternatives
-      setAttemptedMethods(prev => new Set(prev).add(currentMethod))
-      setShowAlternatives(true)
+      if (result?.error) {
+        setError('Login failed. Please check your information.')
+        setAttemptedMethods(prev => new Set(prev).add(currentMethod))
+        setShowAlternatives(true)
+      } else if (result?.ok) {
+        router.push('/student')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const switchMethod = (method: AuthMethod) => {
     setCurrentMethod(method)
-    clearLoginError()
-    // Clear previous method's data
-    if (method !== 'phone') updateLoginData({ phoneNumber: '' })
-    if (method !== 'email') updateLoginData({ email: '' })
-    if (method !== 'name') updateLoginData({ firstName: '', lastName: '' })
+    setError(null)
+    // Clear previous method data
+    setCredentials(prev => ({
+      studentNumber: prev.studentNumber,
+      ...(method === 'phone' && { phoneNumber: '' }),
+      ...(method === 'email' && { email: '' }),
+      ...(method === 'name' && { firstName: '', lastName: '' })
+    }))
   }
 
-  const getMethodTitle = (method: AuthMethod) => {
-    switch (method) {
-      case 'phone': return 'Login with Phone Number'
-      case 'email': return 'Login with Email'
-      case 'name': return 'Login with Full Name'
-    }
+  const updateField = (field: keyof StudentCredentials, value: string) => {
+    setCredentials(prev => ({ ...prev, [field]: value }))
   }
-
-  const getMethodDescription = (method: AuthMethod) => {
-    switch (method) {
-      case 'phone': return 'Enter your student number and phone number'
-      case 'email': return 'Enter your student number and email address'
-      case 'name': return 'Enter your student number, first and last name'
-    }
-  }
-
-  const renderMethodForm = (method: AuthMethod) => {
-    switch (method) {
-      case 'phone':
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="phoneNumber">Phone Number</Label>
-              <Input
-                id="phoneNumber"
-                type="tel"
-                placeholder="0712345678"
-                value={loginData.phoneNumber || ''}
-                onChange={(e) => updateLoginData({ phoneNumber: e.target.value })}
-                disabled={isLoggingIn}
-                required
-              />
-            </div>
-          </div>
-        )
-
-      case 'email':
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="student@email.com"
-                value={loginData.email || ''}
-                onChange={(e) => updateLoginData({ email: e.target.value })}
-                disabled={isLoggingIn}
-                required
-              />
-            </div>
-          </div>
-        )
-
-      case 'name':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">First Name</Label>
-                <Input
-                  id="firstName"
-                  type="text"
-                  placeholder="John"
-                  value={loginData.firstName || ''}
-                  onChange={(e) => updateLoginData({ firstName: e.target.value })}
-                  disabled={isLoggingIn}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Last Name</Label>
-                <Input
-                  id="lastName"
-                  type="text"
-                  placeholder="Doe"
-                  value={loginData.lastName || ''}
-                  onChange={(e) => updateLoginData({ lastName: e.target.value })}
-                  disabled={isLoggingIn}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        )
-    }
-  }
-
-  const availableMethods: AuthMethod[] = ['phone', 'email', 'name']
-  const alternativeMethods = availableMethods.filter(method => method !== currentMethod)
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -169,46 +84,96 @@ export function StudentLoginForm() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">Student Access</CardTitle>
           <CardDescription>
-            {getMethodDescription(currentMethod)}
+            {currentMethod === 'phone' && 'Enter your student number and phone number'}
+            {currentMethod === 'email' && 'Enter your student number and email address'}
+            {currentMethod === 'name' && 'Enter your student number and full name'}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Student Number - Always visible */}
             <div>
               <Label htmlFor="studentNumber">Student Number</Label>
               <Input
                 id="studentNumber"
                 type="text"
                 placeholder="STU001"
-                value={loginData.studentNumber || ''}
-                onChange={(e) => updateLoginData({ studentNumber: e.target.value.toUpperCase() })}
-                disabled={isLoggingIn}
+                value={credentials.studentNumber}
+                onChange={(e) => updateField('studentNumber', e.target.value.toUpperCase())}
+                disabled={isLoading}
                 required
               />
             </div>
 
-            {/* Current method form */}
-            {renderMethodForm(currentMethod)}
+            {currentMethod === 'phone' && (
+              <div>
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="0712345678"
+                  value={credentials.phoneNumber || ''}
+                  onChange={(e) => updateField('phoneNumber', e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            )}
 
-            {/* Submit button */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoggingIn}
-            >
-              {isLoggingIn ? 'Logging in...' : 'Login'}
+            {currentMethod === 'email' && (
+              <div>
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="student@email.com"
+                  value={credentials.email || ''}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            )}
+
+            {currentMethod === 'name' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={credentials.firstName || ''}
+                    onChange={(e) => updateField('firstName', e.target.value)}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={credentials.lastName || ''}
+                    onChange={(e) => updateField('lastName', e.target.value)}
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Logging in...' : 'Login'}
             </Button>
 
-            {/* Error display */}
-            {loginError && (
+            {error && (
               <Alert variant="destructive">
-                <AlertDescription>{loginError}</AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Alternative methods */}
             {(showAlternatives || attemptedMethods.size > 0) && (
               <div className="pt-4 border-t">
                 <Button
@@ -219,43 +184,37 @@ export function StudentLoginForm() {
                 >
                   <span className="flex items-center gap-2">
                     <HelpCircle className="h-4 w-4" />
-                    Can't access your account?
+                    Can&#39;t access your account?
                   </span>
-                  {showAlternatives ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
+                  {showAlternatives ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </Button>
 
                 {showAlternatives && (
                   <div className="mt-3 space-y-2">
-                    <p className="text-sm text-gray-600 mb-3">
-                      Try a different verification method:
-                    </p>
-                    {alternativeMethods.map((method) => (
-                      <Button
-                        key={method}
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => switchMethod(method)}
-                        disabled={isLoggingIn}
-                      >
-                        {getMethodTitle(method)}
-                        {attemptedMethods.has(method) && (
-                          <span className="ml-auto text-xs text-gray-500">
-                            Tried
-                          </span>
-                        )}
-                      </Button>
-                    ))}
+                    <p className="text-sm text-gray-600 mb-3">Try a different verification method:</p>
+                    {(['phone', 'email', 'name'] as AuthMethod[])
+                      .filter(method => method !== currentMethod)
+                      .map((method) => (
+                        <Button
+                          key={method}
+                          type="button"
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => switchMethod(method)}
+                        >
+                          {method === 'phone' && 'Login with Phone Number'}
+                          {method === 'email' && 'Login with Email'}
+                          {method === 'name' && 'Login with Full Name'}
+                          {attemptedMethods.has(method) && (
+                            <span className="ml-auto text-xs text-gray-500">Tried</span>
+                          )}
+                        </Button>
+                      ))}
                   </div>
                 )}
               </div>
             )}
 
-            {/* Staff login link */}
             <div className="text-center pt-4 border-t">
               <p className="text-sm text-gray-600">
                 Staff member?{' '}

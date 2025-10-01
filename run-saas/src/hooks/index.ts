@@ -4,50 +4,51 @@
 // ADMIN HOOKS - Permission-wrapped store actions
 // ============================================================================
 export {
-  useCourses,
-  useSystemStats,
-  useTeacherManagement
+    useCourses,
+    useSystemStats,
+    useTeacherManagement
 } from './admin'
 
 // ============================================================================
 // AUTH HOOKS - Permission checking and user context
 // ============================================================================
 export {
-  usePermissions,
-  useAuth,
-  useLogin
+    usePermissions,
+    useAuth,
+    useStudentLogin,
+    useAdminTeacherLogin
 } from './auth'
 
 // ============================================================================
 // TEACHER HOOKS - Hardware interaction only
 // ============================================================================
 export {
-  useQRScanner,
-  // Store re-exports for convenience
-  useClassStore,
-  useClasses,
-  useClassActions,
-  useClassSessions,
-  useStudentStore,
-  useStudents,
-  useStudentActions,
-  useStudentImport,
-  useAttendanceStore,
-  useSessionAttendance,
-  useAttendanceActions
+    useQRScanner,
+    // Store re-exports for convenience
+    useClassStore,
+    useClasses,
+    useClassActions,
+    useClassSessions,
+    useStudentStore,
+    useStudents,
+    useStudentActions,
+    useStudentImport,
+    useAttendanceStore,
+    useSessionAttendance,
+    useAttendanceActions
 } from './teacher'
 
 // ============================================================================
 // UI HOOKS - Form management and UI utilities
 // ============================================================================
 export {
-  useForm,
-  // Store re-exports for convenience
-  useNotifications,
-  useModals,
-  useGlobalLoading,
-  useLayout,
-  useTheme
+    useForm,
+    // Store re-exports for convenience
+    useNotifications,
+    useModals,
+    useGlobalLoading,
+    useLayout,
+    useTheme
 } from './ui'
 
 // ============================================================================
@@ -56,73 +57,72 @@ export {
 
 // Auth stores
 export {
-  useAuth as useAuthStore,
-  useLogin as useLoginStore
+    useAuth as useAuthStore,
 } from '@/store/auth/auth-store'
 
 // Admin stores
 export {
-  useCourseStore
+    useCourseStore
 } from '@/store/admin/course-store'
 
 // Teacher stores
 export {
-  useAttendanceStore as useAttendanceStoreOriginal,
-  useSessionAttendance as useSessionAttendanceOriginal,
-  useQRScanner as useQRScannerStore,
-  useAttendanceActions as useAttendanceActionsOriginal
+    useAttendanceStore as useAttendanceStoreOriginal,
+    useSessionAttendance as useSessionAttendanceOriginal,
+    useQRScanner as useQRScannerStore,
+    useAttendanceActions as useAttendanceActionsOriginal
 } from '@/store/teacher/attendance-store'
 
 export {
-  useClassStore as useClassStoreOriginal,
-  useClasses as useClassesOriginal,
-  useClassActions as useClassActionsOriginal,
-  useClassSessions as useClassSessionsOriginal,
-  useClassFilters
+    useClassStore as useClassStoreOriginal,
+    useClasses as useClassesOriginal,
+    useClassActions as useClassActionsOriginal,
+    useClassSessions as useClassSessionsOriginal,
+    useClassFilters
 } from '@/store/teacher/class-store'
 
 export {
-  useStudentStore as useStudentStoreOriginal,
-  useStudents as useStudentsOriginal,
-  useStudentActions as useStudentActionsOriginal,
-  useStudentImport as useStudentImportOriginal,
-  useStudentFilters
+    useStudentStore as useStudentStoreOriginal,
+    useStudents as useStudentsOriginal,
+    useStudentActions as useStudentActionsOriginal,
+    useStudentImport as useStudentImportOriginal,
+    useStudentFilters
 } from '@/store/teacher/student-store'
 
 // Student stores
 export {
-  useQRStore,
-  useQRCode,
-  useQRSettings
+    useQRStore,
+    useQRCode,
+    useQRSettings
 } from '@/store/student/qr-store'
 
 export {
-  useScheduleStore,
-  useStudentSchedule,
-  useCurrentSession,
-  useAttendanceHistory
+    useScheduleStore,
+    useStudentSchedule,
+    useCurrentSession,
+    useAttendanceHistory
 } from '@/store/student/schedule-store'
 
 export {
-  useReassignmentStore,
-  useReassignmentRequests,
-  useReassignmentActions,
-  useReassignmentOptions
+    useReassignmentStore,
+    useReassignmentRequests,
+    useReassignmentActions,
+    useReassignmentOptions
 } from '@/store/student/reassignment-store'
 
 // Shared stores
 export {
-  useNotifications as useNotificationsStore,
-  useModals as useModalsStore,
-  useGlobalLoading as useGlobalLoadingStore,
-  useLayout as useLayoutStore,
-  useTheme as useThemeStore
+    useNotifications as useNotificationsStore,
+    useModals as useModalsStore,
+    useGlobalLoading as useGlobalLoadingStore,
+    useLayout as useLayoutStore,
+    useTheme as useThemeStore
 } from '@/store/shared/ui-store'
 
 export {
-  useOfflineData,
-  useOfflineSync,
-  useOfflineConfig
+    useOfflineData,
+    useOfflineSync,
+    useOfflineConfig
 } from '@/store/shared/offline-store'
 
 // ============================================================================

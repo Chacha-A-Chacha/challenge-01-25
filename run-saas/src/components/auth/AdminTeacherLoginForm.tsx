@@ -1,60 +1,47 @@
 // components/auth/AdminTeacherLoginForm.tsx
 "use client"
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useLogin, useAuth } from '@/hooks'
+import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Shield, User } from 'lucide-react'
+import { Shield } from 'lucide-react'
 
 export function AdminTeacherLoginForm() {
   const router = useRouter()
-  const { user } = useAuth()
-  const {
-    loginData,
-    loginError,
-    isLoggingIn,
-    signIn,
-    updateLoginData,
-    clearLoginError
-  } = useLogin()
 
-  // Redirect if already authenticated
-  if (user) {
-    if (user.role === 'admin') {
-      router.push('/admin')
-    } else if (user.role === 'teacher') {
-      router.push('/teacher')
-    }
-    return null
-  }
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    clearLoginError()
+    setError(null)
+    setIsLoading(true)
 
-    // Basic validation
-    if (!loginData.email?.trim() || !loginData.password?.trim()) {
-      return
+    try {
+      const result = await signIn('admin-teacher', {
+        redirect: false,
+        email: email.toLowerCase().trim(),
+        password
+      })
+
+      if (result?.error) {
+        setError('Invalid email or password')
+      } else if (result?.ok) {
+        // Let middleware handle routing based on role
+        router.push('/')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-
-    const success = await signIn(loginData, 'admin-teacher')
-
-    if (success) {
-      // Redirect will be handled by auth state change
-      // useAuth hook will trigger navigation based on role
-    }
-  }
-
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateLoginData({ email: e.target.value.toLowerCase().trim() })
-  }
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateLoginData({ password: e.target.value })
   }
 
   return (
@@ -65,85 +52,49 @@ export function AdminTeacherLoginForm() {
             <Shield className="h-6 w-6 text-blue-600" />
           </div>
           <CardTitle className="text-2xl">Staff Login</CardTitle>
-          <CardDescription>
-            Access for administrators and teachers
-          </CardDescription>
+          <CardDescription>Access for administrators and teachers</CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email Field */}
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="admin@school.com"
-                value={loginData.email || ''}
-                onChange={handleEmailChange}
-                disabled={isLoggingIn}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
                 required
                 autoComplete="email"
               />
             </div>
 
-            {/* Password Field */}
-            <div className="space-y-2">
+            <div>
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="Enter your password"
-                value={loginData.password || ''}
-                onChange={handlePasswordChange}
-                disabled={isLoggingIn}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 required
                 autoComplete="current-password"
               />
             </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={isLoggingIn || !loginData.email?.trim() || !loginData.password?.trim()}
-            >
-              {isLoggingIn ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Signing in...
-                </>
-              ) : (
-                'Sign In'
-              )}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
 
-            {/* Error Display */}
-            {loginError && (
+            {error && (
               <Alert variant="destructive">
-                <AlertDescription>
-                  {loginError}
-                </AlertDescription>
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
-            {/* Information Panel */}
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <User className="h-5 w-5 text-blue-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-blue-900 mb-1">
-                    Staff Access Only
-                  </p>
-                  <p className="text-blue-700">
-                    This login is for administrators and teachers.
-                    Students should use the regular login page.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Student Login Link */}
             <div className="text-center pt-4 border-t">
               <p className="text-sm text-gray-600">
                 Student?{' '}
