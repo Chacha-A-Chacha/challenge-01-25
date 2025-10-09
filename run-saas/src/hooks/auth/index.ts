@@ -1,10 +1,5 @@
-
-// hooks/auth/index.ts
 export { usePermissions } from './usePermissions'
+export { useAuth } from '@/store/auth/auth-store'
 
-// Re-export auth store hooks for convenience
-export {
-  useAuth,
-  useStudentLogin,
-  useAdminTeacherLogin
-} from '@/store/auth/auth-store'
+// Re-export Permission enum for convenience
+export { Permission } from '@/lib/permissions'

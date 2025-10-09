@@ -3,11 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:seed": "tsx prisma/seed.ts",
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+
   "dependencies": {
     "@prisma/client": "^6.16.2",
     "@radix-ui/react-label": "^2.1.7",

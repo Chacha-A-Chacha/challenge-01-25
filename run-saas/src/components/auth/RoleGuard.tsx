@@ -1,7 +1,8 @@
 // components/auth/RoleGuard.tsx
 "use client"
 
-import { useAuth, usePermissions } from '@/hooks'
+import { useAuthStore } from '@/store/auth/auth-store'
+import { usePermissions } from '@/hooks'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import type { UserRole } from '@/types'
@@ -19,25 +20,26 @@ export function RoleGuard({
   fallbackPath = '/login',
   requireAuth = true
 }: RoleGuardProps) {
-  const { user, isAuthenticated, sessionStatus } = useAuth()
-  const { hasRole } = usePermissions()
   const router = useRouter()
 
+  // ✅ Direct selectors - stable references
+  const user = useAuthStore(state => state.user)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+  const sessionStatus = useAuthStore(state => state.sessionStatus)
+
+  const { hasRole } = usePermissions()
+
   useEffect(() => {
-    // Wait for session to load
     if (sessionStatus === 'loading') return
 
-    // Redirect to login if auth required but not authenticated
     if (requireAuth && !isAuthenticated) {
       router.push(fallbackPath)
       return
     }
 
-    // Check role permissions if specified
     if (allowedRoles && user) {
       const hasValidRole = hasRole(allowedRoles)
       if (!hasValidRole) {
-        // Redirect to appropriate dashboard based on actual role
         const redirectPath = user.role === 'admin' ? '/admin' :
                            user.role === 'teacher' ? '/teacher' :
                            user.role === 'student' ? '/student' : '/login'
@@ -45,9 +47,9 @@ export function RoleGuard({
         return
       }
     }
-  }, [sessionStatus, isAuthenticated, user, allowedRoles, requireAuth, hasRole, router, fallbackPath])
+  }, [sessionStatus, isAuthenticated, user?.role, allowedRoles, requireAuth, fallbackPath, router, hasRole])
+  // ✅ Use user.role instead of user object
 
-  // Show loading while session loads
   if (sessionStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -56,15 +58,8 @@ export function RoleGuard({
     )
   }
 
-  // Don't render if auth required but not authenticated
-  if (requireAuth && !isAuthenticated) {
-    return null
-  }
-
-  // Don't render if role check fails
-  if (allowedRoles && user && !hasRole(allowedRoles)) {
-    return null
-  }
+  if (requireAuth && !isAuthenticated) return null
+  if (allowedRoles && user && !hasRole(allowedRoles)) return null
 
   return <>{children}</>
 }

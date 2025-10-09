@@ -1,7 +1,7 @@
 // components/auth/AuthRedirect.tsx
 "use client"
 
-import { useAuth } from '@/hooks'
+import { useAuthStore } from '@/store/auth/auth-store'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -10,22 +10,25 @@ interface AuthRedirectProps {
 }
 
 export function AuthRedirect({ children }: AuthRedirectProps) {
-  const { user, isAuthenticated, sessionStatus } = useAuth()
   const router = useRouter()
+
+  // ✅ Direct selectors - stable references
+  const user = useAuthStore(state => state.user)
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated)
+  const sessionStatus = useAuthStore(state => state.sessionStatus)
 
   useEffect(() => {
     if (sessionStatus === 'loading') return
 
     if (isAuthenticated && user) {
-      // Redirect authenticated users to their dashboard
       const dashboardPath = user.role === 'admin' ? '/admin' :
                            user.role === 'teacher' ? '/teacher' :
                            user.role === 'student' ? '/student' : '/login'
       router.push(dashboardPath)
     }
-  }, [isAuthenticated, user, sessionStatus, router])
+  }, [isAuthenticated, user?.role, sessionStatus, router])
+  // ✅ Use user.role instead of user object
 
-  // Don't render children if user is authenticated (will redirect)
   if (sessionStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -34,9 +37,8 @@ export function AuthRedirect({ children }: AuthRedirectProps) {
     )
   }
 
-  if (isAuthenticated) {
-    return null
-  }
+  if (isAuthenticated) return null
 
   return <>{children}</>
 }
+

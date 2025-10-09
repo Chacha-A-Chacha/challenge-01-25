@@ -89,12 +89,10 @@ export function usePermissions() {
       return true
     },
 
-
     // CONTEXT (Current user info)
     user,
     courseId: user?.courseId,
     classId: user?.classId,
-
 
     // CONVENIENCE FLAGS (Common permission groups)
     canManageUsers: user?.role === 'admin' || (user?.role === 'teacher' && user?.teacherRole === 'HEAD'),
