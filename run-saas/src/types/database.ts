@@ -56,8 +56,8 @@ export interface Session {
   id: string
   classId: string
   day: WeekDay
-  startTime: string // "HH:MM" format
-  endTime: string   // "HH:MM" format
+  startTime: Date
+  endTime: Date
   capacity: number
   createdAt: Date
   
