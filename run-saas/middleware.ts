@@ -1,80 +1,88 @@
 // middleware.ts
-import { auth } from '@/lib/auth'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { withAuth } from "next-auth/middleware"
+import { NextResponse } from "next/server"
 
-// Define the auth request type for better type safety
-interface AuthenticatedRequest extends NextRequest {
-  auth: Awaited<ReturnType<typeof auth>>
-}
+export default withAuth(
+  function middleware(req) {
+    const { pathname } = req.nextUrl
+    const token = req.nextauth.token
 
-export default auth((req: AuthenticatedRequest) => {
-  const { pathname } = req.nextUrl
-  const session = req.auth
+    // Public routes are handled by matcher config, so if we're here, we need auth
+    // But check for public registration routes that shouldn't require auth
+    const publicApiRoutes = ['/api/register']
+    if (publicApiRoutes.some(route => pathname.startsWith(route))) {
+      return NextResponse.next()
+    }
 
-  // Public routes that don't require authentication
-  const publicRoutes: readonly string[] = [
-    '/',
-    '/login',
-    '/staff-login',
-    '/unauthorized',
-    '/api/auth/signin',
-    '/api/auth/signout',
-    '/api/auth/session',
-    '/api/auth/callback'
-  ] as const
+    // No token means not authenticated - redirect handled by withAuth
+    if (!token) {
+      return NextResponse.next() // withAuth will handle redirect
+    }
 
-  // Check if current path is public
-  const isPublicRoute = publicRoutes.some((route: string) =>
-    pathname === route || pathname.startsWith('/api/auth/')
-  )
+    const role = token.role as string | undefined
 
-  // Allow public routes without authentication
-  if (isPublicRoute) {
+    // Role-based route protection
+    if (pathname.startsWith('/admin') && role !== 'admin') {
+      return NextResponse.redirect(new URL('/unauthorized', req.url))
+    }
+
+    if (pathname.startsWith('/teacher') && !['teacher', 'admin'].includes(role ?? '')) {
+      return NextResponse.redirect(new URL('/unauthorized', req.url))
+    }
+
+    if (pathname.startsWith('/student') && role !== 'student') {
+      return NextResponse.redirect(new URL('/unauthorized', req.url))
+    }
+
+    // Redirect authenticated users away from login pages
+    if (pathname === '/login' || pathname === '/staff-login') {
+      const dashboardPath = role === 'admin' ? '/admin' :
+                           role === 'teacher' ? '/teacher' :
+                           role === 'student' ? '/student' : '/'
+      return NextResponse.redirect(new URL(dashboardPath, req.url))
+    }
+
     return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ token, req }) => {
+        const { pathname } = req.nextUrl
+
+        // Allow public routes without token
+        const publicRoutes = [
+          '/',
+          '/login',
+          '/staff-login',
+          '/register',
+          '/unauthorized',
+        ]
+
+        // Check if path is public
+        if (publicRoutes.includes(pathname)) {
+          return true
+        }
+
+        // Allow registration API routes
+        if (pathname.startsWith('/api/register')) {
+          return true
+        }
+
+        // Allow NextAuth routes
+        if (pathname.startsWith('/api/auth')) {
+          return true
+        }
+
+        // All other routes require authentication
+        return !!token
+      },
+    },
+    pages: {
+      signIn: '/login',
+      error: '/login',
+    },
   }
-
-  // Require authentication for all other routes
-  if (!session?.user) {
-    // Redirect to appropriate login page based on path
-    const loginPath = pathname.startsWith('/admin') || pathname.startsWith('/teacher')
-      ? '/staff-login'
-      : '/login'
-
-    return NextResponse.redirect(new URL(loginPath, req.url))
-  }
-
-  const { role } = session.user
-
-  // Type guard for role checking
-  if (typeof role !== 'string') {
-    return NextResponse.redirect(new URL('/unauthorized', req.url))
-  }
-
-  // Role-based route protection with proper type checking
-  if (pathname.startsWith('/admin') && role !== 'admin') {
-    return NextResponse.redirect(new URL('/unauthorized', req.url))
-  }
-
-  if (pathname.startsWith('/teacher') && !['teacher', 'admin'].includes(role)) {
-    return NextResponse.redirect(new URL('/unauthorized', req.url))
-  }
-
-  if (pathname.startsWith('/student') && role !== 'student') {
-    return NextResponse.redirect(new URL('/unauthorized', req.url))
-  }
-
-  // Redirect authenticated users away from login pages
-  if (session.user && (pathname === '/login' || pathname === '/staff-login')) {
-    const dashboardPath: string = role === 'admin' ? '/admin' :
-                                 role === 'teacher' ? '/teacher' :
-                                 role === 'student' ? '/student' : '/'
-
-    return NextResponse.redirect(new URL(dashboardPath, req.url))
-  }
-
-  return NextResponse.next()
-})
+)
 
 export const config = {
   matcher: [
@@ -87,4 +95,4 @@ export const config = {
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)',
   ],
-} as const
+}

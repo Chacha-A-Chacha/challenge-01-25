@@ -3,7 +3,9 @@
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
-import { handlers } from "@/lib/auth"
-console.log('NextAuth handlers:', handlers) // Should log { GET: [Function], POST: [Function] }
+import NextAuth from "next-auth"
+import { authOptions } from "@/lib/auth"
 
-export const { GET, POST } = handlers
+const handler = NextAuth(authOptions)
+
+export { handler as GET, handler as POST }

@@ -1,6 +1,6 @@
 // src/lib/auth.ts
-import NextAuth from "next-auth"
-import Credentials from "next-auth/providers/credentials"
+import NextAuth, { type NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import {prisma} from "@/lib/db"
 import type {UserRole, TeacherRole} from "@/types/enums"
@@ -19,10 +19,10 @@ interface AuthUserReturn {
     teacherRole?: TeacherRole
 }
 
-export const nextAuth = NextAuth({
+export const authOptions: NextAuthOptions = {
     providers: [
         // Admin + Teacher
-        Credentials({
+        CredentialsProvider({
             id: "admin-teacher",
             name: "Admin/Teacher Login",
             credentials: {
@@ -59,8 +59,8 @@ export const nextAuth = NextAuth({
             }
         }),
 
-        // Student (Email + Password - New Flow)
-        Credentials({
+        // Student (Email + Password)
+        CredentialsProvider({
             id: "student",
             name: "Student Login",
             credentials: {
@@ -78,7 +78,7 @@ export const nextAuth = NextAuth({
                     include: {class: {include: {course: true}}}
                 })
 
-                if (!student) return null
+                if (!student || !student.passwordHash) return null
 
                 // Verify password
                 const isValid = await bcrypt.compare(password, student.passwordHash)
@@ -156,14 +156,15 @@ export const nextAuth = NextAuth({
     },
 
     debug: process.env.NODE_ENV === "development",
-})
+}
 
-export const handlers = nextAuth.handlers
-export const auth = nextAuth.auth
-export const signIn = nextAuth.signIn
-export const signOut = nextAuth.signOut
+// Helper to get current user (for server components/API routes)
+import { getServerSession } from "next-auth"
 
 export async function getCurrentUser() {
-    const session = await auth?.()
+    const session = await getServerSession(authOptions)
     return session?.user ?? null
 }
+
+// Re-export for convenience
+export { getServerSession }
