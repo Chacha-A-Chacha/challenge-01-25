@@ -1,16 +1,14 @@
 // src/lib/auth.ts
 import NextAuth from "next-auth"
 import Credentials from "next-auth/providers/credentials"
-import {prisma} from "@/lib/db"
 import bcrypt from "bcryptjs"
-import type {UserRole, TeacherRole} from "@/types/enums" // uses your enums file
+import {prisma} from "@/lib/db"
+import type {UserRole, TeacherRole} from "@/types/enums"
 
-// Shape we put into JWT on successful authorize()
 interface AuthUserReturn {
     id: string
     role: UserRole
     email?: string
-    // student extras
     studentNumber?: string
     uuid?: string
     firstName?: string
@@ -18,7 +16,6 @@ interface AuthUserReturn {
     phoneNumber?: string
     classId?: string
     courseId?: string
-    // teacher extras
     teacherRole?: TeacherRole
 }
 
@@ -43,7 +40,7 @@ export const nextAuth = NextAuth({
                     return {id: admin.id, email: admin.email, role: "admin" as UserRole}
                 }
 
-                // Teacher (+ include relations for course/headCourse)
+                // Teacher
                 const teacher = await prisma.teacher.findUnique({
                     where: {email},
                     include: {course: true, headCourse: true}
@@ -54,8 +51,7 @@ export const nextAuth = NextAuth({
                         email: teacher.email ?? undefined,
                         role: "teacher" as UserRole,
                         teacherRole: teacher.role as TeacherRole,
-                        // prefer direct courseId, else headCourse.id if they’re a head teacher
-                        courseId: (teacher as any).courseId ?? teacher.headCourse?.id
+                        courseId: teacher.courseId ?? teacher.headCourse?.id
                     }
                 }
 
@@ -63,83 +59,43 @@ export const nextAuth = NextAuth({
             }
         }),
 
-        // Student (primary: phone; alternatives: email; fallback: first+last name)
+        // Student (Email + Password - New Flow)
         Credentials({
             id: "student",
             name: "Student Login",
             credentials: {
-                studentNumber: {label: "Student Number", type: "text"},
-                phoneNumber: {label: "Phone Number", type: "tel"},
                 email: {label: "Email", type: "email"},
-                firstName: {label: "First Name", type: "text"},
-                lastName: {label: "Last Name", type: "text"},
+                password: {label: "Password", type: "password"}
             },
             async authorize(credentials): Promise<AuthUserReturn | null> {
-                const studentNumber = credentials?.studentNumber?.toUpperCase().trim()
-                if (!studentNumber) return null
+                const email = credentials?.email?.toLowerCase().trim()
+                const password = credentials?.password
 
-                const student = await prisma.student.findFirst({
-                    where: {studentNumber},
+                if (!email || !password) return null
+
+                const student = await prisma.student.findUnique({
+                    where: {email},
                     include: {class: {include: {course: true}}}
                 })
+
                 if (!student) return null
 
-                // Primary: phone
-                if (credentials?.phoneNumber && student.phoneNumber === credentials.phoneNumber) {
-                    return {
-                        id: student.id,
-                        role: "student" as UserRole,
-                        studentNumber: student.studentNumber,
-                        uuid: student.uuid ?? undefined,
-                        firstName: student.firstName,
-                        lastName: student.lastName ?? undefined,
-                        email: student.email ?? undefined,
-                        phoneNumber: student.phoneNumber ?? undefined,
-                        classId: student.classId ?? undefined,
-                        courseId: student.class?.course?.id ?? undefined,
-                    }
-                }
+                // Verify password
+                const isValid = await bcrypt.compare(password, student.passwordHash)
+                if (!isValid) return null
 
-                // Alternative: email
-                if (credentials?.email) {
-                    const email = credentials.email.toLowerCase().trim()
-                    if (student.email && student.email.toLowerCase().trim() === email) {
-                        return {
-                            id: student.id,
-                            role: "student" as UserRole,
-                            studentNumber: student.studentNumber,
-                            uuid: student.uuid ?? undefined,
-                            firstName: student.firstName,
-                            lastName: student.lastName ?? undefined,
-                            email: student.email ?? undefined,
-                            phoneNumber: student.phoneNumber ?? undefined,
-                            classId: student.classId ?? undefined,
-                            courseId: student.class?.course?.id ?? undefined,
-                        }
-                    }
+                return {
+                    id: student.id,
+                    role: "student" as UserRole,
+                    email: student.email,
+                    studentNumber: student.studentNumber,
+                    uuid: student.uuid,
+                    firstName: student.firstName,
+                    lastName: student.lastName ?? undefined,
+                    phoneNumber: student.phoneNumber ?? undefined,
+                    classId: student.classId,
+                    courseId: student.class?.course?.id
                 }
-
-                // Fallback: name match (lastName may be missing on record; handle that)
-                if (credentials?.firstName && credentials?.lastName) {
-                    const firstOk = student.firstName.toLowerCase().trim() === credentials.firstName.toLowerCase().trim()
-                    const lastOk = !student.lastName || student.lastName.toLowerCase().trim() === credentials.lastName.toLowerCase().trim()
-                    if (firstOk && lastOk) {
-                        return {
-                            id: student.id,
-                            role: "student" as UserRole,
-                            studentNumber: student.studentNumber,
-                            uuid: student.uuid ?? undefined,
-                            firstName: student.firstName,
-                            lastName: student.lastName ?? undefined,
-                            email: student.email ?? undefined,
-                            phoneNumber: student.phoneNumber ?? undefined,
-                            classId: student.classId ?? undefined,
-                            courseId: student.class?.course?.id ?? undefined,
-                        }
-                    }
-                }
-
-                return null
             }
         }),
     ],
@@ -156,7 +112,6 @@ export const nextAuth = NextAuth({
 
     callbacks: {
         async jwt({token, user, trigger, session}) {
-            // On first sign-in, seed JWT with our fields
             if (user) {
                 const u = user as AuthUserReturn
                 token.id = u.id
@@ -172,7 +127,6 @@ export const nextAuth = NextAuth({
                 token.teacherRole = u.teacherRole
             }
 
-            // Allow session.update() to push changes into token if you ever call it
             if (trigger === "update" && session) {
                 Object.assign(token, session)
             }
@@ -181,7 +135,6 @@ export const nextAuth = NextAuth({
         },
 
         async session({session, token}) {
-            // expose our enriched fields to session.user
             if (token?.id && token?.role) {
                 session.user = {
                     ...session.user,
@@ -196,7 +149,7 @@ export const nextAuth = NextAuth({
                     classId: token.classId as string | undefined,
                     courseId: token.courseId as string | undefined,
                     teacherRole: token.teacherRole as TeacherRole | undefined,
-                } as any
+                } as typeof session.user
             }
             return session
         },
@@ -210,7 +163,6 @@ export const auth = nextAuth.auth
 export const signIn = nextAuth.signIn
 export const signOut = nextAuth.signOut
 
-// Server-side helper
 export async function getCurrentUser() {
     const session = await auth?.()
     return session?.user ?? null
