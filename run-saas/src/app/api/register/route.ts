@@ -68,6 +68,22 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // verify class exists and belongs to the course
+        const classData = await prisma.class.findUnique({
+            where: {
+                id: data.classId,
+                courseId: data.courseId
+            },
+            select: { id: true, name: true }
+        })
+
+        if (!classData) {
+            return NextResponse.json(
+                { success: false, error: 'Class not found or does not belong to the selected course' },
+                { status: 400 }
+            )   
+        }
+
         // Verify sessions exist and have capacity
         const [saturdaySession, sundaySession] = await Promise.all([
             getSessionWithAvailability(data.saturdaySessionId, 'SATURDAY'),
@@ -84,6 +100,14 @@ export async function POST(request: NextRequest) {
         if (!sundaySession || sundaySession.isFull) {
             return NextResponse.json(
                 { success: false, error: 'Sunday session is full or invalid' },
+                { status: 400 }
+            )
+        }
+
+        // Verify both sessions belong to the selected class
+        if (saturdaySession.classId !== data.classId || sundaySession.classId !== data.classId) {
+            return NextResponse.json(
+                { success: false, error: 'Both sessions must be from the same class' },
                 { status: 400 }
             )
         }

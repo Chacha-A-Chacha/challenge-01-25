@@ -129,7 +129,9 @@ export const API_ROUTES = {
     REGISTER: {
         SUBMIT: '/api/register',
         COURSES: '/api/register/courses',
-        SESSIONS: (courseId: string) => `/api/register/courses/${courseId}/sessions`,
+        CLASSES: (courseId: string) => `/api/register/courses/${courseId}/classes`,  // NEW
+        SESSIONS: (courseId: string, classId: string) => 
+            `/api/register/courses/${courseId}/classes/${classId}/sessions`,  // UPDATED - now requires classId
         UPLOAD: '/api/register/upload'
     },
 

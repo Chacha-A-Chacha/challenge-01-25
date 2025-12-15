@@ -249,6 +249,7 @@ export function validateForm<T>(
 export const studentRegistrationSchema = z.object({
     // Course & Sessions
     courseId: uuidSchema,
+    classId: uuidSchema,
     saturdaySessionId: uuidSchema,
     sundaySessionId: uuidSchema,
 
