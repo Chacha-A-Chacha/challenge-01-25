@@ -127,6 +127,25 @@ export interface CoursePublic {
   status: CourseStatus
 }
 
+/** Public class info for registration - NEW */
+export interface ClassPublic {
+  id: string
+  name: string
+  capacity: number
+  saturdaySessions: number
+  sundaySessions: number
+  availableSpots: number
+  hasSaturdayAvailability: boolean
+  hasSundayAvailability: boolean
+}
+
+/** Classes response for registration - NEW */
+export interface ClassesResponse {
+  courseId: string
+  courseName: string
+  classes: ClassPublic[]
+}
+
 /** Session with availability info for registration */
 export interface SessionWithAvailability {
   id: string
@@ -152,6 +171,7 @@ export interface CourseSessionsResponse {
 export interface StudentRegistrationRequest {
   // Course & Sessions
   courseId: string
+  classId: string
   saturdaySessionId: string
   sundaySessionId: string
   

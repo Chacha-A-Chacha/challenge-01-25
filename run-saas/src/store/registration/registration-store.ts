@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type {
   CoursePublic,
+  ClassPublic,
   CourseSessionsResponse,
   StudentRegistrationResponse,
 } from "@/types";
@@ -13,6 +14,7 @@ import { API_ROUTES } from "@/lib/constants";
 
 interface RegistrationFormData {
   courseId: string;
+  classId: string;  // NEW - ensures same class for both sessions
   saturdaySessionId: string;
   sundaySessionId: string;
   surname: string;
@@ -32,10 +34,12 @@ interface RegistrationStore {
 
   // API data
   courses: CoursePublic[];
+  classes: ClassPublic[];  // NEW
   sessions: CourseSessionsResponse | null;
 
   // UI state
   isLoadingCourses: boolean;
+  isLoadingClasses: boolean;  // NEW
   isLoadingSessions: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -44,13 +48,15 @@ interface RegistrationStore {
   // Actions
   setField: (field: keyof RegistrationFormData, value: string) => void;
   loadCourses: () => Promise<void>;
-  loadSessions: (courseId: string) => Promise<void>;
+  loadClasses: (courseId: string) => Promise<void>;  // NEW
+  loadSessions: (courseId: string, classId: string) => Promise<void>;  // UPDATED
   submit: () => Promise<boolean>;
   reset: () => void;
 }
 
 const INITIAL_FORM: RegistrationFormData = {
   courseId: "",
+  classId: "",  // NEW
   saturdaySessionId: "",
   sundaySessionId: "",
   surname: "",
@@ -71,8 +77,10 @@ const INITIAL_FORM: RegistrationFormData = {
 export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
   formData: { ...INITIAL_FORM },
   courses: [],
+  classes: [],  // NEW
   sessions: null,
   isLoadingCourses: false,
+  isLoadingClasses: false,  // NEW
   isLoadingSessions: false,
   isSubmitting: false,
   error: null,
@@ -84,9 +92,34 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
       error: null,
     }));
 
-    // Auto-load sessions when course changes
+    // Auto-load classes when course changes
     if (field === "courseId" && value) {
-      get().loadSessions(value);
+      get().loadClasses(value);
+      // Clear downstream selections
+      set((state) => ({
+        formData: {
+          ...state.formData,
+          classId: "",
+          saturdaySessionId: "",
+          sundaySessionId: "",
+        },
+        classes: [],
+        sessions: null,
+      }));
+    }
+
+    // Auto-load sessions when class changes
+    if (field === "classId" && value) {
+      const courseId = get().formData.courseId;
+      get().loadSessions(courseId, value);
+      // Clear session selections
+      set((state) => ({
+        formData: {
+          ...state.formData,
+          saturdaySessionId: "",
+          sundaySessionId: "",
+        },
+      }));
     }
   },
 
@@ -110,20 +143,40 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     }
   },
 
-  loadSessions: async (courseId: string) => {
+  loadClasses: async (courseId: string) => {
+    set({
+      isLoadingClasses: true,
+      error: null,
+      classes: [],
+    });
+
+    try {
+      const res = await fetch(API_ROUTES.REGISTER.CLASSES(courseId));
+      const data = await res.json();
+
+      if (data.success) {
+        set({ classes: data.data.classes, isLoadingClasses: false });
+      } else {
+        throw new Error(data.error || "Failed to load classes");
+      }
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error ? error.message : "Failed to load classes",
+        isLoadingClasses: false,
+      });
+    }
+  },
+
+  loadSessions: async (courseId: string, classId: string) => {
     set({
       isLoadingSessions: true,
       error: null,
       sessions: null,
-      formData: {
-        ...get().formData,
-        saturdaySessionId: "",
-        sundaySessionId: "",
-      },
     });
 
     try {
-      const res = await fetch(API_ROUTES.REGISTER.SESSIONS(courseId));
+      const res = await fetch(API_ROUTES.REGISTER.SESSIONS(courseId, classId));
       const data = await res.json();
 
       if (data.success) {
@@ -172,6 +225,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     set({
       formData: { ...INITIAL_FORM },
       courses: [],
+      classes: [],  // NEW
       sessions: null,
       error: null,
       submissionResult: null,

@@ -61,6 +61,7 @@ export type {
   ReassignmentCreateRequest,
   ReassignmentUpdateRequest,
   CoursePublic,
+  ClassPublic,
   SessionWithAvailability,
   CourseSessionsResponse,
   StudentRegistrationRequest,
