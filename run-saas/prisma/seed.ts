@@ -1,28 +1,28 @@
-// prisma/seed.ts - Database Seed Script
+// prisma/seed.ts - Comprehensive Database Seed Script
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-/**
- * Hash password using bcryptjs
- */
 async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
   return bcrypt.hash(password, saltRounds);
 }
 
-/**
- * Main seed function
- */
+// Helper to create time objects
+function createTime(hours: number, minutes: number = 0): Date {
+  return new Date(
+    `2000-01-01T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00Z`,
+  );
+}
+
 async function main() {
-  console.log("🌱 Starting database seed...");
+  console.log("🌱 Starting comprehensive database seed...\n");
 
   // ============================================================================
   // 1. CREATE ADMIN
   // ============================================================================
-  console.log("\n📌 Creating Admin...");
-
+  console.log("📌 Creating Admin...");
   const admin = await prisma.admin.upsert({
     where: { email: "admin@weekend.academy" },
     update: {},
@@ -31,263 +31,323 @@ async function main() {
       password: await hashPassword("Admin123!"),
     },
   });
-  console.log("✅ Admin created:", admin.email);
+  console.log("✅ Admin created\n");
 
   // ============================================================================
-  // 2. CREATE HEAD TEACHER (without courseId first)
+  // 2. COURSES WITH HEAD TEACHERS
   // ============================================================================
-  console.log("\n📌 Creating Head Teacher...");
-
-  const headTeacher = await prisma.teacher.upsert({
-    where: { email: "head.teacher@math.academy" },
-    update: {},
-    create: {
-      email: "head.teacher@math.academy",
-      password: await hashPassword("HeadTeacher123!"),
-      role: "HEAD",
-      // courseId will be set after course creation
+  const courseData = [
+    {
+      name: "Paramedics",
+      email: "head.paramedics@academy.com",
+      classes: 2,
+      hasMultipleSessions: true,
     },
-  });
-  console.log("✅ Head Teacher created:", headTeacher.email);
-
-  // ============================================================================
-  // 3. CREATE COURSE (linked to head teacher)
-  // ============================================================================
-  console.log("\n📌 Creating Course...");
-
-  const course = await prisma.course.upsert({
-    where: { headTeacherId: headTeacher.id },
-    update: {},
-    create: {
-      name: "Mathematics Weekend Program",
-      headTeacherId: headTeacher.id,
-      status: "ACTIVE",
+    {
+      name: "Computer Packages",
+      email: "head.computer@academy.com",
+      classes: 3,
+      hasMultipleSessions: true,
     },
-  });
-  console.log("✅ Course created:", course.name);
-
-  // ============================================================================
-  // 4. UPDATE HEAD TEACHER with courseId (optional backlink)
-  // ============================================================================
-  console.log("\n📌 Linking Head Teacher to Course...");
-
-  await prisma.teacher.update({
-    where: { id: headTeacher.id },
-    data: { courseId: course.id },
-  });
-  console.log("✅ Head Teacher linked to course");
-
-  // ============================================================================
-  // 5. CREATE ADDITIONAL TEACHER
-  // ============================================================================
-  console.log("\n📌 Creating Additional Teacher...");
-
-  const additionalTeacher = await prisma.teacher.upsert({
-    where: { email: "teacher@math.academy" },
-    update: {},
-    create: {
-      email: "teacher@math.academy",
-      password: await hashPassword("Teacher123!"),
-      courseId: course.id,
-      role: "ADDITIONAL",
+    {
+      name: "Fashion & Design",
+      email: "head.fashion@academy.com",
+      classes: 1,
+      hasMultipleSessions: false,
     },
-  });
-  console.log("✅ Additional Teacher created:", additionalTeacher.email);
-
-  // ============================================================================
-  // 6. CREATE CLASS
-  // ============================================================================
-  console.log("\n📌 Creating Class...");
-
-  const mathClass = await prisma.class.upsert({
-    where: {
-      // Use composite unique if exists, otherwise use findFirst + create pattern
-      id:
-        (
-          await prisma.class.findFirst({
-            where: {
-              name: "Math - Class A",
-              courseId: course.id,
-            },
-          })
-        )?.id || "new",
+    {
+      name: "Electrical Installation",
+      email: "head.electrical@academy.com",
+      classes: 2,
+      hasMultipleSessions: true,
     },
-    update: {},
-    create: {
-      name: "Math - Class A",
-      capacity: 30,
-      courseId: course.id,
+    {
+      name: "Camera Operation",
+      email: "head.camera@academy.com",
+      classes: 1,
+      hasMultipleSessions: false,
     },
-  });
-  console.log("✅ Class created:", mathClass.name);
-
-  // ============================================================================
-  // 7. CREATE SATURDAY SESSION
-  // ============================================================================
-  console.log("\n📌 Creating Saturday Session...");
-
-  // Create a date for times (Prisma DateTime field)
-  const saturdayStartTime = new Date("2000-01-01T09:00:00Z");
-  const saturdayEndTime = new Date("2000-01-01T11:00:00Z");
-
-  const saturdaySession = await prisma.session.create({
-    data: {
-      classId: mathClass.id,
-      day: "SATURDAY",
-      startTime: saturdayStartTime,
-      endTime: saturdayEndTime,
-      capacity: 15,
+    {
+      name: "Video Editing",
+      email: "head.video@academy.com",
+      classes: 2,
+      hasMultipleSessions: true,
     },
-  });
-  console.log(
-    "✅ Saturday Session created:",
-    `${saturdayStartTime.toISOString().slice(11, 16)} - ${saturdayEndTime.toISOString().slice(11, 16)}`,
-  );
-
-  // ============================================================================
-  // 8. CREATE SUNDAY SESSION
-  // ============================================================================
-  console.log("\n📌 Creating Sunday Session...");
-
-  const sundayStartTime = new Date("2000-01-01T14:00:00Z");
-  const sundayEndTime = new Date("2000-01-01T16:00:00Z");
-
-  const sundaySession = await prisma.session.create({
-    data: {
-      classId: mathClass.id,
-      day: "SUNDAY",
-      startTime: sundayStartTime,
-      endTime: sundayEndTime,
-      capacity: 15,
+    {
+      name: "Graphics & Design",
+      email: "head.graphics@academy.com",
+      classes: 2,
+      hasMultipleSessions: false,
     },
-  });
-  console.log(
-    "✅ Sunday Session created:",
-    `${sundayStartTime.toISOString().slice(11, 16)} - ${sundayEndTime.toISOString().slice(11, 16)}`,
-  );
+    {
+      name: "Automotive Repair",
+      email: "head.automotive@academy.com",
+      classes: 2,
+      hasMultipleSessions: true,
+    },
+    {
+      name: "Programming",
+      email: "head.programming@academy.com",
+      classes: 3,
+      hasMultipleSessions: true,
+    },
+  ];
 
-  // ============================================================================
-  // 9. CREATE STUDENT
-  // ============================================================================
-  console.log("\n📌 Creating Student...");
+  console.log("📌 Creating Courses, Teachers, Classes & Sessions...\n");
 
-  const student = await prisma.student.upsert({
-    where: {
-      // Use composite unique constraint
-      studentNumber_classId: {
-        studentNumber: "STU001",
-        classId: mathClass.id,
+  const courses = [];
+  const allSessions: any[] = [];
+  let studentCounter = 1;
+
+  for (const courseInfo of courseData) {
+    console.log(`\n🎓 ${courseInfo.name}`);
+    console.log("─".repeat(60));
+
+    // Create Head Teacher
+    const headTeacher = await prisma.teacher.create({
+      data: {
+        email: courseInfo.email,
+        password: await hashPassword("Teacher123!"),
+        role: "HEAD",
       },
-    },
-    update: {},
-    create: {
-      studentNumber: "STU001",
-      surname: "Alfha",
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@student.com",
-      phoneNumber: "0712345678",
-      passwordHash: await hashPassword("Student123!"),
-      classId: mathClass.id,
-      // Assign to both sessions
-      saturdaySessionId: saturdaySession.id,
-      sundaySessionId: sundaySession.id,
-    },
-  });
-  console.log(
-    "✅ Student created:",
-    `${student.firstName} ${student.lastName} (${student.studentNumber})`,
-  );
-  console.log("   UUID:", student.uuid);
-  console.log("   Saturday Session assigned");
-  console.log("   Sunday Session assigned");
+    });
+    console.log(`✅ Head Teacher: ${headTeacher.email}`);
+
+    // Create Course
+    const course = await prisma.course.create({
+      data: {
+        name: courseInfo.name,
+        headTeacherId: headTeacher.id,
+        status: "ACTIVE",
+      },
+    });
+
+    // Link head teacher to course
+    await prisma.teacher.update({
+      where: { id: headTeacher.id },
+      data: { courseId: course.id },
+    });
+
+    courses.push(course);
+
+    // Create Additional Teachers (1-2 per course)
+    const additionalTeachersCount = Math.floor(Math.random() * 2) + 1;
+    for (let t = 1; t <= additionalTeachersCount; t++) {
+      await prisma.teacher.create({
+        data: {
+          email: `teacher${t}.${courseInfo.name.toLowerCase().replace(/\s+/g, "")}@academy.com`,
+          password: await hashPassword("Teacher123!"),
+          courseId: course.id,
+          role: "ADDITIONAL",
+        },
+      });
+    }
+    console.log(`✅ ${additionalTeachersCount} Additional Teacher(s) created`);
+
+    // Create Classes and Sessions
+    for (let c = 1; c <= courseInfo.classes; c++) {
+      const className =
+        courseInfo.classes === 1
+          ? courseInfo.name
+          : `${courseInfo.name} - Class ${String.fromCharCode(64 + c)}`;
+
+      const classEntity = await prisma.class.create({
+        data: {
+          name: className,
+          capacity: 30,
+          courseId: course.id,
+        },
+      });
+      console.log(`  📚 Class: ${className}`);
+
+      // Saturday Sessions
+      const saturdaySessionsCount = courseInfo.hasMultipleSessions ? 2 : 1;
+      const saturdayTimes = [
+        { start: 8, end: 10 },
+        { start: 10, end: 12 },
+      ];
+
+      for (let s = 0; s < saturdaySessionsCount; s++) {
+        const session = await prisma.session.create({
+          data: {
+            classId: classEntity.id,
+            day: "SATURDAY",
+            startTime: createTime(saturdayTimes[s].start),
+            endTime: createTime(saturdayTimes[s].end),
+            capacity: 15,
+          },
+        });
+        console.log(
+          `    ⏰ Saturday ${saturdayTimes[s].start}:00 - ${saturdayTimes[s].end}:00 (15 spots)`,
+        );
+        allSessions.push({
+          session,
+          courseId: course.id,
+          classId: classEntity.id,
+          day: "SATURDAY",
+        });
+      }
+
+      // Sunday Sessions
+      const sundaySessionsCount = courseInfo.hasMultipleSessions ? 2 : 1;
+      const sundayTimes = [
+        { start: 14, end: 16 },
+        { start: 16, end: 18 },
+      ];
+
+      for (let s = 0; s < sundaySessionsCount; s++) {
+        const session = await prisma.session.create({
+          data: {
+            classId: classEntity.id,
+            day: "SUNDAY",
+            startTime: createTime(sundayTimes[s].start),
+            endTime: createTime(sundayTimes[s].end),
+            capacity: 15,
+          },
+        });
+        console.log(
+          `    ⏰ Sunday ${sundayTimes[s].start}:00 - ${sundayTimes[s].end}:00 (15 spots)`,
+        );
+        allSessions.push({
+          session,
+          courseId: course.id,
+          classId: classEntity.id,
+          day: "SUNDAY",
+        });
+      }
+
+      // Create 2-3 students per class
+      const studentsPerClass = Math.floor(Math.random() * 2) + 2;
+      for (let st = 1; st <= studentsPerClass; st++) {
+        const studentNumber = `STU${studentCounter.toString().padStart(3, "0")}`;
+
+        // Get random Saturday and Sunday sessions for this class
+        const classSessions = allSessions.filter(
+          (s) => s.classId === classEntity.id,
+        );
+        const saturdaySessions = classSessions.filter(
+          (s) => s.day === "SATURDAY",
+        );
+        const sundaySessions = classSessions.filter((s) => s.day === "SUNDAY");
+
+        const randomSaturdaySession =
+          saturdaySessions[Math.floor(Math.random() * saturdaySessions.length)];
+        const randomSundaySession =
+          sundaySessions[Math.floor(Math.random() * sundaySessions.length)];
+
+        await prisma.student.create({
+          data: {
+            studentNumber,
+            surname: `Surname${studentCounter}`,
+            firstName: `Student${studentCounter}`,
+            lastName: `Name${studentCounter}`,
+            email: `student${studentCounter}@academy.com`,
+            phoneNumber: `07${(10000000 + studentCounter).toString()}`,
+            passwordHash: await hashPassword("Student123!"),
+            classId: classEntity.id,
+            saturdaySessionId: randomSaturdaySession.session.id,
+            sundaySessionId: randomSundaySession.session.id,
+          },
+        });
+
+        studentCounter++;
+      }
+      console.log(`  👥 ${studentsPerClass} Students enrolled`);
+    }
+  }
 
   // ============================================================================
-  // 10. CREATE SAMPLE STUDENT REGISTRATION (PENDING)
+  // 3. CREATE PENDING REGISTRATIONS (5-10 across different courses)
   // ============================================================================
-  console.log("\n📌 Creating Sample Student Registration...");
+  console.log("\n\n📌 Creating Pending Registrations...");
 
-  const pendingRegistration = await prisma.studentRegistration.upsert({
-    where: { email: "jane.smith@student.com" },
-    update: {},
-    create: {
-      surname: "Smith",
-      firstName: "Jane",
-      lastName: "Marie",
-      email: "jane.smith@student.com",
-      phoneNumber: "0723456789",
-      courseId: course.id,
-      saturdaySessionId: saturdaySession.id,
-      sundaySessionId: sundaySession.id,
-      passwordHash: await hashPassword("Jane123!"),
-      paymentReceiptUrl: "https://example.com/receipts/jane-smith-payment.jpg",
-      paymentReceiptNo: "123456789",
-      status: "PENDING",
-    },
-  });
-  console.log(
-    "✅ Pending Registration created:",
-    `${pendingRegistration.firstName} ${pendingRegistration.lastName}`,
-  );
-  console.log("   Email:", pendingRegistration.email);
-  console.log("   Status:", pendingRegistration.status);
-  console.log("   Payment Receipt #:", pendingRegistration.paymentReceiptNo);
+  const pendingCount = 7;
+  for (let i = 1; i <= pendingCount; i++) {
+    // Pick random course and sessions
+    const randomCourseIndex = Math.floor(Math.random() * courses.length);
+    const courseSessions = allSessions.filter(
+      (s) => s.courseId === courses[randomCourseIndex].id,
+    );
+
+    const saturdaySessions = courseSessions.filter((s) => s.day === "SATURDAY");
+    const sundaySessions = courseSessions.filter((s) => s.day === "SUNDAY");
+
+    if (saturdaySessions.length === 0 || sundaySessions.length === 0) continue;
+
+    const randomSaturday =
+      saturdaySessions[Math.floor(Math.random() * saturdaySessions.length)];
+    const randomSunday =
+      sundaySessions[Math.floor(Math.random() * sundaySessions.length)];
+
+    await prisma.studentRegistration.create({
+      data: {
+        surname: `Pending${i}`,
+        firstName: `Registration${i}`,
+        lastName: `Test${i}`,
+        email: `pending${i}@test.com`,
+        phoneNumber: `072${(1000000 + i).toString()}`,
+        courseId: courses[randomCourseIndex].id,
+        saturdaySessionId: randomSaturday.session.id,
+        sundaySessionId: randomSunday.session.id,
+        passwordHash: await hashPassword("Pending123!"),
+        paymentReceiptUrl: `https://example.com/receipts/pending${i}.jpg`,
+        paymentReceiptNo: `RCT${(100000 + i).toString()}`,
+        status: "PENDING",
+      },
+    });
+  }
+  console.log(`✅ ${pendingCount} Pending Registrations created\n`);
 
   // ============================================================================
   // SUMMARY
   // ============================================================================
-  console.log("\n" + "=".repeat(60));
-  console.log("🎉 Database seeded successfully!");
-  console.log("=".repeat(60));
-  console.log("\n📊 SEED SUMMARY:");
-  console.log("├─ 1 Admin");
-  console.log("├─ 1 Course");
-  console.log("├─ 1 Head Teacher");
-  console.log("├─ 1 Additional Teacher");
-  console.log("├─ 1 Class");
-  console.log("├─ 2 Sessions (Saturday & Sunday)");
-  console.log("├─ 1 Student (assigned to both sessions)");
-  console.log("└─ 1 Pending Student Registration");
+  const totalCourses = await prisma.course.count();
+  const totalTeachers = await prisma.teacher.count();
+  const totalClasses = await prisma.class.count();
+  const totalSessions = await prisma.session.count();
+  const totalStudents = await prisma.student.count();
+  const totalPending = await prisma.studentRegistration.count({
+    where: { status: "PENDING" },
+  });
 
-  console.log("\n🔐 LOGIN CREDENTIALS:");
-  console.log("\n1️⃣  ADMIN LOGIN:");
-  console.log("   URL: http://localhost:3000/staff-login");
+  console.log("\n" + "=".repeat(70));
+  console.log("🎉 DATABASE SEEDED SUCCESSFULLY!");
+  console.log("=".repeat(70));
+  console.log("\n📊 SUMMARY:");
+  console.log(`├─ ${totalCourses} Courses`);
+  console.log(`├─ ${totalTeachers} Teachers (including Head Teachers)`);
+  console.log(`├─ ${totalClasses} Classes`);
+  console.log(`├─ ${totalSessions} Sessions`);
+  console.log(`├─ ${totalStudents} Active Students`);
+  console.log(`├─ ${totalPending} Pending Registrations`);
+  console.log(`└─ 1 Admin\n`);
+
+  console.log("🔐 LOGIN CREDENTIALS:");
+  console.log("\n1️⃣  ADMIN:");
   console.log("   Email: admin@weekend.academy");
   console.log("   Password: Admin123!");
 
-  console.log("\n2️⃣  HEAD TEACHER LOGIN:");
-  console.log("   URL: http://localhost:3000/staff-login");
-  console.log("   Email: head.teacher@math.academy");
-  console.log("   Password: HeadTeacher123!");
-
-  console.log("\n3️⃣  ADDITIONAL TEACHER LOGIN:");
-  console.log("   URL: http://localhost:3000/staff-login");
-  console.log("   Email: teacher@math.academy");
+  console.log("\n2️⃣  SAMPLE HEAD TEACHER:");
+  console.log("   Email: head.programming@academy.com");
   console.log("   Password: Teacher123!");
 
-  console.log("\n4️⃣  STUDENT LOGIN:");
-  console.log("   URL: http://localhost:3000/login");
-  console.log("   Email: john.doe@student.com");
+  console.log("\n3️⃣  SAMPLE STUDENT:");
+  console.log("   Email: student1@academy.com");
   console.log("   Password: Student123!");
   console.log("   Student Number: STU001");
-  console.log("   UUID:", student.uuid);
 
-  console.log("\n5️⃣  PENDING REGISTRATION (For Testing Approval):");
-  console.log(
-    "   Name:",
-    pendingRegistration.firstName,
-    pendingRegistration.lastName,
-  );
-  console.log("   Email:", pendingRegistration.email);
-  console.log("   Status:", pendingRegistration.status);
-  console.log("   Payment Receipt #:", pendingRegistration.paymentReceiptNo);
+  console.log("\n4️⃣  ALL OTHER LOGINS:");
+  console.log("   Teachers: teacher*.{course}@academy.com / Teacher123!");
+  console.log("   Students: student*@academy.com / Student123!");
+  console.log("   Pending: pending*@test.com (not yet approved)");
 
-  console.log("\n" + "=".repeat(60));
+  console.log("\n" + "=".repeat(70));
+  console.log("\n🌐 Access the app at: http://localhost:3000");
+  console.log("   Staff Login: /staff-login");
+  console.log("   Student Login: /login");
+  console.log("   Registration: /register\n");
 }
 
-/**
- * Execute seed and handle errors
- */
 main()
   .then(async () => {
     await prisma.$disconnect();
@@ -297,44 +357,3 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
-
-// ============================================================================
-// PACKAGE.JSON SCRIPT
-// ============================================================================
-/*
-Add this to your package.json:
-
-{
-  "scripts": {
-    "db:seed": "tsx prisma/seed.ts"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  }
-}
-
-Then run:
-  npm run db:seed
-
-Or automatically after migrations:
-  npx prisma db push
-  npx prisma migrate dev
-*/
-
-// ============================================================================
-// RESET DATABASE (if needed)
-// ============================================================================
-/*
-To reset and reseed:
-
-npx prisma migrate reset
-// This will:
-// 1. Drop the database
-// 2. Create a new database
-// 3. Run all migrations
-// 4. Run the seed script automatically
-
-Or manually:
-npx prisma db push --force-reset
-npm run db:seed
-*/

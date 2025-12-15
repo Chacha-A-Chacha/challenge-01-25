@@ -7,7 +7,7 @@ import { signIn } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { GraduationCap, Loader2, AlertCircle } from 'lucide-react'
 
@@ -44,29 +44,38 @@ export function StudentLoginForm() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-50 px-4 py-8">
             <div className="w-full max-w-md">
-                {/* Header */}
-                <div className="text-center mb-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-                        <GraduationCap className="w-8 h-8 text-white" />
-                    </div>
-                    <h1 className="text-2xl font-bold text-gray-900">Weekend Academy</h1>
-                    <p className="text-gray-500">Student Portal</p>
-                </div>
-
-                <Card className="border-0 shadow-xl overflow-hidden">
-                    <CardHeader className="bg-blue-600 text-white text-center">
-                        <CardTitle className="text-xl">Student Login</CardTitle>
-                        <CardDescription className="text-blue-100">
-                            Enter your credentials to access your portal
-                        </CardDescription>
+                <Card className="border-blue-100 shadow-xl">
+                    <CardHeader className="space-y-4 pb-6">
+                        {/* Logo and Title */}
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-blue-600">
+                                <GraduationCap className="w-7 h-7 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900">Weekend Academy</h1>
+                                <div className="inline-flex items-center gap-2 mt-2">
+                                    <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                                    <span className="text-sm font-medium text-blue-700">Student Portal</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="text-center">
+                            <CardTitle className="text-xl font-semibold">Welcome Back</CardTitle>
+                            <CardDescription className="mt-1.5">
+                                Sign in to access your attendance portal
+                            </CardDescription>
+                        </div>
                     </CardHeader>
 
-                    <CardContent className="pt-6">
+                    <CardContent className="space-y-6">
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <Label htmlFor="email">Email Address</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-sm font-medium">
+                                    Email Address
+                                </Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -76,12 +85,24 @@ export function StudentLoginForm() {
                                     disabled={isLoading}
                                     required
                                     autoComplete="email"
-                                    className="mt-1"
+                                    className="h-11"
                                 />
                             </div>
 
-                            <div>
-                                <Label htmlFor="password">Password</Label>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="password" className="text-sm font-medium">
+                                        Password
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        variant="link"
+                                        className="p-0 h-auto text-xs text-blue-600 hover:text-blue-700"
+                                        onClick={() => router.push('/forgot-password')}
+                                    >
+                                        Forgot password?
+                                    </Button>
+                                </div>
                                 <Input
                                     id="password"
                                     type="password"
@@ -91,20 +112,20 @@ export function StudentLoginForm() {
                                     disabled={isLoading}
                                     required
                                     autoComplete="current-password"
-                                    className="mt-1"
+                                    className="h-11"
                                 />
                             </div>
 
                             {error && (
-                                <Alert variant="destructive">
+                                <Alert variant="destructive" className="py-3">
                                     <AlertCircle className="h-4 w-4" />
-                                    <AlertDescription>{error}</AlertDescription>
+                                    <AlertDescription className="text-sm">{error}</AlertDescription>
                                 </Alert>
                             )}
 
                             <Button 
                                 type="submit" 
-                                className="w-full bg-blue-600 hover:bg-blue-700" 
+                                className="w-full h-11 bg-blue-600 hover:bg-blue-700 font-medium" 
                                 disabled={isLoading}
                             >
                                 {isLoading ? (
@@ -118,47 +139,42 @@ export function StudentLoginForm() {
                             </Button>
                         </form>
 
-                        {/* Divider */}
-                        <div className="relative my-6">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-200"></div>
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-white text-gray-500">or</span>
-                            </div>
-                        </div>
-
-                        {/* Registration Link */}
-                        <div className="text-center space-y-3">
-                            <p className="text-gray-600">
-                                New student?{' '}
+                        {/* Registration Section */}
+                        <div className="pt-4 border-t">
+                            <p className="text-center text-sm text-gray-600">
+                                New to Weekend Academy?{' '}
                                 <Button
                                     type="button"
                                     variant="link"
-                                    className="p-0 h-auto text-emerald-600 hover:text-emerald-700 font-semibold"
+                                    className="p-0 h-auto text-sm font-semibold text-blue-600 hover:text-blue-700"
                                     onClick={() => router.push('/register')}
                                 >
-                                    Register here
+                                    Create an account
                                 </Button>
                             </p>
                         </div>
 
                         {/* Staff Link */}
-                        <div className="text-center pt-4 border-t mt-6">
-                            <p className="text-sm text-gray-500">
+                        <div className="pt-4 border-t">
+                            <p className="text-center text-xs text-gray-500">
                                 Staff member?{' '}
                                 <Button
                                     type="button"
                                     variant="link"
-                                    className="p-0 h-auto text-blue-600 hover:text-blue-700"
+                                    className="p-0 h-auto text-xs text-gray-700 hover:text-gray-900 font-medium"
                                     onClick={() => router.push('/staff-login')}
                                 >
-                                    Login here
+                                    Access staff portal →
                                 </Button>
                             </p>
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* Footer */}
+                <p className="text-center text-xs text-gray-500 mt-6">
+                    © {new Date().getFullYear()} Weekend Academy. All rights reserved.
+                </p>
             </div>
         </div>
     )
