@@ -17,6 +17,9 @@ model Admin {
   password  String
   createdAt DateTime @default(now())
 
+  resetToken       String?
+  resetTokenExpiry DateTime?
+
   @@map("admins")
 }
 
@@ -50,6 +53,9 @@ model Teacher {
   courseId  String?
   role      TeacherRole @default(ADDITIONAL)
   createdAt DateTime    @default(now())
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
 
   headCourse            Course?               @relation("HeadTeacher")
   attendanceRecords     Attendance[]
@@ -120,6 +126,9 @@ model Student {
 
   // Password authentication (set during registration)
   passwordHash String
+
+  resetToken       String?
+  resetTokenExpiry DateTime?
 
   // Class membership (derived from session's class on approval)
   class   Class  @relation(fields: [classId], references: [id])

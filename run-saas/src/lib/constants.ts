@@ -186,6 +186,25 @@ export const PERMISSIONS = {
     VIEW_SCHEDULE: 'view_schedule'
 } as const
 
+export const EMAIL_CONFIG = {
+    SUPPORT_EMAIL: 'support@weekendacademy.com',
+    NO_REPLY_EMAIL: 'noreply@weekendacademy.com',
+    
+    SUBJECTS: {
+        PASSWORD_RESET: 'Reset Your Password - Weekend Academy',
+        PASSWORD_CHANGED: 'Password Changed Successfully - Weekend Academy',
+        REGISTRATION_APPROVED: 'Registration Approved - Welcome to Weekend Academy!',
+        REGISTRATION_REJECTED: 'Registration Update - Weekend Academy',
+        WELCOME_STAFF: 'Welcome to Weekend Academy - Staff Account Created',
+        WELCOME_ADMIN: 'Welcome to Weekend Academy - Admin Account Created'
+    },
+    
+    RESET_TOKEN: {
+        EXPIRY_MINUTES: 60, // 1 hour
+        LENGTH: 32 // bytes
+    }
+} as const
+
 export const ERROR_MESSAGES = {
     AUTH: {
         INVALID_CREDENTIALS: 'Invalid email or password',
@@ -231,6 +250,14 @@ export const ERROR_MESSAGES = {
         COURSE_NOT_ACTIVE: 'This course is not currently accepting registrations',
         ALREADY_PROCESSED: 'This registration has already been processed',
         NOT_FOUND: 'Registration not found'
+    },
+
+    EMAIL: {
+        SEND_FAILED: 'Failed to send email. Please try again.',
+        INVALID_TOKEN: 'Invalid or expired reset token',
+        TOKEN_EXPIRED: 'Reset link has expired. Please request a new one.',
+        USER_NOT_FOUND: 'No account found with this email address',
+        INVALID_CURRENT_PASSWORD: 'Current password is incorrect'
     }
 } as const
 
