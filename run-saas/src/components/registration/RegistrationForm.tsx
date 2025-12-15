@@ -60,6 +60,7 @@ export function RegistrationForm() {
     error,
     setField,
     loadCourses,
+    submit,
   } = useRegistrationStore();
 
   // Load courses once
