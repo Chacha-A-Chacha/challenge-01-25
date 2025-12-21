@@ -95,7 +95,10 @@ export const API_ROUTES = {
     AUTH: {
         LOGIN: '/api/auth/signin',
         LOGOUT: '/api/auth/signout',
-        SESSION: '/api/auth/session'
+        SESSION: '/api/auth/session',
+        FORGOT_PASSWORD: '/api/auth/forgot-password', 
+        RESET_PASSWORD: '/api/auth/reset-password', 
+        CHANGE_PASSWORD: '/api/auth/change-password'
     },
 
     // Core entities
