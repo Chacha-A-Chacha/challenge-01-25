@@ -9,8 +9,8 @@ export {
   ATTENDANCE_STATUS,
   REQUEST_STATUS,
   REGISTRATION_STATUS,
-  NOTIFICATION_TYPES
-} from './enums'
+  NOTIFICATION_TYPES,
+} from "./enums";
 
 export type {
   UserRole,
@@ -20,15 +20,22 @@ export type {
   AttendanceStatus,
   RequestStatus,
   RegistrationStatus,
-  NotificationType
-} from './enums'
+  NotificationType,
+} from "./enums";
 
 // Auth types
 export type {
   AuthUser,
   LoginCredentials,
-  SessionData
-} from './auth'
+  SessionData,
+  UserType,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
+} from "./auth";
 
 // Database types
 export type {
@@ -40,8 +47,8 @@ export type {
   Student,
   StudentRegistration,
   Attendance,
-  ReassignmentRequest
-} from './database'
+  ReassignmentRequest,
+} from "./database";
 
 // API types
 export type {
@@ -70,8 +77,8 @@ export type {
   RegistrationDetail,
   RejectRegistrationRequest,
   BulkApprovalRequest,
-  BulkApprovalResponse
-} from './api'
+  BulkApprovalResponse,
+} from "./api";
 
 // Component types
 export type {
@@ -84,8 +91,8 @@ export type {
   StudentCardProps,
   SessionCardProps,
   CourseCardProps,
-  AttendanceStatsProps
-} from './components'
+  AttendanceStatsProps,
+} from "./components";
 
 // Form types
 export type {
@@ -96,8 +103,8 @@ export type {
   ValidationError,
   StudentImportData,
   StudentImportResult,
-  ImportError
-} from './forms'
+  ImportError,
+} from "./forms";
 
 // Business logic types
 export type {
@@ -115,8 +122,8 @@ export type {
   AttendanceRecord,
   SessionWithAttendance,
   StudentAttendanceHistory,
-  AttendanceReport
-} from './business'
+  AttendanceReport,
+} from "./business";
 
 // Hook types
 export type {
@@ -125,8 +132,8 @@ export type {
   UseStudentImportReturn,
   UseFormReturn,
   UsePermissionsReturn,
-  UseNotificationsReturn
-} from './hooks'
+  UseNotificationsReturn,
+} from "./hooks";
 
 // UI types
 export type {
@@ -138,8 +145,8 @@ export type {
   ThemeConfig,
   BreakpointValues,
   ResponsiveState,
-  SidebarState
-} from './ui'
+  SidebarState,
+} from "./ui";
 
 // Utility types
 export type {
@@ -162,8 +169,8 @@ export type {
   QueryOptions,
   MutationOptions,
   InfiniteQueryData,
-  PaginationConfig
-} from './utils'
+  PaginationConfig,
+} from "./utils";
 
 // Error types
 export type {
@@ -174,8 +181,8 @@ export type {
   ImportValidationError,
   FileUploadError,
   NetworkError,
-  AuthenticationError
-} from './errors'
+  AuthenticationError,
+} from "./errors";
 
 // Store types
 export type {
@@ -184,8 +191,8 @@ export type {
   OfflineAttendance,
   SyncStatus,
   OptimisticUpdate,
-  OptimisticState
-} from './store'
+  OptimisticState,
+} from "./store";
 
 // Mobile types
 export type {
@@ -194,5 +201,5 @@ export type {
   PWAInstallPrompt,
   NotificationPermission,
   GeolocationData,
-  NetworkStatus
-} from './mobile'
+  NetworkStatus,
+} from "./mobile";
