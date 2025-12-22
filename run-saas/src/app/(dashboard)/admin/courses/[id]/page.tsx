@@ -1,34 +1,39 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Edit, Trash2, Users, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useCourseStore } from "@/store"
-import { DeleteCourseModal } from "@/components/admin/DeleteCourseModal"
-import { ReplaceHeadTeacherModal } from "@/components/admin/ReplaceHeadTeacherModal"
-import { ClassesSection } from "@/components/admin/ClassesSection"
-import type { CourseStatus } from "@/types"
-import { COURSE_STATUS } from "@/types"
-import { toast } from "sonner"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Edit, Trash2, Users, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useCourseStore } from "@/store";
+import { DeleteCourseModal } from "@/components/admin/DeleteCourseModal";
+import { ReplaceHeadTeacherModal } from "@/components/admin/ReplaceHeadTeacherModal";
+import { EditCourseModal } from "@/components/admin/EditCourseModal";
+import { ClassesSection } from "@/components/admin/ClassesSection";
+import type { CourseStatus } from "@/types";
+import { COURSE_STATUS } from "@/types";
+import { toast } from "sonner";
 
 const getStatusBadgeVariant = (status: CourseStatus) => {
   switch (status) {
     case COURSE_STATUS.ACTIVE:
-      return "success"
+      return "success";
     case COURSE_STATUS.INACTIVE:
-      return "warning"
+      return "warning";
     case COURSE_STATUS.COMPLETED:
-      return "secondary"
+      return "secondary";
     default:
-      return "default"
+      return "default";
   }
-}
+};
 
-export default function CourseDetailsPage({ params }: { params: { id: string } }) {
-  const router = useRouter()
+export default function CourseDetailsPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const router = useRouter();
   const {
     courses,
     selectedCourse,
@@ -36,51 +41,56 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
     loadCourses,
     replaceHeadTeacher,
     isLoading,
-    isUpdating
-  } = useCourseStore()
+    isUpdating,
+  } = useCourseStore();
 
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [isReplaceHeadTeacherModalOpen, setIsReplaceHeadTeacherModalOpen] = useState(false)
-
-  useEffect(() => {
-    loadCourses()
-  }, [loadCourses])
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReplaceHeadTeacherModalOpen, setIsReplaceHeadTeacherModalOpen] =
+    useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
-    const course = courses.find((c) => c.id === params.id)
+    loadCourses();
+  }, [loadCourses]);
+
+  useEffect(() => {
+    const course = courses.find((c) => c.id === params.id);
     if (course) {
-      selectCourse(course)
+      selectCourse(course);
     }
-  }, [courses, params.id, selectCourse])
+  }, [courses, params.id, selectCourse]);
 
   const handleDeleteCourse = async () => {
     // TODO: Implement delete course functionality
     // For now, just show a toast
-    toast.error("Delete course functionality coming soon")
-    setIsDeleteModalOpen(false)
-  }
+    toast.error("Delete course functionality coming soon");
+    setIsDeleteModalOpen(false);
+  };
 
-  const handleReplaceHeadTeacher = async (newHeadTeacherId: string, removeOldTeacher: boolean) => {
-    if (!selectedCourse) return
+  const handleReplaceHeadTeacher = async (
+    newHeadTeacherId: string,
+    removeOldTeacher: boolean,
+  ) => {
+    if (!selectedCourse) return;
 
     const success = await replaceHeadTeacher(
       selectedCourse.id,
       newHeadTeacherId,
-      removeOldTeacher
-    )
+      removeOldTeacher,
+    );
 
     if (success) {
       toast.success(
         removeOldTeacher
           ? "Head teacher replaced. Previous head teacher removed from course."
-          : "Head teacher replaced successfully."
-      )
-      setIsReplaceHeadTeacherModalOpen(false)
-      await loadCourses()
+          : "Head teacher replaced successfully.",
+      );
+      setIsReplaceHeadTeacherModalOpen(false);
+      await loadCourses();
     } else {
-      toast.error("Failed to replace head teacher")
+      toast.error("Failed to replace head teacher");
     }
-  }
+  };
 
   if (isLoading && !selectedCourse) {
     return (
@@ -90,7 +100,7 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
           <p className="text-muted-foreground">Loading course details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!selectedCourse) {
@@ -104,12 +114,13 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
-  const additionalTeachers = selectedCourse.teachers?.filter(
-    (t) => t.id !== selectedCourse.headTeacherId
-  ) || []
+  const additionalTeachers =
+    selectedCourse.teachers?.filter(
+      (t) => t.id !== selectedCourse.headTeacherId,
+    ) || [];
 
   return (
     <div className="space-y-6">
@@ -124,12 +135,18 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">{selectedCourse.name}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {selectedCourse.name}
+            </h1>
             <p className="text-muted-foreground">Course Details & Management</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsEditModalOpen(true)}
+          >
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
@@ -152,7 +169,9 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Status</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Status
+              </p>
               <div className="mt-1">
                 <Badge variant={getStatusBadgeVariant(selectedCourse.status)}>
                   {selectedCourse.status}
@@ -160,18 +179,30 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Created</p>
-              <p className="mt-1">{new Date(selectedCourse.createdAt).toLocaleDateString()}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Created
+              </p>
+              <p className="mt-1">
+                {new Date(selectedCourse.createdAt).toLocaleDateString()}
+              </p>
             </div>
             {selectedCourse.endDate && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground">End Date</p>
-                <p className="mt-1">{new Date(selectedCourse.endDate).toLocaleDateString()}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  End Date
+                </p>
+                <p className="mt-1">
+                  {new Date(selectedCourse.endDate).toLocaleDateString()}
+                </p>
               </div>
             )}
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Classes</p>
-              <p className="mt-1 text-2xl font-bold">{selectedCourse._count?.classes || 0}</p>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Classes
+              </p>
+              <p className="mt-1 text-2xl font-bold">
+                {selectedCourse._count?.classes || 0}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -237,7 +268,9 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">{teacher.email}</p>
-                    <p className="text-sm text-muted-foreground">Additional Teacher</p>
+                    <p className="text-sm text-muted-foreground">
+                      Additional Teacher
+                    </p>
                   </div>
                 </div>
               ))}
@@ -265,6 +298,12 @@ export default function CourseDetailsPage({ params }: { params: { id: string } }
         onConfirm={handleReplaceHeadTeacher}
         isReplacing={isUpdating}
       />
+
+      <EditCourseModal
+        course={selectedCourse}
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+      />
     </div>
-  )
+  );
 }
