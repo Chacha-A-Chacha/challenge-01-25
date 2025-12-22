@@ -142,6 +142,15 @@ export const addTeacherSchema = z.object({
   password: passwordSchema,
 });
 
+export const replaceHeadTeacherSchema = z
+  .object({
+    courseId: uuidSchema,
+    newHeadTeacherId: uuidSchema,
+  })
+  .refine((data) => data.courseId && data.newHeadTeacherId, {
+    message: "Course ID and new head teacher ID are required",
+  });
+
 export const createClassSchema = z.object({
   name: z
     .string()
@@ -388,6 +397,7 @@ export type ChangePassword = z.infer<typeof changePasswordSchema>;
 export type CreateCourse = z.infer<typeof createCourseSchema>;
 export type UpdateCourse = z.infer<typeof updateCourseSchema>;
 export type AddTeacher = z.infer<typeof addTeacherSchema>;
+export type ReplaceHeadTeacher = z.infer<typeof replaceHeadTeacherSchema>;
 export type CreateClass = z.infer<typeof createClassSchema>;
 export type CreateSession = z.infer<typeof createSessionSchema>;
 export type StudentImportRow = z.infer<typeof studentImportRowSchema>;
