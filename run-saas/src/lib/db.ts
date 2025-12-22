@@ -366,6 +366,87 @@ export async function replaceHeadTeacher(
   });
 }
 
+/**
+ * Get all teachers with their course details
+ * Excludes soft-deleted teachers by default
+ */
+export async function getAllTeachers(
+  includeDeleted: boolean = false,
+): Promise<TeacherWithCourse[]> {
+  try {
+    return await prisma.teacher.findMany({
+      where: includeDeleted ? {} : { isDeleted: false },
+      include: {
+        course: true,
+        headCourse: {
+          include: {
+            classes: {
+              include: {
+                sessions: true,
+                students: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching teachers:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Soft delete a teacher (ADDITIONAL teachers only)
+ * HEAD teachers must be replaced before deletion
+ */
+export async function softDeleteTeacher(
+  teacherId: string,
+): Promise<TeacherWithCourse> {
+  return withTransaction(async (tx) => {
+    // 1. Fetch teacher with course details
+    const teacher = await tx.teacher.findUnique({
+      where: { id: teacherId },
+      include: {
+        course: true,
+        headCourse: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new Error("Teacher not found");
+    }
+
+    // 2. Check if already deleted
+    if (teacher.isDeleted) {
+      throw new Error("Teacher is already deleted");
+    }
+
+    // 3. Cannot delete HEAD teachers - must replace first
+    if (teacher.role === "HEAD" || teacher.headCourse) {
+      throw new Error(
+        "Cannot delete a head teacher. Please replace the head teacher first.",
+      );
+    }
+
+    // 4. Soft delete the teacher
+    const deletedTeacher = await tx.teacher.update({
+      where: { id: teacherId },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+      include: {
+        course: true,
+        headCourse: true,
+      },
+    });
+
+    return deletedTeacher as TeacherWithCourse;
+  });
+}
+
 export async function getAccessibleCourses(
   userId: string,
   userRole: string,

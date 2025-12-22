@@ -57,6 +57,10 @@ model Teacher {
   resetToken       String?
   resetTokenExpiry DateTime?
 
+  // Soft delete support
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   headCourse            Course?               @relation("HeadTeacher")
   attendanceRecords     Attendance[]
   approvedRequests      ReassignmentRequest[]
