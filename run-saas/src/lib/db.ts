@@ -925,6 +925,80 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
 }
 
+// ============================================================================
+// STUDENT MANAGEMENT
+// ============================================================================
+
+/**
+ * Get all students for a course with sessions
+ */
+export async function getStudentsByCourse(
+  courseId: string,
+): Promise<StudentWithSessions[]> {
+  try {
+    // Get all classes for the course
+    const classes = await prisma.class.findMany({
+      where: { courseId },
+      select: { id: true },
+    });
+
+    const classIds = classes.map((c) => c.id);
+
+    // Get students from those classes
+    return await prisma.student.findMany({
+      where: {
+        classId: { in: classIds },
+      },
+      include: {
+        class: {
+          include: {
+            course: true,
+          },
+        },
+        saturdaySession: true,
+        sundaySession: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Get a single student with full details
+ */
+export async function getStudentById(
+  studentId: string,
+): Promise<StudentWithSessions | null> {
+  try {
+    return await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        class: {
+          include: {
+            course: true,
+            sessions: true,
+          },
+        },
+        saturdaySession: true,
+        sundaySession: true,
+        attendances: {
+          orderBy: { createdAt: "desc" },
+          take: 10, // Last 10 attendance records
+          include: {
+            session: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching student:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
 export async function getAccessibleCourses(
   userId: string,
   userRole: string,

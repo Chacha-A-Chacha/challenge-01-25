@@ -99,7 +99,7 @@ export const API_ROUTES = {
   TEACHERS: "/api/teachers",
   CLASSES: "/api/teacher/classes",
   SESSIONS: "/api/teacher/sessions",
-  STUDENTS: "/api/students",
+  STUDENTS: "/api/teacher/students",
 
   // Operations
   STUDENTS_IMPORT: "/api/students/import",
