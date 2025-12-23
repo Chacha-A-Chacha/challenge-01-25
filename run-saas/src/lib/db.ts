@@ -548,6 +548,383 @@ export async function removeAdditionalTeacher(
   });
 }
 
+// ============================================================================
+// CLASS MANAGEMENT
+// ============================================================================
+
+/**
+ * Get all classes for a course with sessions and students
+ */
+export async function getClassesByCourse(
+  courseId: string,
+): Promise<ClassWithSessions[]> {
+  try {
+    return await prisma.class.findMany({
+      where: { courseId },
+      include: {
+        sessions: true,
+        students: true,
+        _count: {
+          select: {
+            sessions: true,
+            students: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching classes:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Get a single class with full details
+ */
+export async function getClassById(
+  classId: string,
+): Promise<ClassWithSessions | null> {
+  try {
+    return await prisma.class.findUnique({
+      where: { id: classId },
+      include: {
+        course: true,
+        sessions: {
+          orderBy: [{ day: "asc" }, { startTime: "asc" }],
+        },
+        students: true,
+        _count: {
+          select: {
+            sessions: true,
+            students: true,
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching class:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Create a new class (Head Teacher only)
+ */
+export async function createClass(
+  courseId: string,
+  name: string,
+  capacity: number,
+): Promise<ClassWithSessions> {
+  try {
+    // Verify course exists
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+    });
+
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // Create class
+    const newClass = await prisma.class.create({
+      data: {
+        name: name.trim(),
+        capacity,
+        courseId,
+      },
+      include: {
+        sessions: true,
+        students: true,
+        _count: {
+          select: {
+            sessions: true,
+            students: true,
+          },
+        },
+      },
+    });
+
+    return newClass as ClassWithSessions;
+  } catch (error) {
+    console.error("Error creating class:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Update a class
+ */
+export async function updateClass(
+  classId: string,
+  updates: { name?: string; capacity?: number },
+): Promise<ClassWithSessions> {
+  return withTransaction(async (tx) => {
+    // Fetch class with student count
+    const classToUpdate = await tx.class.findUnique({
+      where: { id: classId },
+      include: {
+        _count: {
+          select: { students: true },
+        },
+      },
+    });
+
+    if (!classToUpdate) {
+      throw new Error("Class not found");
+    }
+
+    // If reducing capacity, check if it would go below current student count
+    if (
+      updates.capacity !== undefined &&
+      updates.capacity < classToUpdate._count.students
+    ) {
+      throw new Error(
+        `Cannot reduce capacity below current student count (${classToUpdate._count.students})`,
+      );
+    }
+
+    // Update class
+    const updatedClass = await tx.class.update({
+      where: { id: classId },
+      data: updates,
+      include: {
+        sessions: true,
+        students: true,
+        _count: {
+          select: {
+            sessions: true,
+            students: true,
+          },
+        },
+      },
+    });
+
+    return updatedClass as ClassWithSessions;
+  });
+}
+
+/**
+ * Delete a class (only if no students)
+ */
+export async function deleteClass(classId: string): Promise<void> {
+  return withTransaction(async (tx) => {
+    // Check if class has students
+    const classToDelete = await tx.class.findUnique({
+      where: { id: classId },
+      include: {
+        _count: {
+          select: { students: true },
+        },
+      },
+    });
+
+    if (!classToDelete) {
+      throw new Error("Class not found");
+    }
+
+    if (classToDelete._count.students > 0) {
+      throw new Error(
+        "Cannot delete class with students. Please reassign students first.",
+      );
+    }
+
+    // Delete sessions first (cascade)
+    await tx.session.deleteMany({
+      where: { classId },
+    });
+
+    // Delete class
+    await tx.class.delete({
+      where: { id: classId },
+    });
+  });
+}
+
+// ============================================================================
+// SESSION MANAGEMENT
+// ============================================================================
+
+/**
+ * Create a new session for a class
+ */
+export async function createSession(
+  classId: string,
+  day: WeekDay,
+  startTime: Date,
+  endTime: Date,
+  capacity: number,
+): Promise<Session> {
+  return withTransaction(async (tx) => {
+    // Verify class exists
+    const classItem = await tx.class.findUnique({
+      where: { id: classId },
+      include: {
+        sessions: true,
+      },
+    });
+
+    if (!classItem) {
+      throw new Error("Class not found");
+    }
+
+    // Check for time conflicts on the same day
+    const hasConflict = classItem.sessions.some((session) => {
+      if (session.day !== day) return false;
+
+      const existingStart = new Date(session.startTime).getTime();
+      const existingEnd = new Date(session.endTime).getTime();
+      const newStart = startTime.getTime();
+      const newEnd = endTime.getTime();
+
+      return (
+        (newStart >= existingStart && newStart < existingEnd) ||
+        (newEnd > existingStart && newEnd <= existingEnd) ||
+        (newStart <= existingStart && newEnd >= existingEnd)
+      );
+    });
+
+    if (hasConflict) {
+      throw new Error("Session time conflicts with an existing session");
+    }
+
+    // Create session
+    const newSession = await tx.session.create({
+      data: {
+        classId,
+        day,
+        startTime,
+        endTime,
+        capacity,
+      },
+    });
+
+    return newSession;
+  });
+}
+
+/**
+ * Update a session
+ */
+export async function updateSession(
+  sessionId: string,
+  updates: {
+    day?: WeekDay;
+    startTime?: Date;
+    endTime?: Date;
+    capacity?: number;
+  },
+): Promise<Session> {
+  return withTransaction(async (tx) => {
+    // Fetch session with student counts
+    const session = await tx.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        _count: {
+          select: {
+            saturdayStudents: true,
+            sundayStudents: true,
+          },
+        },
+        class: {
+          include: {
+            sessions: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const studentCount =
+      session.day === "SATURDAY"
+        ? session._count.saturdayStudents
+        : session._count.sundayStudents;
+
+    // If reducing capacity, check student count
+    if (updates.capacity !== undefined && updates.capacity < studentCount) {
+      throw new Error(
+        `Cannot reduce capacity below current student count (${studentCount})`,
+      );
+    }
+
+    // If changing day or time, check for conflicts
+    const dayToCheck = updates.day || session.day;
+    const startToCheck = updates.startTime || session.startTime;
+    const endToCheck = updates.endTime || session.endTime;
+
+    const hasConflict = session.class.sessions.some((s) => {
+      if (s.id === sessionId) return false; // Skip self
+      if (s.day !== dayToCheck) return false;
+
+      const existingStart = new Date(s.startTime).getTime();
+      const existingEnd = new Date(s.endTime).getTime();
+      const newStart = new Date(startToCheck).getTime();
+      const newEnd = new Date(endToCheck).getTime();
+
+      return (
+        (newStart >= existingStart && newStart < existingEnd) ||
+        (newEnd > existingStart && newEnd <= existingEnd) ||
+        (newStart <= existingStart && newEnd >= existingEnd)
+      );
+    });
+
+    if (hasConflict) {
+      throw new Error("Session time conflicts with an existing session");
+    }
+
+    // Update session
+    const updatedSession = await tx.session.update({
+      where: { id: sessionId },
+      data: updates,
+    });
+
+    return updatedSession;
+  });
+}
+
+/**
+ * Delete a session (only if no students assigned)
+ */
+export async function deleteSession(sessionId: string): Promise<void> {
+  return withTransaction(async (tx) => {
+    // Check student assignments
+    const session = await tx.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        _count: {
+          select: {
+            saturdayStudents: true,
+            sundayStudents: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const studentCount =
+      session.day === "SATURDAY"
+        ? session._count.saturdayStudents
+        : session._count.sundayStudents;
+
+    if (studentCount > 0) {
+      throw new Error(
+        "Cannot delete session with assigned students. Please reassign students first.",
+      );
+    }
+
+    // Delete session
+    await tx.session.delete({
+      where: { id: sessionId },
+    });
+  });
+}
+
 export async function getAccessibleCourses(
   userId: string,
   userRole: string,
