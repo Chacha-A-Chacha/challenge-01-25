@@ -447,6 +447,107 @@ export async function softDeleteTeacher(
   });
 }
 
+/**
+ * Add an additional teacher to a course (Head Teacher only)
+ * Creates a new teacher account and assigns them to the course
+ */
+export async function addAdditionalTeacher(
+  courseId: string,
+  email: string,
+  hashedPassword: string,
+): Promise<TeacherWithCourse> {
+  return withTransaction(async (tx) => {
+    // 1. Verify course exists
+    const course = await tx.course.findUnique({
+      where: { id: courseId },
+      include: { headTeacher: true },
+    });
+
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // 2. Check if email already exists
+    const existingTeacher = await tx.teacher.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (existingTeacher) {
+      throw new Error("Email address is already in use");
+    }
+
+    // 3. Create additional teacher
+    const newTeacher = await tx.teacher.create({
+      data: {
+        email: email.toLowerCase().trim(),
+        password: hashedPassword,
+        role: "ADDITIONAL" as TeacherRole,
+        courseId: courseId,
+      },
+      include: {
+        course: true,
+        headCourse: true,
+      },
+    });
+
+    return newTeacher as TeacherWithCourse;
+  });
+}
+
+/**
+ * Remove an additional teacher from a course (Head Teacher only)
+ * Soft deletes the teacher
+ */
+export async function removeAdditionalTeacher(
+  teacherId: string,
+  courseId: string,
+): Promise<TeacherWithCourse> {
+  return withTransaction(async (tx) => {
+    // 1. Fetch teacher
+    const teacher = await tx.teacher.findUnique({
+      where: { id: teacherId },
+      include: {
+        course: true,
+        headCourse: true,
+      },
+    });
+
+    if (!teacher) {
+      throw new Error("Teacher not found");
+    }
+
+    // 2. Verify teacher belongs to the course
+    if (teacher.courseId !== courseId) {
+      throw new Error("Teacher does not belong to this course");
+    }
+
+    // 3. Cannot remove head teachers
+    if (teacher.role === "HEAD" || teacher.headCourse) {
+      throw new Error("Cannot remove head teacher");
+    }
+
+    // 4. Check if already deleted
+    if (teacher.isDeleted) {
+      throw new Error("Teacher is already removed");
+    }
+
+    // 5. Soft delete the teacher
+    const deletedTeacher = await tx.teacher.update({
+      where: { id: teacherId },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+      include: {
+        course: true,
+        headCourse: true,
+      },
+    });
+
+    return deletedTeacher as TeacherWithCourse;
+  });
+}
+
 export async function getAccessibleCourses(
   userId: string,
   userRole: string,
