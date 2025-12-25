@@ -1064,144 +1064,6 @@ export async function getAccessibleCourses(
 }
 
 // ============================================================================
-// CLASS AND SESSION MANAGEMENT
-// ============================================================================
-
-export async function createClass(
-  courseId: string,
-  name: string,
-  capacity: number,
-): Promise<ClassWithSessions> {
-  try {
-    const result = await prisma.class.create({
-      data: {
-        name: name.trim(),
-        capacity,
-        courseId,
-      },
-      include: {
-        sessions: true,
-        students: true,
-        course: true,
-        _count: {
-          select: {
-            sessions: true,
-            students: true,
-          },
-        },
-      },
-    });
-
-    return result as ClassWithSessions;
-  } catch (error) {
-    throw new Error(handlePrismaError(error));
-  }
-}
-
-export async function validateSessionTime(
-  classId: string,
-  day: WeekDay,
-  startTime: string,
-  endTime: string,
-  excludeSessionId?: string,
-): Promise<{ isValid: boolean; conflictMessage?: string }> {
-  try {
-    const startMinutes = parseTimeToMinutes(startTime);
-    const endMinutes = parseTimeToMinutes(endTime);
-
-    // Validate time window
-    if (startMinutes >= endMinutes) {
-      return {
-        isValid: false,
-        conflictMessage: "Start time must be before end time",
-      };
-    }
-
-    const duration = endMinutes - startMinutes;
-    if (duration < SESSION_RULES.MIN_DURATION_MINUTES) {
-      return {
-        isValid: false,
-        conflictMessage: `Session must be at least ${SESSION_RULES.MIN_DURATION_MINUTES} minutes long`,
-      };
-    }
-
-    // Check for conflicts with existing sessions
-    const conflictingSessions = await prisma.session.findMany({
-      where: {
-        classId,
-        day,
-        id: excludeSessionId ? { not: excludeSessionId } : undefined,
-        OR: [
-          {
-            AND: [
-              { startTime: { lte: startTime } },
-              { endTime: { gt: startTime } },
-            ],
-          },
-          {
-            AND: [
-              { startTime: { lt: endTime } },
-              { endTime: { gte: endTime } },
-            ],
-          },
-        ],
-      },
-    });
-
-    if (conflictingSessions.length > 0) {
-      const conflictTimes = conflictingSessions
-        .map(
-          (s: Session) =>
-            `${formatTime(s.startTime)} - ${formatTime(s.endTime)}`,
-        )
-        .join(", ");
-
-      return {
-        isValid: false,
-        conflictMessage: `Session conflicts with existing sessions: ${conflictTimes}`,
-      };
-    }
-
-    return { isValid: true };
-  } catch (error) {
-    console.error("Error validating session time:", error);
-    return { isValid: false, conflictMessage: "Error validating session time" };
-  }
-}
-
-export async function createSession(
-  classId: string,
-  day: WeekDay,
-  startTime: string,
-  endTime: string,
-  capacity: number,
-): Promise<Session> {
-  try {
-    const validation = await validateSessionTime(
-      classId,
-      day,
-      startTime,
-      endTime,
-    );
-    if (!validation.isValid) {
-      throw new Error(validation.conflictMessage);
-    }
-
-    return await prisma.session.create({
-      data: {
-        classId,
-        day,
-        startTime,
-        endTime,
-        capacity,
-      },
-    });
-  } catch (error) {
-    throw new Error(handlePrismaError(error));
-  }
-}
-
-// ============================================================================
 // STUDENT MANAGEMENT
 // ============================================================================
 
@@ -1570,6 +1432,385 @@ export async function markAttendanceFromQR(
     }
 
     return { attendance, status, message };
+  });
+}
+
+/**
+ * Mark attendance manually by teacher
+ */
+export async function markManualAttendance(
+  studentId: string,
+  sessionId: string,
+  status: AttendanceStatus,
+  teacherId: string,
+): Promise<Attendance> {
+  return withTransaction(async (tx) => {
+    // Verify student exists and belongs to the class
+    const student = await tx.student.findUnique({
+      where: { id: studentId },
+      include: {
+        sessions: true,
+        class: { include: { sessions: true } },
+      },
+    });
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    // Verify session exists
+    const session = await tx.session.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    // Verify student is in the correct class
+    const isCorrectClass =
+      student.class?.sessions?.some((s: Session) => s.id === sessionId) ??
+      false;
+
+    if (!isCorrectClass) {
+      throw new Error("Student is not enrolled in this class");
+    }
+
+    // Get today's date range
+    const today = new Date();
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(today);
+
+    // Check for existing attendance today
+    const existingAttendance = await tx.attendance.findFirst({
+      where: {
+        studentId,
+        sessionId,
+        date: {
+          gte: dayStart,
+          lt: dayEnd,
+        },
+      },
+    });
+
+    const attendanceData = {
+      studentId,
+      sessionId,
+      date: dayStart,
+      status,
+      scanTime: new Date(),
+      teacherId,
+    };
+
+    let attendance: Attendance;
+
+    if (existingAttendance) {
+      // Update existing attendance
+      attendance = await tx.attendance.update({
+        where: { id: existingAttendance.id },
+        data: attendanceData,
+        include: {
+          student: true,
+          session: true,
+          markedBy: true,
+        },
+      });
+    } else {
+      // Create new attendance record
+      attendance = await tx.attendance.create({
+        data: attendanceData,
+        include: {
+          student: true,
+          session: true,
+          markedBy: true,
+        },
+      });
+    }
+
+    return attendance;
+  });
+}
+
+/**
+ * Bulk mark attendance (used for marking multiple students)
+ */
+export async function bulkMarkAttendance(
+  sessionId: string,
+  attendanceRecords: Array<{ studentId: string; status: AttendanceStatus }>,
+  teacherId: string,
+): Promise<Attendance[]> {
+  return withTransaction(async (tx) => {
+    // Verify session exists
+    const session = await tx.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: {
+          include: {
+            students: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const today = new Date();
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(today);
+
+    const results: Attendance[] = [];
+
+    for (const record of attendanceRecords) {
+      // Verify student belongs to the class
+      const studentInClass = session.class.students.some(
+        (s: Student) => s.id === record.studentId,
+      );
+
+      if (!studentInClass) {
+        throw new Error(
+          `Student ${record.studentId} is not enrolled in this class`,
+        );
+      }
+
+      // Check for existing attendance
+      const existingAttendance = await tx.attendance.findFirst({
+        where: {
+          studentId: record.studentId,
+          sessionId,
+          date: {
+            gte: dayStart,
+            lt: dayEnd,
+          },
+        },
+      });
+
+      const attendanceData = {
+        studentId: record.studentId,
+        sessionId,
+        date: dayStart,
+        status: record.status,
+        scanTime: new Date(),
+        teacherId,
+      };
+
+      let attendance: Attendance;
+
+      if (existingAttendance) {
+        attendance = await tx.attendance.update({
+          where: { id: existingAttendance.id },
+          data: attendanceData,
+          include: {
+            student: true,
+            session: true,
+            markedBy: true,
+          },
+        });
+      } else {
+        attendance = await tx.attendance.create({
+          data: attendanceData,
+          include: {
+            student: true,
+            session: true,
+            markedBy: true,
+          },
+        });
+      }
+
+      results.push(attendance);
+    }
+
+    return results;
+  });
+}
+
+/**
+ * Get session attendance with full records
+ */
+export async function getSessionAttendanceWithRecords(
+  sessionId: string,
+  date?: Date,
+): Promise<{
+  session: Session;
+  attendanceRecords: Attendance[];
+  totalStudents: number;
+  stats: AttendanceStats;
+}> {
+  try {
+    const targetDate = date || new Date();
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(targetDate);
+
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        class: true,
+        students: {
+          include: {
+            attendances: {
+              where: {
+                sessionId,
+                date: {
+                  gte: dayStart,
+                  lt: dayEnd,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    // Get all attendance records for this session today
+    const attendanceRecords = await prisma.attendance.findMany({
+      where: {
+        sessionId,
+        date: {
+          gte: dayStart,
+          lt: dayEnd,
+        },
+      },
+      include: {
+        student: true,
+        session: true,
+        markedBy: true,
+      },
+    });
+
+    const totalStudents = session.students.length;
+    const presentCount = attendanceRecords.filter(
+      (a) => a.status === "PRESENT",
+    ).length;
+    const absentCount = attendanceRecords.filter(
+      (a) => a.status === "ABSENT",
+    ).length;
+    const wrongSessionCount = attendanceRecords.filter(
+      (a) => a.status === "WRONG_SESSION",
+    ).length;
+
+    const stats: AttendanceStats = {
+      totalStudents,
+      presentCount,
+      absentCount,
+      wrongSessionCount,
+      attendanceRate:
+        totalStudents > 0
+          ? Math.round((presentCount / totalStudents) * 100)
+          : 0,
+      capacity: session.capacity,
+      utilizationRate:
+        session.capacity > 0
+          ? Math.round((totalStudents / session.capacity) * 100)
+          : 0,
+    };
+
+    return {
+      session,
+      attendanceRecords,
+      totalStudents,
+      stats,
+    };
+  } catch (error) {
+    console.error("Error getting session attendance:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Auto-mark absent for students who didn't attend any session for the day
+ * Should be called manually by teacher after all sessions for the day have ended
+ */
+export async function autoMarkAbsentForClass(
+  classId: string,
+  teacherId: string,
+  date?: Date,
+): Promise<{
+  markedAbsent: number;
+  studentIds: string[];
+}> {
+  return withTransaction(async (tx) => {
+    const targetDate = date || new Date();
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(targetDate);
+
+    // Get the class with all sessions and students
+    const classData = await tx.class.findUnique({
+      where: { id: classId },
+      include: {
+        sessions: true,
+        students: {
+          include: {
+            attendances: {
+              where: {
+                date: {
+                  gte: dayStart,
+                  lt: dayEnd,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!classData) {
+      throw new Error("Class not found");
+    }
+
+    // Determine which day we're checking (Saturday or Sunday)
+    const dayOfWeek = targetDate.getDay();
+    const sessionDay: WeekDay = dayOfWeek === 6 ? "SATURDAY" : "SUNDAY";
+
+    // Get sessions for today
+    const todaySessions = classData.sessions.filter(
+      (s: Session) => s.day === sessionDay,
+    );
+
+    if (todaySessions.length === 0) {
+      throw new Error(`No sessions found for ${sessionDay}`);
+    }
+
+    // Find students who have no attendance record for today
+    const studentsToMarkAbsent: string[] = [];
+
+    for (const student of classData.students) {
+      // Check if student has any attendance record today
+      const hasAttendanceToday = student.attendances.length > 0;
+
+      if (!hasAttendanceToday) {
+        // Get the student's assigned session for this day
+        const studentSessions = await tx.session.findMany({
+          where: {
+            id: { in: student.sessions.map((s: any) => s.id) },
+            day: sessionDay,
+          },
+        });
+
+        // Mark absent in their assigned session (or first session if multiple)
+        if (studentSessions.length > 0) {
+          const assignedSession = studentSessions[0];
+
+          await tx.attendance.create({
+            data: {
+              studentId: student.id,
+              sessionId: assignedSession.id,
+              date: dayStart,
+              status: "ABSENT" as AttendanceStatus,
+              scanTime: new Date(),
+              teacherId,
+            },
+          });
+
+          studentsToMarkAbsent.push(student.id);
+        }
+      }
+    }
+
+    return {
+      markedAbsent: studentsToMarkAbsent.length,
+      studentIds: studentsToMarkAbsent,
+    };
   });
 }
 
