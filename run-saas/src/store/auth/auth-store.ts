@@ -1,6 +1,7 @@
 // store/auth-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { shallow } from "zustand/shallow";
 import type {
   AuthUser,
   UserRole,
@@ -417,16 +418,6 @@ export function useAuth() {
       getUserRole: state.getUserRole,
       syncSession: state.syncSession,
     }),
-    (a, b) => {
-      // Shallow equality check
-      return (
-        a.user === b.user &&
-        a.isAuthenticated === b.isAuthenticated &&
-        a.sessionStatus === b.sessionStatus &&
-        a.isAdmin === b.isAdmin &&
-        a.isTeacher === b.isTeacher &&
-        a.isStudent === b.isStudent
-      );
-    },
+    shallow,
   );
 }
