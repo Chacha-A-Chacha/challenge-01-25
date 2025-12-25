@@ -1,7 +1,6 @@
 // store/auth-store.ts
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { shallow } from "zustand/shallow";
 import type {
   AuthUser,
   UserRole,
@@ -407,17 +406,23 @@ export const usePasswordStore = create<PasswordStore>((set, get) => ({
 
 // Convenience hook
 export function useAuth() {
-  return useAuthStore(
-    (state) => ({
-      user: state.user,
-      isAuthenticated: state.isAuthenticated,
-      sessionStatus: state.sessionStatus,
-      isAdmin: state.isAdmin,
-      isTeacher: state.isTeacher,
-      isStudent: state.isStudent,
-      getUserRole: state.getUserRole,
-      syncSession: state.syncSession,
-    }),
-    shallow,
-  );
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const sessionStatus = useAuthStore((state) => state.sessionStatus);
+  const isAdmin = useAuthStore((state) => state.isAdmin);
+  const isTeacher = useAuthStore((state) => state.isTeacher);
+  const isStudent = useAuthStore((state) => state.isStudent);
+  const getUserRole = useAuthStore((state) => state.getUserRole);
+  const syncSession = useAuthStore((state) => state.syncSession);
+
+  return {
+    user,
+    isAuthenticated,
+    sessionStatus,
+    isAdmin,
+    isTeacher,
+    isStudent,
+    getUserRole,
+    syncSession,
+  };
 }
