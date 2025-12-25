@@ -227,6 +227,7 @@ model ReassignmentRequest {
   fromSessionId String
   toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id])
   toSessionId   String
+  reason        String?
   status        RequestStatus @default(PENDING)
   requestedAt   DateTime      @default(now())
   approvedBy    Teacher?      @relation(fields: [teacherId], references: [id])

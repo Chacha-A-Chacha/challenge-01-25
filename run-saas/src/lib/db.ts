@@ -1708,5 +1708,507 @@ export async function healthCheck(): Promise<{
   }
 }
 
+// ============================================================================
+// REASSIGNMENT REQUEST MANAGEMENT (TEACHER)
+// ============================================================================
+
+export interface ReassignmentRequestDetail {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentNumber: string;
+  fromSessionId: string;
+  fromSessionDay: WeekDay;
+  fromSessionTime: string;
+  toSessionId: string;
+  toSessionDay: WeekDay;
+  toSessionTime: string;
+  className: string;
+  reason: string | null;
+  requestedAt: Date;
+  status: "PENDING" | "APPROVED" | "DENIED";
+}
+
+export async function getReassignmentRequestsByCourse(
+  courseId: string,
+): Promise<ReassignmentRequestDetail[]> {
+  try {
+    const requests = await prisma.reassignmentRequest.findMany({
+      where: {
+        student: {
+          class: {
+            courseId,
+          },
+        },
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            studentNumber: true,
+            firstName: true,
+            surname: true,
+            class: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        fromSession: {
+          select: {
+            id: true,
+            day: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
+        toSession: {
+          select: {
+            id: true,
+            day: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+    });
+
+    return requests.map((req) => ({
+      id: req.id,
+      studentId: req.student.id,
+      studentName: `${req.student.firstName} ${req.student.surname}`,
+      studentNumber: req.student.studentNumber,
+      fromSessionId: req.fromSession.id,
+      fromSessionDay: req.fromSession.day,
+      fromSessionTime: `${formatTime(req.fromSession.startTime)} - ${formatTime(req.fromSession.endTime)}`,
+      toSessionId: req.toSession.id,
+      toSessionDay: req.toSession.day,
+      toSessionTime: `${formatTime(req.toSession.startTime)} - ${formatTime(req.toSession.endTime)}`,
+      className: req.student.class.name,
+      reason: req.reason,
+      requestedAt: req.requestedAt,
+      status: req.status,
+    }));
+  } catch (error) {
+    console.error("Error getting reassignment requests:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+export async function approveReassignmentRequest(
+  requestId: string,
+  teacherId: string,
+): Promise<void> {
+  try {
+    await withTransaction(async (tx) => {
+      // Get the request with all related data
+      const request = await tx.reassignmentRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          student: {
+            include: {
+              class: true,
+            },
+          },
+          fromSession: true,
+          toSession: true,
+        },
+      });
+
+      if (!request) {
+        throw new Error("Reassignment request not found");
+      }
+
+      if (request.status !== "PENDING") {
+        throw new Error("Request has already been processed");
+      }
+
+      // Validate same class
+      if (request.fromSession.classId !== request.toSession.classId) {
+        throw new Error("Can only reassign within the same class");
+      }
+
+      if (request.student.classId !== request.fromSession.classId) {
+        throw new Error("Student is not in the same class as the sessions");
+      }
+
+      // Validate same day
+      if (request.fromSession.day !== request.toSession.day) {
+        throw new Error("Can only reassign within the same day");
+      }
+
+      // Check capacity in target session
+      const toSessionDay = request.toSession.day;
+      const studentCountInToSession = await tx.student.count({
+        where:
+          toSessionDay === "SATURDAY"
+            ? { saturdaySessionId: request.toSession.id }
+            : { sundaySessionId: request.toSession.id },
+      });
+
+      if (studentCountInToSession >= request.toSession.capacity) {
+        throw new Error("Target session is at full capacity");
+      }
+
+      // Update the request status
+      await tx.reassignmentRequest.update({
+        where: { id: requestId },
+        data: {
+          status: "APPROVED",
+          teacherId,
+        },
+      });
+
+      // Update the student's session assignment
+      const updateData =
+        toSessionDay === "SATURDAY"
+          ? { saturdaySessionId: request.toSession.id }
+          : { sundaySessionId: request.toSession.id };
+
+      await tx.student.update({
+        where: { id: request.studentId },
+        data: updateData,
+      });
+    });
+  } catch (error) {
+    console.error("Error approving reassignment request:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+export async function denyReassignmentRequest(
+  requestId: string,
+  teacherId: string,
+): Promise<void> {
+  try {
+    const request = await prisma.reassignmentRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) {
+      throw new Error("Reassignment request not found");
+    }
+
+    if (request.status !== "PENDING") {
+      throw new Error("Request has already been processed");
+    }
+
+    await prisma.reassignmentRequest.update({
+      where: { id: requestId },
+      data: {
+        status: "DENIED",
+        teacherId,
+      },
+    });
+  } catch (error) {
+    console.error("Error denying reassignment request:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+// ============================================================================
+// STUDENT REASSIGNMENT MANAGEMENT
+// ============================================================================
+
+export interface StudentReassignmentRequest {
+  id: string;
+  fromSessionId: string;
+  fromSessionDay: WeekDay;
+  fromSessionTime: string;
+  toSessionId: string;
+  toSessionDay: WeekDay;
+  toSessionTime: string;
+  reason: string | null;
+  status: "PENDING" | "APPROVED" | "DENIED";
+  requestedAt: Date;
+}
+
+export interface AvailableSession {
+  id: string;
+  day: WeekDay;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  currentCount: number;
+  availableSpots: number;
+}
+
+export async function getStudentReassignmentRequests(
+  studentId: string,
+): Promise<StudentReassignmentRequest[]> {
+  try {
+    const requests = await prisma.reassignmentRequest.findMany({
+      where: {
+        studentId,
+      },
+      include: {
+        fromSession: {
+          select: {
+            id: true,
+            day: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
+        toSession: {
+          select: {
+            id: true,
+            day: true,
+            startTime: true,
+            endTime: true,
+          },
+        },
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+    });
+
+    return requests.map((req) => ({
+      id: req.id,
+      fromSessionId: req.fromSession.id,
+      fromSessionDay: req.fromSession.day,
+      fromSessionTime: `${formatTime(req.fromSession.startTime)} - ${formatTime(req.fromSession.endTime)}`,
+      toSessionId: req.toSession.id,
+      toSessionDay: req.toSession.day,
+      toSessionTime: `${formatTime(req.toSession.startTime)} - ${formatTime(req.toSession.endTime)}`,
+      reason: req.reason,
+      status: req.status,
+      requestedAt: req.requestedAt,
+    }));
+  } catch (error) {
+    console.error("Error getting student reassignment requests:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+export async function getAvailableReassignmentSessions(
+  studentId: string,
+): Promise<{ saturday: AvailableSession[]; sunday: AvailableSession[] }> {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        classId: true,
+        saturdaySessionId: true,
+        sundaySessionId: true,
+      },
+    });
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    const sessions = await prisma.session.findMany({
+      where: {
+        classId: student.classId,
+      },
+      orderBy: [{ day: "asc" }, { startTime: "asc" }],
+    });
+
+    const saturdaySessions: AvailableSession[] = [];
+    const sundaySessions: AvailableSession[] = [];
+
+    for (const session of sessions) {
+      const currentCount = await prisma.student.count({
+        where:
+          session.day === "SATURDAY"
+            ? { saturdaySessionId: session.id }
+            : { sundaySessionId: session.id },
+      });
+
+      const availableSpots = session.capacity - currentCount;
+
+      const sessionData: AvailableSession = {
+        id: session.id,
+        day: session.day,
+        startTime: formatTime(session.startTime),
+        endTime: formatTime(session.endTime),
+        capacity: session.capacity,
+        currentCount,
+        availableSpots,
+      };
+
+      if (session.day === "SATURDAY") {
+        saturdaySessions.push(sessionData);
+      } else {
+        sundaySessions.push(sessionData);
+      }
+    }
+
+    return {
+      saturday: saturdaySessions,
+      sunday: sundaySessions,
+    };
+  } catch (error) {
+    console.error("Error getting available reassignment sessions:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+export async function createReassignmentRequest(
+  studentId: string,
+  fromSessionId: string,
+  toSessionId: string,
+  reason?: string,
+): Promise<StudentReassignmentRequest> {
+  try {
+    const result = await withTransaction(async (tx) => {
+      // Validate student exists and get their info
+      const student = await tx.student.findUnique({
+        where: { id: studentId },
+        select: {
+          id: true,
+          classId: true,
+          saturdaySessionId: true,
+          sundaySessionId: true,
+        },
+      });
+
+      if (!student) {
+        throw new Error("Student not found");
+      }
+
+      // Get sessions
+      const [fromSession, toSession] = await Promise.all([
+        tx.session.findUnique({ where: { id: fromSessionId } }),
+        tx.session.findUnique({ where: { id: toSessionId } }),
+      ]);
+
+      if (!fromSession || !toSession) {
+        throw new Error("Session not found");
+      }
+
+      // Validate same class
+      if (
+        fromSession.classId !== student.classId ||
+        toSession.classId !== student.classId
+      ) {
+        throw new Error("Sessions must be from the same class");
+      }
+
+      // Validate same day
+      if (fromSession.day !== toSession.day) {
+        throw new Error("Can only reassign within the same day");
+      }
+
+      // Validate student is currently in the from session
+      const currentSessionId =
+        fromSession.day === "SATURDAY"
+          ? student.saturdaySessionId
+          : student.sundaySessionId;
+
+      if (currentSessionId !== fromSessionId) {
+        throw new Error("You are not enrolled in the source session");
+      }
+
+      // Check for existing pending request
+      const existingRequest = await tx.reassignmentRequest.findFirst({
+        where: {
+          studentId,
+          status: "PENDING",
+        },
+      });
+
+      if (existingRequest) {
+        throw new Error("You already have a pending reassignment request");
+      }
+
+      // Check capacity in target session
+      const targetSessionCount = await tx.student.count({
+        where:
+          toSession.day === "SATURDAY"
+            ? { saturdaySessionId: toSessionId }
+            : { sundaySessionId: toSessionId },
+      });
+
+      if (targetSessionCount >= toSession.capacity) {
+        throw new Error("Target session is at full capacity");
+      }
+
+      // Create the request
+      const request = await tx.reassignmentRequest.create({
+        data: {
+          studentId,
+          fromSessionId,
+          toSessionId,
+          reason: reason || null,
+          status: "PENDING",
+        },
+        include: {
+          fromSession: {
+            select: {
+              id: true,
+              day: true,
+              startTime: true,
+              endTime: true,
+            },
+          },
+          toSession: {
+            select: {
+              id: true,
+              day: true,
+              startTime: true,
+              endTime: true,
+            },
+          },
+        },
+      });
+
+      return {
+        id: request.id,
+        fromSessionId: request.fromSession.id,
+        fromSessionDay: request.fromSession.day,
+        fromSessionTime: `${formatTime(request.fromSession.startTime)} - ${formatTime(request.fromSession.endTime)}`,
+        toSessionId: request.toSession.id,
+        toSessionDay: request.toSession.day,
+        toSessionTime: `${formatTime(request.toSession.startTime)} - ${formatTime(request.toSession.endTime)}`,
+        reason: request.reason,
+        status: request.status,
+        requestedAt: request.requestedAt,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error creating reassignment request:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+export async function deleteReassignmentRequest(
+  requestId: string,
+  studentId: string,
+): Promise<void> {
+  try {
+    const request = await prisma.reassignmentRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) {
+      throw new Error("Reassignment request not found");
+    }
+
+    if (request.studentId !== studentId) {
+      throw new Error("Unauthorized to delete this request");
+    }
+
+    if (request.status !== "PENDING") {
+      throw new Error("Can only cancel pending requests");
+    }
+
+    await prisma.reassignmentRequest.delete({
+      where: { id: requestId },
+    });
+  } catch (error) {
+    console.error("Error deleting reassignment request:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
 export default prisma;
 export type { Prisma } from "@prisma/client";

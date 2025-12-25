@@ -112,6 +112,7 @@ export const API_ROUTES = {
     ATTENDANCE: "/api/student/attendance",
     QR_GENERATE: "/api/student/qr-generate",
     REASSIGNMENT_REQUESTS: "/api/student/reassignment-requests",
+    REASSIGNMENT_OPTIONS: "/api/student/reassignment-options",
   },
 
   // Admin-specific routes
@@ -138,6 +139,10 @@ export const API_ROUTES = {
     APPROVE: (id: string) => `/api/teacher/registrations/${id}/approve`,
     REJECT: (id: string) => `/api/teacher/registrations/${id}/reject`,
     BULK_APPROVE: "/api/teacher/registrations/bulk-approve",
+    REASSIGNMENTS: "/api/teacher/reassignments",
+    APPROVE_REASSIGNMENT: (id: string) =>
+      `/api/teacher/reassignments/${id}/approve`,
+    DENY_REASSIGNMENT: (id: string) => `/api/teacher/reassignments/${id}/deny`,
   },
 } as const;
 

@@ -257,6 +257,10 @@ export const updateReassignmentSchema = z.object({
   status: z.enum(["APPROVED", "DENIED"] as const),
 });
 
+export const approveReassignmentSchema = z.object({
+  requestId: uuidSchema,
+});
+
 export const paginationSchema = z.object({
   page: z.number().min(1).default(1),
   limit: z.number().min(1).max(100).default(20),
@@ -408,6 +412,7 @@ export type MarkAttendance = z.infer<typeof markAttendanceSchema>;
 export type BulkAttendance = z.infer<typeof bulkAttendanceSchema>;
 export type ReassignmentRequest = z.infer<typeof reassignmentRequestSchema>;
 export type UpdateReassignment = z.infer<typeof updateReassignmentSchema>;
+export type ApproveReassignment = z.infer<typeof approveReassignmentSchema>;
 export type Pagination = z.infer<typeof paginationSchema>;
 export type DateRange = z.infer<typeof dateRangeSchema>;
 export type AttendanceFilter = z.infer<typeof attendanceFilterSchema>;

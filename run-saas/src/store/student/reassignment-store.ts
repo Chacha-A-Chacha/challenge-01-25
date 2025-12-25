@@ -1,29 +1,29 @@
 // store/student/reassignment-store.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type { 
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type {
   BaseStoreState,
   ReassignmentRequest,
   Session,
   WeekDay,
-  ApiResponse
-} from '@/types'
-import { API_ROUTES } from '@/lib/constants'
-import { fetchWithTimeout } from '@/lib/utils'
+  ApiResponse,
+} from "@/types";
+import { API_ROUTES } from "@/lib/constants";
+import { fetchWithTimeout } from "@/lib/utils";
 
 // ============================================================================
 // TYPES - Only what's needed for reassignment state
 // ============================================================================
 
 interface ReassignmentOption {
-  session: Session
-  availableSpots: number
-  canRequest: boolean
+  session: Session;
+  availableSpots: number;
+  canRequest: boolean;
 }
 
 interface ReassignmentConfig {
-  maxRequests: number
-  remainingRequests: number
+  maxRequests: number;
+  remainingRequests: number;
 }
 
 // ============================================================================
@@ -32,33 +32,36 @@ interface ReassignmentConfig {
 
 interface ReassignmentState extends BaseStoreState {
   // Core data
-  requests: ReassignmentRequest[]
+  requests: ReassignmentRequest[];
   availableOptions: {
-    saturday: ReassignmentOption[]
-    sunday: ReassignmentOption[]
-  }
+    saturday: ReassignmentOption[];
+    sunday: ReassignmentOption[];
+  };
 
   // Simple config
-  config: ReassignmentConfig
+  config: ReassignmentConfig;
 
   // Loading states
-  isSubmitting: boolean
-  isLoadingOptions: boolean
+  isSubmitting: boolean;
+  isLoadingOptions: boolean;
 
   // Actions
-  loadRequests: () => Promise<void>
-  loadAvailableOptions: () => Promise<void>
-  submitRequest: (fromSessionId: string, toSessionId: string) => Promise<boolean>
-  cancelRequest: (requestId: string) => Promise<boolean>
+  loadRequests: () => Promise<void>;
+  loadAvailableOptions: () => Promise<void>;
+  submitRequest: (
+    fromSessionId: string,
+    toSessionId: string,
+  ) => Promise<boolean>;
+  cancelRequest: (requestId: string) => Promise<boolean>;
 
   // Computed
-  getPendingRequests: () => ReassignmentRequest[]
-  canSubmitRequest: () => boolean
-  getOptionsForDay: (day: WeekDay) => ReassignmentOption[]
+  getPendingRequests: () => ReassignmentRequest[];
+  canSubmitRequest: () => boolean;
+  getOptionsForDay: (day: WeekDay) => ReassignmentOption[];
 
   // Utils
-  clearErrors: () => void
-  reset: () => void
+  clearErrors: () => void;
+  reset: () => void;
 }
 
 // ============================================================================
@@ -67,24 +70,27 @@ interface ReassignmentState extends BaseStoreState {
 
 const DEFAULT_CONFIG: ReassignmentConfig = {
   maxRequests: 3,
-  remainingRequests: 3
-}
+  remainingRequests: 3,
+};
 
 const EMPTY_OPTIONS = {
   saturday: [],
-  sunday: []
-}
+  sunday: [],
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
-function calculateRemainingRequests(requests: ReassignmentRequest[], maxRequests: number): number {
-  return Math.max(0, maxRequests - requests.length)
+function calculateRemainingRequests(
+  requests: ReassignmentRequest[],
+  maxRequests: number,
+): number {
+  return Math.max(0, maxRequests - requests.length);
 }
 
 function hasActivePendingRequest(requests: ReassignmentRequest[]): boolean {
-  return requests.some(req => req.status === 'PENDING')
+  return requests.some((req) => req.status === "PENDING");
 }
 
 // ============================================================================
@@ -115,157 +121,189 @@ export const useReassignmentStore = create<ReassignmentState>()(
       // ============================================================================
 
       loadRequests: async () => {
-        set({ isLoading: true, error: null })
+        set({ isLoading: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/reassignment-requests`)
+          const response = await fetchWithTimeout(
+            API_ROUTES.STUDENT.REASSIGNMENT_REQUESTS,
+          );
 
           if (!response.ok) {
-            throw new Error(`Failed to load requests: ${response.status}`)
+            throw new Error(`Failed to load requests: ${response.status}`);
           }
 
-          const result: ApiResponse<ReassignmentRequest[]> = await response.json()
+          const result: ApiResponse<ReassignmentRequest[]> =
+            await response.json();
 
           if (result.success && result.data) {
-            const requests = result.data
-            const remainingRequests = calculateRemainingRequests(requests, get().config.maxRequests)
+            const requests = result.data;
+            const remainingRequests = calculateRemainingRequests(
+              requests,
+              get().config.maxRequests,
+            );
 
             set({
               requests,
               config: { ...get().config, remainingRequests },
               isLoading: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
           } else {
-            throw new Error(result.error || 'Failed to load reassignment requests')
+            throw new Error(
+              result.error || "Failed to load reassignment requests",
+            );
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load requests'
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to load requests";
           set({
             error: errorMessage,
-            isLoading: false
-          })
+            isLoading: false,
+          });
         }
       },
 
       loadAvailableOptions: async () => {
-        set({ isLoadingOptions: true, error: null })
+        set({ isLoadingOptions: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/reassignment-options`)
+          const response = await fetchWithTimeout(
+            API_ROUTES.STUDENT.REASSIGNMENT_OPTIONS,
+          );
 
           if (!response.ok) {
-            throw new Error(`Failed to load options: ${response.status}`)
+            throw new Error(`Failed to load options: ${response.status}`);
           }
 
-          const result: ApiResponse<{ saturday: ReassignmentOption[]; sunday: ReassignmentOption[] }> = await response.json()
+          const result: ApiResponse<{
+            saturday: ReassignmentOption[];
+            sunday: ReassignmentOption[];
+          }> = await response.json();
 
           if (result.success && result.data) {
             set({
               availableOptions: result.data,
               isLoadingOptions: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
           } else {
-            throw new Error(result.error || 'Failed to load available options')
+            throw new Error(result.error || "Failed to load available options");
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load options'
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to load options";
           set({
             error: errorMessage,
-            isLoadingOptions: false
-          })
+            isLoadingOptions: false,
+          });
         }
       },
 
       submitRequest: async (fromSessionId, toSessionId) => {
         if (!get().canSubmitRequest()) {
-          set({ error: 'Cannot submit request at this time' })
-          return false
+          set({ error: "Cannot submit request at this time" });
+          return false;
         }
 
-        set({ isSubmitting: true, error: null })
+        set({ isSubmitting: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/reassignment-requests`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              fromSessionId,
-              toSessionId
-            })
-          })
+          const response = await fetchWithTimeout(
+            API_ROUTES.STUDENT.REASSIGNMENT_REQUESTS,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                fromSessionId,
+                toSessionId,
+              }),
+            },
+          );
 
           if (!response.ok) {
-            throw new Error(`Request failed: ${response.status}`)
+            throw new Error(`Request failed: ${response.status}`);
           }
 
-          const result: ApiResponse<ReassignmentRequest> = await response.json()
+          const result: ApiResponse<ReassignmentRequest> =
+            await response.json();
 
           if (result.success && result.data) {
             // Add new request to state
-            const newRequest = result.data
-            const updatedRequests = [...get().requests, newRequest]
-            const remainingRequests = calculateRemainingRequests(updatedRequests, get().config.maxRequests)
+            const newRequest = result.data;
+            const updatedRequests = [...get().requests, newRequest];
+            const remainingRequests = calculateRemainingRequests(
+              updatedRequests,
+              get().config.maxRequests,
+            );
 
             set({
               requests: updatedRequests,
               config: { ...get().config, remainingRequests },
               isSubmitting: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
 
-            return true
+            return true;
           } else {
-            throw new Error(result.error || 'Failed to submit request')
+            throw new Error(result.error || "Failed to submit request");
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to submit request'
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to submit request";
           set({
             error: errorMessage,
-            isSubmitting: false
-          })
-          return false
+            isSubmitting: false,
+          });
+          return false;
         }
       },
 
       cancelRequest: async (requestId) => {
-        set({ isLoading: true, error: null })
+        set({ isLoading: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/reassignment-requests/${requestId}`, {
-            method: 'DELETE'
-          })
+          const response = await fetchWithTimeout(
+            `${API_ROUTES.STUDENT.REASSIGNMENT_REQUESTS}/${requestId}`,
+            {
+              method: "DELETE",
+            },
+          );
 
           if (!response.ok) {
-            throw new Error(`Cancel failed: ${response.status}`)
+            throw new Error(`Cancel failed: ${response.status}`);
           }
 
-          const result: ApiResponse<void> = await response.json()
+          const result: ApiResponse<void> = await response.json();
 
           if (result.success) {
             // Remove request from state
-            const updatedRequests = get().requests.filter(req => req.id !== requestId)
-            const remainingRequests = calculateRemainingRequests(updatedRequests, get().config.maxRequests)
+            const updatedRequests = get().requests.filter(
+              (req) => req.id !== requestId,
+            );
+            const remainingRequests = calculateRemainingRequests(
+              updatedRequests,
+              get().config.maxRequests,
+            );
 
             set({
               requests: updatedRequests,
               config: { ...get().config, remainingRequests },
               isLoading: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
 
-            return true
+            return true;
           } else {
-            throw new Error(result.error || 'Failed to cancel request')
+            throw new Error(result.error || "Failed to cancel request");
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to cancel request'
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to cancel request";
           set({
             error: errorMessage,
-            isLoading: false
-          })
-          return false
+            isLoading: false,
+          });
+          return false;
         }
       },
 
@@ -274,17 +312,21 @@ export const useReassignmentStore = create<ReassignmentState>()(
       // ============================================================================
 
       getPendingRequests: () => {
-        return get().requests.filter(req => req.status === 'PENDING')
+        return get().requests.filter((req) => req.status === "PENDING");
       },
 
       canSubmitRequest: () => {
-        const { config, requests } = get()
-        return config.remainingRequests > 0 && !hasActivePendingRequest(requests)
+        const { config, requests } = get();
+        return (
+          config.remainingRequests > 0 && !hasActivePendingRequest(requests)
+        );
       },
 
       getOptionsForDay: (day) => {
-        const { availableOptions } = get()
-        return day === 'SATURDAY' ? availableOptions.saturday : availableOptions.sunday
+        const { availableOptions } = get();
+        return day === "SATURDAY"
+          ? availableOptions.saturday
+          : availableOptions.sunday;
       },
 
       // ============================================================================
@@ -292,7 +334,7 @@ export const useReassignmentStore = create<ReassignmentState>()(
       // ============================================================================
 
       clearErrors: () => {
-        set({ error: null })
+        set({ error: null });
       },
 
       reset: () => {
@@ -304,20 +346,20 @@ export const useReassignmentStore = create<ReassignmentState>()(
           isLoadingOptions: false,
           isLoading: false,
           error: null,
-          lastUpdated: null
-        })
-      }
+          lastUpdated: null,
+        });
+      },
     }),
     {
-      name: 'reassignment-store',
+      name: "reassignment-store",
       partialize: (state) => ({
         // Only persist config (user's remaining request count)
-        config: state.config
+        config: state.config,
         // Don't persist requests, options, or loading states
-      })
-    }
-  )
-)
+      }),
+    },
+  ),
+);
 
 // ============================================================================
 // CONVENIENCE HOOKS
@@ -327,37 +369,37 @@ export const useReassignmentStore = create<ReassignmentState>()(
  * Hook for reassignment requests data
  */
 export function useReassignmentRequests() {
-  return useReassignmentStore(state => ({
+  return useReassignmentStore((state) => ({
     requests: state.requests,
     pendingRequests: state.getPendingRequests(),
     isLoading: state.isLoading,
-    loadRequests: state.loadRequests
-  }))
+    loadRequests: state.loadRequests,
+  }));
 }
 
 /**
  * Hook for reassignment actions
  */
 export function useReassignmentActions() {
-  return useReassignmentStore(state => ({
+  return useReassignmentStore((state) => ({
     canSubmit: state.canSubmitRequest(),
     remainingRequests: state.config.remainingRequests,
     isSubmitting: state.isSubmitting,
     submitRequest: state.submitRequest,
     cancelRequest: state.cancelRequest,
     error: state.error,
-    clearErrors: state.clearErrors
-  }))
+    clearErrors: state.clearErrors,
+  }));
 }
 
 /**
  * Hook for available options
  */
 export function useReassignmentOptions() {
-  return useReassignmentStore(state => ({
+  return useReassignmentStore((state) => ({
     options: state.availableOptions,
     isLoadingOptions: state.isLoadingOptions,
     getOptionsForDay: state.getOptionsForDay,
-    loadOptions: state.loadAvailableOptions
-  }))
+    loadOptions: state.loadAvailableOptions,
+  }));
 }
