@@ -1300,7 +1300,7 @@ export async function bulkImportStudents(
               email: studentData.email.toLowerCase().trim(),
               phoneNumber: studentData.phone_number?.trim() || null,
               class: { connect: { id: classId } },
-              passwordHash: defaultPasswordHash,
+              password: defaultPasswordHash,
             },
           });
 

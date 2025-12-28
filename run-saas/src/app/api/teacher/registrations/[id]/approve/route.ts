@@ -76,7 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           lastName: registration.lastName,
           email: registration.email,
           phoneNumber: registration.phoneNumber,
-          passwordHash: registration.passwordHash,
+          password: registration.password,
           classId: registration.saturdaySession.class.id,
           saturdaySessionId: registration.saturdaySessionId,
           sundaySessionId: registration.sundaySessionId,

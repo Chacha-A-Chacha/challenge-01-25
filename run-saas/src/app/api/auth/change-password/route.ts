@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
       id: string;
       email: string;
       password?: string;
-      passwordHash?: string;
       firstName?: string;
     } | null = null;
 
@@ -65,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (userType === "STUDENT") {
       user = await prisma.student.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, passwordHash: true, firstName: true },
+        select: { id: true, email: true, password: true, firstName: true },
       });
     } else if (userType === "ADMIN") {
       user = await prisma.admin.findUnique({
@@ -87,8 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify current password
-    const currentHash =
-      "passwordHash" in user ? user.passwordHash : user.password;
+    const currentHash = user.password;
     if (!currentHash) {
       return NextResponse.json(
         { success: false, error: "Invalid account state" },
@@ -111,7 +109,7 @@ export async function POST(request: NextRequest) {
     if (userType === "STUDENT") {
       await prisma.student.update({
         where: { id: userId },
-        data: { passwordHash: hashedPassword },
+        data: { password: hashedPassword },
       });
     } else if (userType === "ADMIN") {
       await prisma.admin.update({

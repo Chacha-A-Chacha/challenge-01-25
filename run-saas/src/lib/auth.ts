@@ -1,170 +1,174 @@
 // src/lib/auth.ts
-import NextAuth, { type NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import bcrypt from "bcryptjs"
-import {prisma} from "@/lib/db"
-import type {UserRole, TeacherRole} from "@/types/enums"
+import NextAuth, { type NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db";
+import type { UserRole, TeacherRole } from "@/types/enums";
 
 interface AuthUserReturn {
-    id: string
-    role: UserRole
-    email?: string
-    studentNumber?: string
-    uuid?: string
-    firstName?: string
-    lastName?: string
-    phoneNumber?: string
-    classId?: string
-    courseId?: string
-    teacherRole?: TeacherRole
+  id: string;
+  role: UserRole;
+  email?: string;
+  studentNumber?: string;
+  uuid?: string;
+  firstName?: string;
+  lastName?: string;
+  phoneNumber?: string;
+  classId?: string;
+  courseId?: string;
+  teacherRole?: TeacherRole;
 }
 
 export const authOptions: NextAuthOptions = {
-    providers: [
-        // Admin + Teacher
-        CredentialsProvider({
-            id: "admin-teacher",
-            name: "Admin/Teacher Login",
-            credentials: {
-                email: {label: "Email", type: "email"},
-                password: {label: "Password", type: "password"}
-            },
-            async authorize(credentials): Promise<AuthUserReturn | null> {
-                const email = credentials?.email?.toLowerCase().trim()
-                const password = credentials?.password
-                if (!email || !password) return null
+  providers: [
+    // Admin + Teacher
+    CredentialsProvider({
+      id: "admin-teacher",
+      name: "Admin/Teacher Login",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials): Promise<AuthUserReturn | null> {
+        const email = credentials?.email?.toLowerCase().trim();
+        const password = credentials?.password;
+        if (!email || !password) return null;
 
-                // Admin
-                const admin = await prisma.admin.findUnique({where: {email}})
-                if (admin && await bcrypt.compare(password, admin.password)) {
-                    return {id: admin.id, email: admin.email, role: "admin" as UserRole}
-                }
+        // Admin
+        const admin = await prisma.admin.findUnique({ where: { email } });
+        if (admin && (await bcrypt.compare(password, admin.password))) {
+          return {
+            id: admin.id,
+            email: admin.email,
+            role: "admin" as UserRole,
+          };
+        }
 
-                // Teacher
-                const teacher = await prisma.teacher.findUnique({
-                    where: {email},
-                    include: {course: true, headCourse: true}
-                })
-                if (teacher && await bcrypt.compare(password, teacher.password)) {
-                    return {
-                        id: teacher.id,
-                        email: teacher.email ?? undefined,
-                        role: "teacher" as UserRole,
-                        teacherRole: teacher.role as TeacherRole,
-                        courseId: teacher.courseId ?? teacher.headCourse?.id
-                    }
-                }
+        // Teacher
+        const teacher = await prisma.teacher.findUnique({
+          where: { email },
+          include: { course: true, headCourse: true },
+        });
+        if (teacher && (await bcrypt.compare(password, teacher.password))) {
+          return {
+            id: teacher.id,
+            email: teacher.email ?? undefined,
+            role: "teacher" as UserRole,
+            teacherRole: teacher.role as TeacherRole,
+            courseId: teacher.courseId ?? teacher.headCourse?.id,
+          };
+        }
 
-                return null
-            }
-        }),
+        return null;
+      },
+    }),
 
-        // Student (Email + Password)
-        CredentialsProvider({
-            id: "student",
-            name: "Student Login",
-            credentials: {
-                email: {label: "Email", type: "email"},
-                password: {label: "Password", type: "password"}
-            },
-            async authorize(credentials): Promise<AuthUserReturn | null> {
-                const email = credentials?.email?.toLowerCase().trim()
-                const password = credentials?.password
+    // Student (Email + Password)
+    CredentialsProvider({
+      id: "student",
+      name: "Student Login",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials): Promise<AuthUserReturn | null> {
+        const email = credentials?.email?.toLowerCase().trim();
+        const password = credentials?.password;
 
-                if (!email || !password) return null
+        if (!email || !password) return null;
 
-                const student = await prisma.student.findUnique({
-                    where: {email},
-                    include: {class: {include: {course: true}}}
-                })
+        const student = await prisma.student.findUnique({
+          where: { email },
+          include: { class: { include: { course: true } } },
+        });
 
-                if (!student || !student.passwordHash) return null
+        if (!student || !student.password) return null;
 
-                // Verify password
-                const isValid = await bcrypt.compare(password, student.passwordHash)
-                if (!isValid) return null
+        // Verify password
+        const isValid = await bcrypt.compare(password, student.password);
+        if (!isValid) return null;
 
-                return {
-                    id: student.id,
-                    role: "student" as UserRole,
-                    email: student.email,
-                    studentNumber: student.studentNumber,
-                    uuid: student.uuid,
-                    firstName: student.firstName,
-                    lastName: student.lastName ?? undefined,
-                    phoneNumber: student.phoneNumber ?? undefined,
-                    classId: student.classId,
-                    courseId: student.class?.course?.id
-                }
-            }
-        }),
-    ],
+        return {
+          id: student.id,
+          role: "student" as UserRole,
+          email: student.email,
+          studentNumber: student.studentNumber,
+          uuid: student.uuid,
+          firstName: student.firstName,
+          lastName: student.lastName ?? undefined,
+          phoneNumber: student.phoneNumber ?? undefined,
+          classId: student.classId,
+          courseId: student.class?.course?.id,
+        };
+      },
+    }),
+  ],
 
-    pages: {
-        signIn: "/login",
-        error: "/login"
+  pages: {
+    signIn: "/login",
+    error: "/login",
+  },
+
+  session: {
+    strategy: "jwt",
+    maxAge: 8 * 60 * 60, // 8 hours
+  },
+
+  callbacks: {
+    async jwt({ token, user, trigger, session }) {
+      if (user) {
+        const u = user as AuthUserReturn;
+        token.id = u.id;
+        token.role = u.role;
+        token.email = u.email;
+        token.studentNumber = u.studentNumber;
+        token.uuid = u.uuid;
+        token.firstName = u.firstName;
+        token.lastName = u.lastName;
+        token.phoneNumber = u.phoneNumber;
+        token.classId = u.classId;
+        token.courseId = u.courseId;
+        token.teacherRole = u.teacherRole;
+      }
+
+      if (trigger === "update" && session) {
+        Object.assign(token, session);
+      }
+
+      return token;
     },
 
-    session: {
-        strategy: "jwt",
-        maxAge: 8 * 60 * 60 // 8 hours
+    async session({ session, token }) {
+      if (token?.id && token?.role) {
+        session.user = {
+          ...session.user,
+          id: String(token.id),
+          role: token.role as UserRole,
+          email: (token.email as string) ?? session.user?.email,
+          studentNumber: token.studentNumber as string | undefined,
+          uuid: token.uuid as string | undefined,
+          firstName: token.firstName as string | undefined,
+          lastName: token.lastName as string | undefined,
+          phoneNumber: token.phoneNumber as string | undefined,
+          classId: token.classId as string | undefined,
+          courseId: token.courseId as string | undefined,
+          teacherRole: token.teacherRole as TeacherRole | undefined,
+        } as typeof session.user;
+      }
+      return session;
     },
+  },
 
-    callbacks: {
-        async jwt({token, user, trigger, session}) {
-            if (user) {
-                const u = user as AuthUserReturn
-                token.id = u.id
-                token.role = u.role
-                token.email = u.email
-                token.studentNumber = u.studentNumber
-                token.uuid = u.uuid
-                token.firstName = u.firstName
-                token.lastName = u.lastName
-                token.phoneNumber = u.phoneNumber
-                token.classId = u.classId
-                token.courseId = u.courseId
-                token.teacherRole = u.teacherRole
-            }
-
-            if (trigger === "update" && session) {
-                Object.assign(token, session)
-            }
-
-            return token
-        },
-
-        async session({session, token}) {
-            if (token?.id && token?.role) {
-                session.user = {
-                    ...session.user,
-                    id: String(token.id),
-                    role: token.role as UserRole,
-                    email: (token.email as string) ?? session.user?.email,
-                    studentNumber: token.studentNumber as string | undefined,
-                    uuid: token.uuid as string | undefined,
-                    firstName: token.firstName as string | undefined,
-                    lastName: token.lastName as string | undefined,
-                    phoneNumber: token.phoneNumber as string | undefined,
-                    classId: token.classId as string | undefined,
-                    courseId: token.courseId as string | undefined,
-                    teacherRole: token.teacherRole as TeacherRole | undefined,
-                } as typeof session.user
-            }
-            return session
-        },
-    },
-
-    debug: process.env.NODE_ENV === "development",
-}
+  debug: process.env.NODE_ENV === "development",
+};
 
 // Helper to get current user (for server components/API routes)
-import { getServerSession } from "next-auth"
+import { getServerSession } from "next-auth";
 
 export async function getCurrentUser() {
-    const session = await getServerSession(authOptions)
-    return session?.user ?? null
+  const session = await getServerSession(authOptions);
+  return session?.user ?? null;
 }
 
 // Re-export for convenience
-export { getServerSession }
+export { getServerSession };

@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
               lastName: registration.lastName,
               email: registration.email,
               phoneNumber: registration.phoneNumber,
-              passwordHash: registration.passwordHash,
+              password: registration.password,
               classId: registration.saturdaySession.classId,
               saturdaySessionId: registration.saturdaySessionId,
               sundaySessionId: registration.sundaySessionId,
