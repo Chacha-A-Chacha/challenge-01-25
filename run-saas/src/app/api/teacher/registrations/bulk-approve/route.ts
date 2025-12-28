@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { bulkApprovalSchema } from "@/lib/validations";
 import { USER_ROLES, TEACHER_ROLES } from "@/types";
 import type { ApiResponse } from "@/types";
-import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,7 +35,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: validationResult.error.errors[0]?.message || "Invalid input",
+          error: validationResult.error.issues[0]?.message || "Invalid input",
         },
         { status: 400 },
       );
@@ -70,7 +69,10 @@ export async function POST(request: NextRequest) {
           });
 
           if (!registration) {
-            failed.push({ id: registrationId, reason: "Registration not found" });
+            failed.push({
+              id: registrationId,
+              reason: "Registration not found",
+            });
             continue;
           }
 
@@ -155,13 +157,13 @@ export async function POST(request: NextRequest) {
 
           approved.push(registrationId);
         } catch (error) {
-          console.error(`Error approving registration ${registrationId}:`, error);
+          console.error(
+            `Error approving registration ${registrationId}:`,
+            error,
+          );
           failed.push({
             id: registrationId,
-            reason:
-              error instanceof Error
-                ? error.message
-                : "Unknown error",
+            reason: error instanceof Error ? error.message : "Unknown error",
           });
         }
       }
@@ -169,7 +171,12 @@ export async function POST(request: NextRequest) {
       return { approved, failed };
     });
 
-    return NextResponse.json<ApiResponse<any>>({
+    return NextResponse.json<
+      ApiResponse<{
+        approved: string[];
+        failed: { id: string; reason: string }[];
+      }>
+    >({
       success: true,
       data: results,
       message: `Approved ${results.approved.length} registrations. ${results.failed.length} failed.`,

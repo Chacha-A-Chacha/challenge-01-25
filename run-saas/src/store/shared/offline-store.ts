@@ -1,48 +1,45 @@
 // store/offline-store.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type {
-  BaseStoreState,
-  ApiResponse
-} from '@/types'
-import { API_ROUTES } from '@/lib/constants'
-import { fetchWithTimeout, validateQRData } from '@/lib/utils'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { BaseStoreState, ApiResponse } from "@/types";
+import { API_ROUTES } from "@/lib/constants";
+import { fetchWithTimeout, validateQRData } from "@/lib/utils";
 
 // ============================================================================
 // TYPES - Only what's needed for offline state
 // ============================================================================
 
 interface OfflineAttendanceRecord {
-  id: string
-  studentUuid: string
-  studentNumber: string
-  sessionId: string
-  qrData: string
-  timestamp: string
-  retryCount: number
-  lastAttempt: Date | null
-  lastError?: string
+  id: string;
+  studentUuid: string;
+  studentNumber: string;
+  sessionId: string;
+  qrData: string;
+  timestamp: string;
+  retryCount: number;
+  lastAttempt: Date | null;
+  lastError?: string;
 }
 
 interface NetworkStatus {
-  isOnline: boolean
-  lastOnlineCheck: Date | null
-  connectionQuality: 'excellent' | 'good' | 'poor' | 'offline'
+  isOnline: boolean;
+  lastOnlineCheck: Date | null;
+  connectionQuality: "excellent" | "good" | "poor" | "offline";
 }
 
 interface SyncProgress {
-  isActive: boolean
-  total: number
-  completed: number
-  failed: number
-  currentItem?: string
+  isActive: boolean;
+  total: number;
+  completed: number;
+  failed: number;
+  currentItem?: string;
 }
 
 interface OfflineConfig {
-  autoSyncEnabled: boolean
-  maxRetries: number
-  syncInterval: number
-  maxOfflineAge: number // hours
+  autoSyncEnabled: boolean;
+  maxRetries: number;
+  syncInterval: number;
+  maxOfflineAge: number; // hours
 }
 
 // ============================================================================
@@ -51,43 +48,50 @@ interface OfflineConfig {
 
 interface OfflineState extends BaseStoreState {
   // Core offline data
-  pendingAttendance: OfflineAttendanceRecord[]
-  failedSyncs: OfflineAttendanceRecord[]
+  pendingAttendance: OfflineAttendanceRecord[];
+  failedSyncs: OfflineAttendanceRecord[];
 
   // Network state
-  network: NetworkStatus
+  network: NetworkStatus;
 
   // Sync state
-  syncProgress: SyncProgress
-  lastSyncAttempt: Date | null
+  syncProgress: SyncProgress;
+  lastSyncAttempt: Date | null;
 
   // Configuration
-  config: OfflineConfig
+  config: OfflineConfig;
 
   // Actions
   addPendingAttendance: (data: {
-    studentUuid: string
-    studentNumber: string
-    sessionId: string
-    qrData: string
-  }) => string
+    studentUuid: string;
+    studentNumber: string;
+    sessionId: string;
+    qrData: string;
+  }) => string;
 
-  syncPendingData: () => Promise<{ success: boolean; syncedCount: number; failedCount: number }>
-  retryFailedSync: (id: string) => Promise<boolean>
+  syncPendingData: () => Promise<{
+    success: boolean;
+    syncedCount: number;
+    failedCount: number;
+  }>;
+  retryFailedSync: (id: string) => Promise<boolean>;
 
-  updateNetworkStatus: (isOnline: boolean, quality?: NetworkStatus['connectionQuality']) => void
-  setConfig: (config: Partial<OfflineConfig>) => void
+  updateNetworkStatus: (
+    isOnline: boolean,
+    quality?: NetworkStatus["connectionQuality"],
+  ) => void;
+  setConfig: (config: Partial<OfflineConfig>) => void;
 
   // Computed
-  getTotalPending: () => number
-  canSync: () => boolean
-  hasPendingData: () => boolean
+  getTotalPending: () => number;
+  canSync: () => boolean;
+  hasPendingData: () => boolean;
 
   // Utils
-  clearPendingData: () => void
-  clearFailedSyncs: () => void
-  removeExpiredRecords: () => void
-  reset: () => void
+  clearPendingData: () => void;
+  clearFailedSyncs: () => void;
+  removeExpiredRecords: () => void;
+  reset: () => void;
 }
 
 // ============================================================================
@@ -98,38 +102,44 @@ const DEFAULT_CONFIG: OfflineConfig = {
   autoSyncEnabled: true,
   maxRetries: 3,
   syncInterval: 30000, // 30 seconds
-  maxOfflineAge: 24 // 24 hours
-}
+  maxOfflineAge: 24, // 24 hours
+};
 
 const INITIAL_NETWORK_STATUS: NetworkStatus = {
-  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  isOnline: typeof navigator !== "undefined" ? navigator.onLine : true,
   lastOnlineCheck: new Date(),
-  connectionQuality: 'excellent'
-}
+  connectionQuality: "excellent",
+};
 
 const INITIAL_SYNC_PROGRESS: SyncProgress = {
   isActive: false,
   total: 0,
   completed: 0,
-  failed: 0
-}
+  failed: 0,
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function generateOfflineId(): string {
-  return `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
-function isRecordExpired(record: OfflineAttendanceRecord, maxAgeHours: number): boolean {
-  const recordTime = new Date(record.timestamp).getTime()
-  const maxAge = maxAgeHours * 60 * 60 * 1000
-  return Date.now() - recordTime > maxAge
+function isRecordExpired(
+  record: OfflineAttendanceRecord,
+  maxAgeHours: number,
+): boolean {
+  const recordTime = new Date(record.timestamp).getTime();
+  const maxAge = maxAgeHours * 60 * 60 * 1000;
+  return Date.now() - recordTime > maxAge;
 }
 
-function shouldRetry(record: OfflineAttendanceRecord, maxRetries: number): boolean {
-  return record.retryCount < maxRetries
+function shouldRetry(
+  record: OfflineAttendanceRecord,
+  maxRetries: number,
+): boolean {
+  return record.retryCount < maxRetries;
 }
 
 // ============================================================================
@@ -164,39 +174,39 @@ export const useOfflineStore = create<OfflineState>()(
 
       addPendingAttendance: (data) => {
         // Validate QR data
-        const qrValidation = validateQRData(data.qrData)
+        const qrValidation = validateQRData(data.qrData);
         if (!qrValidation) {
-          throw new Error('Invalid QR code format')
+          throw new Error("Invalid QR code format");
         }
 
         // Create offline record
-        const id = generateOfflineId()
+        const id = generateOfflineId();
         const record: OfflineAttendanceRecord = {
           id,
           ...data,
           timestamp: new Date().toISOString(),
           retryCount: 0,
-          lastAttempt: null
-        }
+          lastAttempt: null,
+        };
 
-        set(state => ({
+        set((state) => ({
           pendingAttendance: [...state.pendingAttendance, record],
-          lastUpdated: new Date()
-        }))
+          lastUpdated: new Date(),
+        }));
 
         // Try immediate sync if online
         if (get().network.isOnline && get().config.autoSyncEnabled) {
-          setTimeout(() => get().syncPendingData(), 100)
+          setTimeout(() => get().syncPendingData(), 100);
         }
 
-        return id
+        return id;
       },
 
       syncPendingData: async () => {
-        const { pendingAttendance, network, config } = get()
+        const { pendingAttendance, network, config } = get();
 
         if (!network.isOnline || pendingAttendance.length === 0) {
-          return { success: false, syncedCount: 0, failedCount: 0 }
+          return { success: false, syncedCount: 0, failedCount: 0 };
         }
 
         set({
@@ -204,114 +214,130 @@ export const useOfflineStore = create<OfflineState>()(
             isActive: true,
             total: pendingAttendance.length,
             completed: 0,
-            failed: 0
+            failed: 0,
           },
-          lastSyncAttempt: new Date()
-        })
+          lastSyncAttempt: new Date(),
+        });
 
         // Helper function to sync a single record
-        const syncSingleRecord = async (record: OfflineAttendanceRecord): Promise<boolean> => {
+        const syncSingleRecord = async (
+          record: OfflineAttendanceRecord,
+        ): Promise<boolean> => {
           try {
-            const response = await fetchWithTimeout(API_ROUTES.ATTENDANCE_SCAN, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Offline-Sync': 'true'
+            const response = await fetchWithTimeout(
+              API_ROUTES.ATTENDANCE_SCAN,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Offline-Sync": "true",
+                },
+                body: JSON.stringify({
+                  qrData: record.qrData,
+                  sessionId: record.sessionId,
+                  offlineTimestamp: record.timestamp,
+                  studentUuid: record.studentUuid,
+                }),
               },
-              body: JSON.stringify({
-                qrData: record.qrData,
-                sessionId: record.sessionId,
-                offlineTimestamp: record.timestamp,
-                studentUuid: record.studentUuid
-              })
-            }, 10000) // 10 second timeout for offline sync
+              10000,
+            ); // 10 second timeout for offline sync
 
-            const result: ApiResponse<unknown> = await response.json()
-            return result.success
-
+            const result: ApiResponse<unknown> = await response.json();
+            return result.success;
           } catch (error) {
-            console.error('Failed to sync record:', record.id, error)
-            return false
+            console.error("Failed to sync record:", record.id, error);
+            return false;
           }
-        }
+        };
 
-        let syncedCount = 0
-        let failedCount = 0
+        let syncedCount = 0;
+        let failedCount = 0;
 
         try {
           for (const record of pendingAttendance) {
             try {
-              set(state => ({
+              set((state) => ({
                 syncProgress: {
                   ...state.syncProgress,
-                  currentItem: `${record.studentNumber} - Session ${record.sessionId.slice(-6)}`
-                }
-              }))
+                  currentItem: `${record.studentNumber} - Session ${record.sessionId.slice(-6)}`,
+                },
+              }));
 
-              const success = await syncSingleRecord(record)
+              const success = await syncSingleRecord(record);
 
               if (success) {
                 // Remove from pending
-                set(state => ({
-                  pendingAttendance: state.pendingAttendance.filter(p => p.id !== record.id)
-                }))
-                syncedCount++
+                set((state) => ({
+                  pendingAttendance: state.pendingAttendance.filter(
+                    (p) => p.id !== record.id,
+                  ),
+                }));
+                syncedCount++;
               } else {
                 // Move to failed or retry
                 if (shouldRetry(record, config.maxRetries)) {
-                  set(state => ({
-                    pendingAttendance: state.pendingAttendance.map(p =>
+                  set((state) => ({
+                    pendingAttendance: state.pendingAttendance.map((p) =>
                       p.id === record.id
-                        ? { ...p, retryCount: p.retryCount + 1, lastAttempt: new Date() }
-                        : p
-                    )
-                  }))
+                        ? {
+                            ...p,
+                            retryCount: p.retryCount + 1,
+                            lastAttempt: new Date(),
+                          }
+                        : p,
+                    ),
+                  }));
                 } else {
                   // Move to failed syncs
-                  set(state => ({
-                    pendingAttendance: state.pendingAttendance.filter(p => p.id !== record.id),
-                    failedSyncs: [...state.failedSyncs, {
-                      ...record,
-                      lastError: 'Max retries exceeded'
-                    }]
-                  }))
+                  set((state) => ({
+                    pendingAttendance: state.pendingAttendance.filter(
+                      (p) => p.id !== record.id,
+                    ),
+                    failedSyncs: [
+                      ...state.failedSyncs,
+                      {
+                        ...record,
+                        lastError: "Max retries exceeded",
+                      },
+                    ],
+                  }));
                 }
-                failedCount++
+                failedCount++;
               }
 
-              set(state => ({
+              set((state) => ({
                 syncProgress: {
                   ...state.syncProgress,
                   completed: state.syncProgress.completed + 1,
-                  failed: success ? state.syncProgress.failed : state.syncProgress.failed + 1
-                }
-              }))
+                  failed: success
+                    ? state.syncProgress.failed
+                    : state.syncProgress.failed + 1,
+                },
+              }));
 
               // Small delay between syncs
-              await new Promise(resolve => setTimeout(resolve, 200))
-
+              await new Promise((resolve) => setTimeout(resolve, 200));
             } catch (error) {
-              failedCount++
-              console.error('Sync error for record:', record.id, error)
+              failedCount++;
+              console.error("Sync error for record:", record.id, error);
             }
           }
 
-          return { success: syncedCount > 0, syncedCount, failedCount }
-
+          return { success: syncedCount > 0, syncedCount, failedCount };
         } finally {
           set({
             syncProgress: INITIAL_SYNC_PROGRESS,
-            lastUpdated: new Date()
-          })
+            lastUpdated: new Date(),
+          });
         }
       },
 
       retryFailedSync: async (id) => {
-        const { failedSyncs, network } = get()
-        const failed = failedSyncs.find(f => f.id === id)
+        const { failedSyncs, network } = get();
+        const failed = failedSyncs.find((f) => f.id === id);
 
         if (!failed || !network.isOnline) {
-          return false
+          return false;
         }
 
         // Move back to pending with reset retry count
@@ -319,39 +345,43 @@ export const useOfflineStore = create<OfflineState>()(
           ...failed,
           retryCount: 0,
           lastAttempt: null,
-          lastError: undefined
-        }
+          lastError: undefined,
+        };
 
-        set(state => ({
-          failedSyncs: state.failedSyncs.filter(f => f.id !== id),
-          pendingAttendance: [...state.pendingAttendance, resetRecord]
-        }))
+        set((state) => ({
+          failedSyncs: state.failedSyncs.filter((f) => f.id !== id),
+          pendingAttendance: [...state.pendingAttendance, resetRecord],
+        }));
 
         // Try sync immediately
-        const result = await get().syncPendingData()
-        return result.syncedCount > 0
+        const result = await get().syncPendingData();
+        return result.syncedCount > 0;
       },
 
-      updateNetworkStatus: (isOnline, quality = 'excellent') => {
-        set(state => ({
+      updateNetworkStatus: (isOnline, quality = "excellent") => {
+        set((state) => ({
           network: {
             isOnline,
             lastOnlineCheck: new Date(),
-            connectionQuality: isOnline ? quality : 'offline'
+            connectionQuality: isOnline ? quality : "offline",
           },
-          lastUpdated: new Date()
-        }))
+          lastUpdated: new Date(),
+        }));
 
         // Auto-sync when coming back online
-        if (isOnline && get().config.autoSyncEnabled && get().hasPendingData()) {
-          setTimeout(() => get().syncPendingData(), 1000)
+        if (
+          isOnline &&
+          get().config.autoSyncEnabled &&
+          get().hasPendingData()
+        ) {
+          setTimeout(() => get().syncPendingData(), 1000);
         }
       },
 
       setConfig: (newConfig) => {
-        set(state => ({
-          config: { ...state.config, ...newConfig }
-        }))
+        set((state) => ({
+          config: { ...state.config, ...newConfig },
+        }));
       },
 
       // ============================================================================
@@ -359,17 +389,17 @@ export const useOfflineStore = create<OfflineState>()(
       // ============================================================================
 
       getTotalPending: () => {
-        const { pendingAttendance, failedSyncs } = get()
-        return pendingAttendance.length + failedSyncs.length
+        const { pendingAttendance, failedSyncs } = get();
+        return pendingAttendance.length + failedSyncs.length;
       },
 
       canSync: () => {
-        const { network, syncProgress } = get()
-        return network.isOnline && !syncProgress.isActive
+        const { network, syncProgress } = get();
+        return network.isOnline && !syncProgress.isActive;
       },
 
       hasPendingData: () => {
-        return get().getTotalPending() > 0
+        return get().getTotalPending() > 0;
       },
 
       // ============================================================================
@@ -379,34 +409,34 @@ export const useOfflineStore = create<OfflineState>()(
       clearPendingData: () => {
         set({
           pendingAttendance: [],
-          lastUpdated: new Date()
-        })
+          lastUpdated: new Date(),
+        });
       },
 
       clearFailedSyncs: () => {
         set({
           failedSyncs: [],
-          lastUpdated: new Date()
-        })
+          lastUpdated: new Date(),
+        });
       },
 
       removeExpiredRecords: () => {
-        const { config } = get()
+        const { config } = get();
 
-        set(state => {
+        set((state) => {
           const validPending = state.pendingAttendance.filter(
-            record => !isRecordExpired(record, config.maxOfflineAge)
-          )
+            (record) => !isRecordExpired(record, config.maxOfflineAge),
+          );
           const validFailed = state.failedSyncs.filter(
-            record => !isRecordExpired(record, config.maxOfflineAge)
-          )
+            (record) => !isRecordExpired(record, config.maxOfflineAge),
+          );
 
           return {
             pendingAttendance: validPending,
             failedSyncs: validFailed,
-            lastUpdated: new Date()
-          }
-        })
+            lastUpdated: new Date(),
+          };
+        });
       },
 
       reset: () => {
@@ -419,12 +449,12 @@ export const useOfflineStore = create<OfflineState>()(
           config: DEFAULT_CONFIG,
           isLoading: false,
           error: null,
-          lastUpdated: null
-        })
-      }
+          lastUpdated: null,
+        });
+      },
     }),
     {
-      name: 'offline-store',
+      name: "offline-store",
       partialize: (state) => ({
         // Only persist offline data and config
         pendingAttendance: state.pendingAttendance,
@@ -432,33 +462,33 @@ export const useOfflineStore = create<OfflineState>()(
         config: state.config,
         network: {
           // Don't persist connection status, but keep quality preference
-          connectionQuality: state.network.connectionQuality
-        }
-      })
-    }
-  )
-)
+          connectionQuality: state.network.connectionQuality,
+        },
+      }),
+    },
+  ),
+);
 
 // ============================================================================
 // BROWSER EVENT LISTENERS
 // ============================================================================
 
-if (typeof window !== 'undefined') {
-  const store = useOfflineStore.getState()
+if (typeof window !== "undefined") {
+  const store = useOfflineStore.getState();
 
   // Listen for online/offline events
-  window.addEventListener('online', () => {
-    store.updateNetworkStatus(true)
-  })
+  window.addEventListener("online", () => {
+    store.updateNetworkStatus(true);
+  });
 
-  window.addEventListener('offline', () => {
-    store.updateNetworkStatus(false, 'offline')
-  })
+  window.addEventListener("offline", () => {
+    store.updateNetworkStatus(false, "offline");
+  });
 
   // Clean up expired records periodically
   setInterval(() => {
-    store.removeExpiredRecords()
-  }, 300000) // Every 5 minutes
+    store.removeExpiredRecords();
+  }, 300000); // Every 5 minutes
 }
 
 // ============================================================================
@@ -469,39 +499,62 @@ if (typeof window !== 'undefined') {
  * Hook for offline data management
  */
 export function useOfflineData() {
-  return useOfflineStore(state => ({
-    pendingCount: state.pendingAttendance.length,
-    failedCount: state.failedSyncs.length,
-    totalPending: state.getTotalPending(),
-    hasPendingData: state.hasPendingData(),
-    addPending: state.addPendingAttendance,
-    clearPending: state.clearPendingData,
-    clearFailed: state.clearFailedSyncs
-  }))
+  const pendingAttendance = useOfflineStore((state) => state.pendingAttendance);
+  const failedSyncs = useOfflineStore((state) => state.failedSyncs);
+  const getTotalPending = useOfflineStore((state) => state.getTotalPending);
+  const hasPendingData = useOfflineStore((state) => state.hasPendingData);
+  const addPendingAttendance = useOfflineStore(
+    (state) => state.addPendingAttendance,
+  );
+  const clearPendingData = useOfflineStore((state) => state.clearPendingData);
+  const clearFailedSyncs = useOfflineStore((state) => state.clearFailedSyncs);
+
+  return {
+    pendingCount: pendingAttendance.length,
+    failedCount: failedSyncs.length,
+    totalPending: getTotalPending(),
+    hasPendingData: hasPendingData(),
+    addPending: addPendingAttendance,
+    clearPending: clearPendingData,
+    clearFailed: clearFailedSyncs,
+  };
 }
 
 /**
  * Hook for sync operations
  */
 export function useOfflineSync() {
-  return useOfflineStore(state => ({
-    canSync: state.canSync(),
-    syncProgress: state.syncProgress,
-    lastSyncAttempt: state.lastSyncAttempt,
-    syncPending: state.syncPendingData,
-    retryFailed: state.retryFailedSync,
-    isOnline: state.network.isOnline,
-    connectionQuality: state.network.connectionQuality
-  }))
+  const canSync = useOfflineStore((state) => state.canSync);
+  const syncProgress = useOfflineStore((state) => state.syncProgress);
+  const lastSyncAttempt = useOfflineStore((state) => state.lastSyncAttempt);
+  const syncPendingData = useOfflineStore((state) => state.syncPendingData);
+  const retryFailedSync = useOfflineStore((state) => state.retryFailedSync);
+  const network = useOfflineStore((state) => state.network);
+
+  return {
+    canSync: canSync(),
+    syncProgress,
+    lastSyncAttempt,
+    syncPending: syncPendingData,
+    retryFailed: retryFailedSync,
+    isOnline: network.isOnline,
+    connectionQuality: network.connectionQuality,
+  };
 }
 
 /**
  * Hook for offline configuration
  */
 export function useOfflineConfig() {
-  return useOfflineStore(state => ({
-    config: state.config,
-    setConfig: state.setConfig,
-    updateNetworkStatus: state.updateNetworkStatus
-  }))
+  const config = useOfflineStore((state) => state.config);
+  const setConfig = useOfflineStore((state) => state.setConfig);
+  const updateNetworkStatus = useOfflineStore(
+    (state) => state.updateNetworkStatus,
+  );
+
+  return {
+    config,
+    setConfig,
+    updateNetworkStatus,
+  };
 }

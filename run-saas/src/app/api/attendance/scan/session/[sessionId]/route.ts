@@ -11,7 +11,7 @@ import type { ApiResponse, AttendanceRecord, Session } from "@/types";
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { sessionId: string } },
+  { params }: { params: Promise<{ sessionId: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -31,7 +31,7 @@ export async function GET(
       );
     }
 
-    const { sessionId } = params;
+    const { sessionId } = await params;
 
     // Get optional date parameter
     const { searchParams } = new URL(request.url);
@@ -49,6 +49,7 @@ export async function GET(
       startTime: result.session.startTime,
       endTime: result.session.endTime,
       capacity: result.session.capacity,
+      createdAt: result.session.createdAt,
     };
 
     // Transform attendance records
@@ -56,8 +57,9 @@ export async function GET(
       (attendance) => ({
         id: attendance.id,
         studentId: attendance.studentId,
-        studentName: `${attendance.student.firstName} ${attendance.student.lastName || ""}`.trim(),
-        studentNumber: attendance.student.studentNumber,
+        studentName:
+          `${attendance.student?.firstName || ""} ${attendance.student?.lastName || ""}`.trim(),
+        studentNumber: attendance.student?.studentNumber || "",
         sessionId: attendance.sessionId,
         date: attendance.date.toISOString(),
         status: attendance.status,

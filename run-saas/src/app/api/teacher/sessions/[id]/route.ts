@@ -8,7 +8,7 @@ import type { ApiResponse, Session } from "@/types";
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -30,7 +30,7 @@ export async function PATCH(
       );
     }
 
-    const sessionId = params.id;
+    const { id: sessionId } = await params;
 
     // Verify session exists and belongs to teacher's course
     const existingSession = await prisma.session.findUnique({
@@ -57,7 +57,7 @@ export async function PATCH(
     const body = await request.json();
     const { day, startTime, endTime, capacity } = body;
 
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
     if (day !== undefined) updates.day = day;
     if (capacity !== undefined) updates.capacity = capacity;
 
@@ -90,7 +90,8 @@ export async function PATCH(
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to update session",
+        error:
+          error instanceof Error ? error.message : "Failed to update session",
       },
       { status: 500 },
     );
@@ -99,7 +100,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -121,7 +122,7 @@ export async function DELETE(
       );
     }
 
-    const sessionId = params.id;
+    const { id: sessionId } = await params;
 
     // Verify session exists and belongs to teacher's course
     const existingSession = await prisma.session.findUnique({
@@ -156,7 +157,8 @@ export async function DELETE(
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to delete session",
+        error:
+          error instanceof Error ? error.message : "Failed to delete session",
       },
       { status: 500 },
     );

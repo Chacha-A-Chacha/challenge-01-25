@@ -7,7 +7,7 @@ import type { ApiResponse, ClassWithSessions } from "@/types";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -29,7 +29,7 @@ export async function GET(
       );
     }
 
-    const classId = params.id;
+    const { id: classId } = await params;
     const classData = await getClassById(classId);
 
     if (!classData) {
@@ -65,7 +65,7 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -87,7 +87,7 @@ export async function PATCH(
       );
     }
 
-    const classId = params.id;
+    const { id: classId } = await params;
 
     // Verify class exists and belongs to teacher's course
     const existingClass = await getClassById(classId);
@@ -120,7 +120,8 @@ export async function PATCH(
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to update class",
+        error:
+          error instanceof Error ? error.message : "Failed to update class",
       },
       { status: 500 },
     );
@@ -129,7 +130,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -151,7 +152,7 @@ export async function DELETE(
       );
     }
 
-    const classId = params.id;
+    const { id: classId } = await params;
 
     // Verify class exists and belongs to teacher's course
     const existingClass = await getClassById(classId);
@@ -180,7 +181,8 @@ export async function DELETE(
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to delete class",
+        error:
+          error instanceof Error ? error.message : "Failed to delete class",
       },
       { status: 500 },
     );

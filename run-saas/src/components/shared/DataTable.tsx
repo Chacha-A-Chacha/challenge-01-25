@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { ReactNode } from "react"
+import { ReactNode } from "react";
 import {
   Table,
   TableBody,
@@ -8,22 +8,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+} from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export interface Column<T> {
-  header: string
-  accessor: keyof T | ((row: T) => ReactNode)
-  cell?: (value: any, row: T) => ReactNode
-  className?: string
+  header: string;
+  accessor: keyof T | ((row: T) => ReactNode);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cell?: (value: any, row: T) => ReactNode;
+  className?: string;
 }
 
 interface DataTableProps<T> {
-  data: T[]
-  columns: Column<T>[]
-  onRowClick?: (row: T) => void
-  emptyMessage?: string
-  className?: string
+  data: T[];
+  columns: Column<T>[];
+  onRowClick?: (row: T) => void;
+  emptyMessage?: string;
+  className?: string;
 }
 
 export function DataTable<T extends { id: string }>({
@@ -31,14 +32,14 @@ export function DataTable<T extends { id: string }>({
   columns,
   onRowClick,
   emptyMessage = "No data available",
-  className
+  className,
 }: DataTableProps<T>) {
   const getCellValue = (row: T, column: Column<T>) => {
     if (typeof column.accessor === "function") {
-      return column.accessor(row)
+      return column.accessor(row);
     }
-    return row[column.accessor]
-  }
+    return row[column.accessor];
+  };
 
   return (
     <div className={cn("rounded-md border", className)}>
@@ -67,12 +68,14 @@ export function DataTable<T extends { id: string }>({
                 className={onRowClick ? "cursor-pointer" : ""}
               >
                 {columns.map((column, index) => {
-                  const value = getCellValue(row, column)
+                  const value = getCellValue(row, column);
                   return (
                     <TableCell key={index} className={column.className}>
-                      {column.cell ? column.cell(value, row) : value}
+                      {column.cell
+                        ? column.cell(value, row)
+                        : (value as ReactNode)}
                     </TableCell>
-                  )
+                  );
                 })}
               </TableRow>
             ))
@@ -80,5 +83,5 @@ export function DataTable<T extends { id: string }>({
         </TableBody>
       </Table>
     </div>
-  )
+  );
 }

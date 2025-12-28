@@ -1,17 +1,17 @@
 // store/student/schedule-store.ts
 
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type {
   BaseStoreState,
   Session,
   Class,
   Course,
   AttendanceRecord,
-  ApiResponse
-} from '@/types'
-import { API_ROUTES } from '@/lib/constants'
-import { fetchWithTimeout } from '@/lib/utils'
+  ApiResponse,
+} from "@/types";
+import { API_ROUTES } from "@/lib/constants";
+import { fetchWithTimeout } from "@/lib/utils";
 
 // ============================================================================
 // TYPES - Only what's needed for schedule state
@@ -19,29 +19,29 @@ import { fetchWithTimeout } from '@/lib/utils'
 
 interface StudentSchedule {
   student: {
-    id: string
-    firstName: string
-    lastName?: string
-    studentNumber: string
-  }
-  class: Class
-  course: Course
-  saturdaySession?: Session
-  sundaySession?: Session
+    id: string;
+    firstName: string;
+    lastName?: string;
+    studentNumber: string;
+  };
+  class: Class;
+  course: Course;
+  saturdaySession?: Session;
+  sundaySession?: Session;
 }
 
 interface AttendanceStats {
-  totalSessions: number
-  attendedSessions: number
-  missedSessions: number
-  attendanceRate: number
+  totalSessions: number;
+  attendedSessions: number;
+  missedSessions: number;
+  attendanceRate: number;
 }
 
 interface SessionInfo {
-  isSessionTime: boolean
-  currentSession: Session | null
-  nextSession: Session | null
-  canGenerateQR: boolean
+  isSessionTime: boolean;
+  currentSession: Session | null;
+  nextSession: Session | null;
+  canGenerateQR: boolean;
 }
 
 // ============================================================================
@@ -50,30 +50,30 @@ interface SessionInfo {
 
 interface ScheduleState extends BaseStoreState {
   // Core data
-  schedule: StudentSchedule | null
-  attendanceHistory: AttendanceRecord[]
-  attendanceStats: AttendanceStats | null
+  schedule: StudentSchedule | null;
+  attendanceHistory: AttendanceRecord[];
+  attendanceStats: AttendanceStats | null;
 
   // Current session state
-  sessionInfo: SessionInfo | null
+  sessionInfo: SessionInfo | null;
 
   // Loading states
-  isLoadingSchedule: boolean
-  isLoadingAttendance: boolean
+  isLoadingSchedule: boolean;
+  isLoadingAttendance: boolean;
 
   // Actions
-  loadSchedule: () => Promise<void>
-  loadAttendanceHistory: (limit?: number) => Promise<void>
-  refreshSessionInfo: () => void
+  loadSchedule: () => Promise<void>;
+  loadAttendanceHistory: (limit?: number) => Promise<void>;
+  refreshSessionInfo: () => void;
 
   // Computed
-  getCurrentSession: () => Session | null
-  getUpcomingSession: () => Session | null
-  getTodaysSessions: () => Session[]
+  getCurrentSession: () => Session | null;
+  getUpcomingSession: () => Session | null;
+  getTodaysSessions: () => Session[];
 
   // Utils
-  clearErrors: () => void
-  reset: () => void
+  clearErrors: () => void;
+  reset: () => void;
 }
 
 // ============================================================================
@@ -84,80 +84,83 @@ const DEFAULT_ATTENDANCE_STATS: AttendanceStats = {
   totalSessions: 0,
   attendedSessions: 0,
   missedSessions: 0,
-  attendanceRate: 0
-}
+  attendanceRate: 0,
+};
 
 const DEFAULT_SESSION_INFO: SessionInfo = {
   isSessionTime: false,
   currentSession: null,
   nextSession: null,
-  canGenerateQR: false
-}
+  canGenerateQR: false,
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function parseTimeToMinutes(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number)
-  return hours * 60 + minutes
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return hours * 60 + minutes;
 }
 
 function isCurrentlyInSession(session: Session): boolean {
-  const now = new Date()
-  const currentDay = now.getDay() // 0 = Sunday, 6 = Saturday
-  const sessionDay = session.day === 'SATURDAY' ? 6 : 0
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const sessionDay = session.day === "SATURDAY" ? 6 : 0;
 
-  if (currentDay !== sessionDay) return false
+  if (currentDay !== sessionDay) return false;
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const sessionStart = parseTimeToMinutes(session.startTime)
-  const sessionEnd = parseTimeToMinutes(session.endTime)
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const sessionStart = parseTimeToMinutes(session.startTime);
+  const sessionEnd = parseTimeToMinutes(session.endTime);
 
-  return currentMinutes >= sessionStart && currentMinutes <= sessionEnd
+  return currentMinutes >= sessionStart && currentMinutes <= sessionEnd;
 }
 
 function canGenerateQRCode(session: Session): boolean {
-  const now = new Date()
-  const currentDay = now.getDay()
-  const sessionDay = session.day === 'SATURDAY' ? 6 : 0
+  const now = new Date();
+  const currentDay = now.getDay();
+  const sessionDay = session.day === "SATURDAY" ? 6 : 0;
 
-  if (currentDay !== sessionDay) return false
+  if (currentDay !== sessionDay) return false;
 
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
-  const sessionStart = parseTimeToMinutes(session.startTime)
-  const sessionEnd = parseTimeToMinutes(session.endTime)
-  const qrWindow = sessionStart - 30 // 30 minutes before session
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const sessionStart = parseTimeToMinutes(session.startTime);
+  const sessionEnd = parseTimeToMinutes(session.endTime);
+  const qrWindow = sessionStart - 30; // 30 minutes before session
 
-  return currentMinutes >= qrWindow && currentMinutes <= sessionEnd
+  return currentMinutes >= qrWindow && currentMinutes <= sessionEnd;
 }
 
-function getNextSession(saturdaySession?: Session, sundaySession?: Session): Session | null {
-  const now = new Date()
-  const currentDay = now.getDay()
-  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+function getNextSession(
+  saturdaySession?: Session,
+  sundaySession?: Session,
+): Session | null {
+  const now = new Date();
+  const currentDay = now.getDay();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   // Saturday (day 6)
   if (currentDay === 6 && saturdaySession) {
-    const sessionStart = parseTimeToMinutes(saturdaySession.startTime)
+    const sessionStart = parseTimeToMinutes(saturdaySession.startTime);
     if (currentMinutes < sessionStart) {
-      return saturdaySession // Today's session hasn't started
+      return saturdaySession; // Today's session hasn't started
     }
-    return sundaySession || null // Next is Sunday
+    return sundaySession || null; // Next is Sunday
   }
 
   // Sunday (day 0)
   if (currentDay === 0 && sundaySession) {
-    const sessionStart = parseTimeToMinutes(sundaySession.startTime)
+    const sessionStart = parseTimeToMinutes(sundaySession.startTime);
     if (currentMinutes < sessionStart) {
-      return sundaySession // Today's session hasn't started
+      return sundaySession; // Today's session hasn't started
     }
-    return saturdaySession || null // Next is Saturday
+    return saturdaySession || null; // Next is Saturday
   }
 
   // Other days - return next session
-  if (currentDay < 6) return saturdaySession || null
-  return sundaySession || saturdaySession || null
+  if (currentDay < 6) return saturdaySession || null;
+  return sundaySession || saturdaySession || null;
 }
 
 // ============================================================================
@@ -189,99 +192,109 @@ export const useScheduleStore = create<ScheduleState>()(
       // ============================================================================
 
       loadSchedule: async () => {
-        set({ isLoadingSchedule: true, error: null })
+        set({ isLoadingSchedule: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/schedule`)
+          const response = await fetchWithTimeout(
+            `${API_ROUTES.STUDENT}/schedule`,
+          );
 
           if (!response.ok) {
-            throw new Error(`Failed to load schedule: ${response.status}`)
+            throw new Error(`Failed to load schedule: ${response.status}`);
           }
 
-          const result: ApiResponse<StudentSchedule> = await response.json()
+          const result: ApiResponse<StudentSchedule> = await response.json();
 
           if (result.success && result.data) {
             set({
               schedule: result.data,
               isLoadingSchedule: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
 
             // Update session info after loading schedule
-            get().refreshSessionInfo()
+            get().refreshSessionInfo();
           } else {
-            throw new Error(result.error || 'Failed to load schedule')
+            throw new Error(result.error || "Failed to load schedule");
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load schedule'
+          const errorMessage =
+            error instanceof Error ? error.message : "Failed to load schedule";
           set({
             error: errorMessage,
-            isLoadingSchedule: false
-          })
+            isLoadingSchedule: false,
+          });
         }
       },
 
       loadAttendanceHistory: async (limit = 50) => {
-        set({ isLoadingAttendance: true, error: null })
+        set({ isLoadingAttendance: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(`${API_ROUTES.STUDENT}/attendance?limit=${limit}`)
+          const response = await fetchWithTimeout(
+            `${API_ROUTES.STUDENT}/attendance?limit=${limit}`,
+          );
 
           if (!response.ok) {
-            throw new Error(`Failed to load attendance: ${response.status}`)
+            throw new Error(`Failed to load attendance: ${response.status}`);
           }
 
           const result: ApiResponse<{
-            attendanceRecords: AttendanceRecord[]
-            stats: AttendanceStats
-          }> = await response.json()
+            attendanceRecords: AttendanceRecord[];
+            stats: AttendanceStats;
+          }> = await response.json();
 
           if (result.success && result.data) {
             set({
               attendanceHistory: result.data.attendanceRecords,
               attendanceStats: result.data.stats,
               isLoadingAttendance: false,
-              lastUpdated: new Date()
-            })
+              lastUpdated: new Date(),
+            });
           } else {
-            throw new Error(result.error || 'Failed to load attendance history')
+            throw new Error(
+              result.error || "Failed to load attendance history",
+            );
           }
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load attendance'
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Failed to load attendance";
           set({
             error: errorMessage,
-            isLoadingAttendance: false
-          })
+            isLoadingAttendance: false,
+          });
         }
       },
 
       refreshSessionInfo: () => {
-        const { schedule } = get()
+        const { schedule } = get();
 
         if (!schedule) {
-          set({ sessionInfo: DEFAULT_SESSION_INFO })
-          return
+          set({ sessionInfo: DEFAULT_SESSION_INFO });
+          return;
         }
 
-        const { saturdaySession, sundaySession } = schedule
+        const { saturdaySession, sundaySession } = schedule;
 
         // Find current session
-        let currentSession: Session | null = null
+        let currentSession: Session | null = null;
         if (saturdaySession && isCurrentlyInSession(saturdaySession)) {
-          currentSession = saturdaySession
+          currentSession = saturdaySession;
         } else if (sundaySession && isCurrentlyInSession(sundaySession)) {
-          currentSession = sundaySession
+          currentSession = sundaySession;
         }
 
         // Find next session
-        const nextSession = getNextSession(saturdaySession, sundaySession)
+        const nextSession = getNextSession(saturdaySession, sundaySession);
 
         // Check if can generate QR
-        let canGenerateQR = false
+        let canGenerateQR = false;
         if (currentSession) {
-          canGenerateQR = true // Can generate during session
+          canGenerateQR = true; // Can generate during session
         } else if (nextSession) {
-          canGenerateQR = canGenerateQRCode(nextSession) // Can generate 30 min before
+          canGenerateQR = canGenerateQRCode(nextSession); // Can generate 30 min before
         }
 
         set({
@@ -289,10 +302,10 @@ export const useScheduleStore = create<ScheduleState>()(
             isSessionTime: !!currentSession,
             currentSession,
             nextSession,
-            canGenerateQR
+            canGenerateQR,
           },
-          lastUpdated: new Date()
-        })
+          lastUpdated: new Date(),
+        });
       },
 
       // ============================================================================
@@ -300,29 +313,29 @@ export const useScheduleStore = create<ScheduleState>()(
       // ============================================================================
 
       getCurrentSession: () => {
-        return get().sessionInfo?.currentSession || null
+        return get().sessionInfo?.currentSession || null;
       },
 
       getUpcomingSession: () => {
-        return get().sessionInfo?.nextSession || null
+        return get().sessionInfo?.nextSession || null;
       },
 
       getTodaysSessions: () => {
-        const { schedule } = get()
-        if (!schedule) return []
+        const { schedule } = get();
+        if (!schedule) return [];
 
-        const now = new Date()
-        const currentDay = now.getDay()
+        const now = new Date();
+        const currentDay = now.getDay();
 
-        const sessions: Session[] = []
+        const sessions: Session[] = [];
         if (currentDay === 6 && schedule.saturdaySession) {
-          sessions.push(schedule.saturdaySession)
+          sessions.push(schedule.saturdaySession);
         }
         if (currentDay === 0 && schedule.sundaySession) {
-          sessions.push(schedule.sundaySession)
+          sessions.push(schedule.sundaySession);
         }
 
-        return sessions
+        return sessions;
       },
 
       // ============================================================================
@@ -330,7 +343,7 @@ export const useScheduleStore = create<ScheduleState>()(
       // ============================================================================
 
       clearErrors: () => {
-        set({ error: null })
+        set({ error: null });
       },
 
       reset: () => {
@@ -343,28 +356,28 @@ export const useScheduleStore = create<ScheduleState>()(
           isLoadingAttendance: false,
           isLoading: false,
           error: null,
-          lastUpdated: null
-        })
-      }
+          lastUpdated: null,
+        });
+      },
     }),
     {
-      name: 'schedule-store',
+      name: "schedule-store",
       partialize: (state) => ({
         // Don't persist any schedule data - always fetch fresh
         // Schedule changes frequently and should be current
-      })
-    }
-  )
-)
+      }),
+    },
+  ),
+);
 
 // Auto-refresh session info every minute
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   setInterval(() => {
-    const state = useScheduleStore.getState()
+    const state = useScheduleStore.getState();
     if (state.schedule) {
-      state.refreshSessionInfo()
+      state.refreshSessionInfo();
     }
-  }, 60000) // Every minute
+  }, 60000); // Every minute
 }
 
 // ============================================================================
@@ -375,37 +388,69 @@ if (typeof window !== 'undefined') {
  * Hook for student schedule data
  */
 export function useStudentSchedule() {
-  return useScheduleStore(state => ({
-    schedule: state.schedule,
-    isLoading: state.isLoadingSchedule,
-    error: state.error,
-    loadSchedule: state.loadSchedule
-  }))
+  const schedule = useScheduleStore((state) => state.schedule);
+  const isLoadingSchedule = useScheduleStore(
+    (state) => state.isLoadingSchedule,
+  );
+  const error = useScheduleStore((state) => state.error);
+  const loadSchedule = useScheduleStore((state) => state.loadSchedule);
+
+  return {
+    schedule,
+    isLoading: isLoadingSchedule,
+    error,
+    loadSchedule,
+  };
 }
 
 /**
  * Hook for current session information
  */
 export function useCurrentSession() {
-  return useScheduleStore(state => ({
-    sessionInfo: state.sessionInfo,
-    currentSession: state.getCurrentSession(),
-    upcomingSession: state.getUpcomingSession(),
-    todaysSessions: state.getTodaysSessions(),
-    canGenerateQR: state.sessionInfo?.canGenerateQR || false,
-    isSessionTime: state.sessionInfo?.isSessionTime || false,
-    refreshSessionInfo: state.refreshSessionInfo
-  }))
+  const sessionInfo = useScheduleStore((state) => state.sessionInfo);
+  const getCurrentSession = useScheduleStore(
+    (state) => state.getCurrentSession,
+  );
+  const getUpcomingSession = useScheduleStore(
+    (state) => state.getUpcomingSession,
+  );
+  const getTodaysSessions = useScheduleStore(
+    (state) => state.getTodaysSessions,
+  );
+  const refreshSessionInfo = useScheduleStore(
+    (state) => state.refreshSessionInfo,
+  );
+
+  return {
+    sessionInfo,
+    currentSession: getCurrentSession(),
+    upcomingSession: getUpcomingSession(),
+    todaysSessions: getTodaysSessions(),
+    canGenerateQR: sessionInfo?.canGenerateQR || false,
+    isSessionTime: sessionInfo?.isSessionTime || false,
+    refreshSessionInfo,
+  };
 }
 
 /**
  * Hook for attendance history
  */
 export function useAttendanceHistory() {
-  return useScheduleStore(state => ({
-    history: state.attendanceHistory,
-    stats: state.attendanceStats || DEFAULT_ATTENDANCE_STATS,
-    isLoading: state.isLoadingAttendance,
-    loadHistory: state.loadAttendanceHistory
-  }))
+  const attendanceHistory = useScheduleStore(
+    (state) => state.attendanceHistory,
+  );
+  const attendanceStats = useScheduleStore((state) => state.attendanceStats);
+  const isLoadingAttendance = useScheduleStore(
+    (state) => state.isLoadingAttendance,
+  );
+  const loadAttendanceHistory = useScheduleStore(
+    (state) => state.loadAttendanceHistory,
+  );
+
+  return {
+    history: attendanceHistory,
+    stats: attendanceStats || DEFAULT_ATTENDANCE_STATS,
+    isLoading: isLoadingAttendance,
+    loadHistory: loadAttendanceHistory,
+  };
 }

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid input",
+          error: validation.error.issues[0]?.message || "Invalid input",
         },
         { status: 400 },
       );
@@ -84,9 +84,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to auto-mark absent",
+          error instanceof Error ? error.message : "Failed to auto-mark absent",
       },
       { status: 500 },
     );

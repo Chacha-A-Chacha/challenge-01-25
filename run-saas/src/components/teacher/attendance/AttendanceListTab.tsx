@@ -6,8 +6,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSessionAttendance, useAttendanceActions } from "@/store/teacher/attendance-store";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  useSessionAttendance,
+  useAttendanceActions,
+} from "@/store/teacher/attendance-store";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import type { AttendanceStatus } from "@/types";
@@ -28,28 +37,19 @@ export function AttendanceListTab({
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // Get all students from session with their attendance
-  const students = sessionData?.session?.students || [];
+  // Get attendance records - each record contains student info
   const attendanceRecords = sessionData?.attendanceRecords || [];
 
-  // Create a map of attendance by student ID
-  const attendanceMap = new Map(
-    attendanceRecords.map((record) => [record.studentId, record])
-  );
-
-  // Build student list with attendance status
-  const studentList = students.map((student: any) => {
-    const attendance = attendanceMap.get(student.id);
-    return {
-      id: student.id,
-      name: `${student.firstName} ${student.lastName || ""}`.trim(),
-      studentNumber: student.studentNumber,
-      email: student.email,
-      status: attendance?.status || null,
-      scanTime: attendance?.scanTime,
-      attendanceId: attendance?.id,
-    };
-  });
+  // Build student list from attendance records
+  const studentList = attendanceRecords.map((record) => ({
+    id: record.studentId,
+    name: record.studentName || "Unknown",
+    studentNumber: record.studentNumber || "",
+    email: "", // Email not included in attendance records
+    status: record.status || null,
+    scanTime: record.scanTime,
+    attendanceId: record.id,
+  }));
 
   // Filter students
   const filteredStudents = studentList.filter((student) => {
@@ -92,9 +92,7 @@ export function AttendanceListTab({
       const result = await response.json();
 
       if (result.success) {
-        toast.success(
-          `Marked ${result.data.markedAbsent} students as absent`
-        );
+        toast.success(`Marked ${result.data.markedAbsent} students as absent`);
         // Reload attendance
         window.location.reload();
       } else {

@@ -95,8 +95,13 @@ async function main() {
 
   console.log("📌 Creating Courses, Teachers, Classes & Sessions...\n");
 
-  const courses = [];
-  const allSessions: any[] = [];
+  const courses: { id: string; name: string }[] = [];
+  const allSessions: {
+    session: { id: string };
+    courseId: string;
+    classId: string;
+    day: string;
+  }[] = [];
   let studentCounter = 1;
 
   for (const courseInfo of courseData) {

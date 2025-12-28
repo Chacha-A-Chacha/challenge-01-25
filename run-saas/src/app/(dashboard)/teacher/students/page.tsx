@@ -9,18 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { FilterSelect } from "@/components/shared/FilterSelect";
-import { useStudents, useStudentFilters } from "@/store/teacher/student-store";
+import {
+  useStudents,
+  useStudentFilters,
+  type StudentWithSessions,
+} from "@/store/teacher/student-store";
 import { useClassStore } from "@/store/teacher/class-store";
-import type { StudentWithSessions } from "@/types";
 
 export default function StudentsPage() {
   const router = useRouter();
-  const {
-    students,
-    filteredStudents,
-    isLoading,
-    loadStudents,
-  } = useStudents();
+  const { students, filteredStudents, isLoading, loadStudents } = useStudents();
 
   const { filters, setFilters } = useStudentFilters();
   const { classes, loadClasses } = useClassStore();
@@ -71,9 +69,11 @@ export default function StudentsPage() {
     },
     {
       header: "Saturday Session",
-      accessor: (student) => student.saturdaySession,
-      cell: (session) => {
-        if (!session) return <span className="text-muted-foreground">Not assigned</span>;
+      accessor: () => null,
+      cell: (_value, student) => {
+        const session = student.saturdaySession;
+        if (!session)
+          return <span className="text-muted-foreground">Not assigned</span>;
         return (
           <div className="text-sm">
             {new Date(session.startTime).toLocaleTimeString([], {
@@ -91,9 +91,11 @@ export default function StudentsPage() {
     },
     {
       header: "Sunday Session",
-      accessor: (student) => student.sundaySession,
-      cell: (session) => {
-        if (!session) return <span className="text-muted-foreground">Not assigned</span>;
+      accessor: () => null,
+      cell: (_value, student) => {
+        const session = student.sundaySession;
+        if (!session)
+          return <span className="text-muted-foreground">Not assigned</span>;
         return (
           <div className="text-sm">
             {new Date(session.startTime).toLocaleTimeString([], {
@@ -111,8 +113,8 @@ export default function StudentsPage() {
     },
     {
       header: "Actions",
-      accessor: (student) => student,
-      cell: (value, student) => (
+      accessor: () => null,
+      cell: (_value, student) => (
         <Button
           variant="outline"
           size="sm"

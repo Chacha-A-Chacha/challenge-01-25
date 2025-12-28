@@ -41,27 +41,32 @@ export function AttendanceMarkingTab({
     },
   });
 
-  // Get students for manual marking
-  const students = sessionData?.session?.students || [];
+  // Get attendance records - each record contains student info
   const attendanceRecords = sessionData?.attendanceRecords || [];
 
   // Create attendance map
   const attendanceMap = new Map(
-    attendanceRecords.map((record) => [record.studentId, record])
+    attendanceRecords.map((record) => [record.studentId, record]),
   );
 
+  // Build students list from attendance records for manual marking
+  const students = attendanceRecords.map((record) => ({
+    id: record.studentId,
+    name: record.studentName || "Unknown",
+    studentNumber: record.studentNumber || "",
+  }));
+
   // Filter students for manual marking
-  const filteredStudents = students.filter((student: any) => {
-    const fullName = `${student.firstName} ${student.lastName || ""}`.trim();
+  const filteredStudents = students.filter((student) => {
     return (
-      fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       student.studentNumber.toLowerCase().includes(searchQuery.toLowerCase())
     );
   });
 
   const handleManualMark = async (
     studentId: string,
-    status: AttendanceStatus
+    status: AttendanceStatus,
   ) => {
     if (!sessionId) return;
 
@@ -82,7 +87,7 @@ export function AttendanceMarkingTab({
 
       if (result.success) {
         toast.success(
-          `Marked ${result.data.studentName} as ${status.toLowerCase()}`
+          `Marked ${result.data.studentName} as ${status.toLowerCase()}`,
         );
         // Reload to update the list
         window.location.reload();
@@ -101,9 +106,11 @@ export function AttendanceMarkingTab({
     if (!attendance) return null;
 
     const statusColors = {
-      PRESENT: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      PRESENT:
+        "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
       ABSENT: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
-      WRONG_SESSION: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+      WRONG_SESSION:
+        "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
     };
 
     return (
@@ -205,8 +212,8 @@ export function AttendanceMarkingTab({
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-xs text-blue-800 dark:text-blue-200">
                 <strong>Instructions:</strong> Students should scan their QR
-                code. The system will automatically mark them present or identify
-                if they're in the wrong session.
+                code. The system will automatically mark them present or
+                identify if they&apos;re in the wrong session.
               </p>
             </div>
           </div>
@@ -243,7 +250,7 @@ export function AttendanceMarkingTab({
                 </p>
               </div>
             ) : (
-              filteredStudents.map((student: any) => {
+              filteredStudents.map((student) => {
                 const hasAttendance = attendanceMap.has(student.id);
 
                 return (
@@ -254,7 +261,7 @@ export function AttendanceMarkingTab({
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">
-                          {student.firstName} {student.lastName || ""}
+                          {student.name}
                         </p>
                         <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
                           {student.studentNumber}
@@ -267,9 +274,7 @@ export function AttendanceMarkingTab({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() =>
-                          handleManualMark(student.id, "PRESENT")
-                        }
+                        onClick={() => handleManualMark(student.id, "PRESENT")}
                         disabled={isMarkingManual || hasAttendance}
                         className="text-xs"
                       >

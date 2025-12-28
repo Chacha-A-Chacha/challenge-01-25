@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,237 +7,170 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN
-// ═══════════════════════════════════════════════════════════════════════════
 model Admin {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-
+  id               String    @id @default(cuid())
+  email            String    @unique
+  password         String
+  createdAt        DateTime  @default(now())
   resetToken       String?
   resetTokenExpiry DateTime?
 
   @@map("admins")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// COURSE
-// ═══════════════════════════════════════════════════════════════════════════
 model Course {
-  id            String       @id @default(cuid())
+  id            String                @id @default(cuid())
   name          String
-  headTeacher   Teacher      @relation("HeadTeacher", fields: [headTeacherId], references: [id])
-  headTeacherId String       @unique
+  headTeacherId String                @unique
   endDate       DateTime?
-  status        CourseStatus @default(ACTIVE)
-  createdAt     DateTime     @default(now())
-
-  teachers      Teacher[]             @relation("CourseTeachers")
+  status        CourseStatus          @default(ACTIVE)
+  createdAt     DateTime              @default(now())
   classes       Class[]
-  registrations StudentRegistration[] // Pending student registrations
+  headTeacher   Teacher               @relation("HeadTeacher", fields: [headTeacherId], references: [id])
+  registrations StudentRegistration[]
+  teachers      Teacher[]             @relation("CourseTeachers")
 
   @@map("courses")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// TEACHER
-// ═══════════════════════════════════════════════════════════════════════════
 model Teacher {
-  id        String      @id @default(cuid())
-  email     String      @unique
-  password  String
-  course    Course?     @relation("CourseTeachers", fields: [courseId], references: [id])
-  courseId  String?
-  role      TeacherRole @default(ADDITIONAL)
-  createdAt DateTime    @default(now())
-
-  resetToken       String?
-  resetTokenExpiry DateTime?
-
-  // Soft delete support
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-
-  headCourse            Course?               @relation("HeadTeacher")
+  id                    String                @id @default(cuid())
+  email                 String                @unique
+  password              String
+  courseId              String?
+  role                  TeacherRole           @default(ADDITIONAL)
+  createdAt             DateTime              @default(now())
+  resetToken            String?
+  resetTokenExpiry      DateTime?
+  isDeleted             Boolean               @default(false)
+  deletedAt             DateTime?
   attendanceRecords     Attendance[]
+  headCourse            Course?               @relation("HeadTeacher")
   approvedRequests      ReassignmentRequest[]
-  reviewedRegistrations StudentRegistration[] // Registrations reviewed by this teacher
+  reviewedRegistrations StudentRegistration[]
+  course                Course?               @relation("CourseTeachers", fields: [courseId], references: [id])
 
   @@map("teachers")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CLASS
-// ═══════════════════════════════════════════════════════════════════════════
 model Class {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
   capacity  Int
-  course    Course   @relation(fields: [courseId], references: [id])
   courseId  String
-  createdAt DateTime @default(now())
-
-  sessions Session[]
-  students Student[]
+  createdAt DateTime  @default(now())
+  course    Course    @relation(fields: [courseId], references: [id])
+  sessions  Session[]
+  students  Student[]
 
   @@map("classes")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SESSION
-// ═══════════════════════════════════════════════════════════════════════════
 model Session {
-  id        String   @id @default(cuid())
-  class     Class    @relation(fields: [classId], references: [id])
-  classId   String
-  day       WeekDay
-  startTime DateTime
-  endTime   DateTime
-  capacity  Int
-  createdAt DateTime @default(now())
-
-  // Active students assigned to this session
-  saturdayStudents Student[] @relation("SaturdayStudents")
-  sundayStudents   Student[] @relation("SundayStudents")
-
-  // Pending registrations selecting this session (for capacity calculation)
+  id                  String                @id @default(cuid())
+  classId             String
+  day                 WeekDay
+  startTime           DateTime
+  endTime             DateTime
+  capacity            Int
+  createdAt           DateTime              @default(now())
+  attendances         Attendance[]
+  fromRequests        ReassignmentRequest[] @relation("FromSession")
+  toRequests          ReassignmentRequest[] @relation("ToSession")
+  class               Class                 @relation(fields: [classId], references: [id])
   pendingSaturdayRegs StudentRegistration[] @relation("RegSaturdaySession")
   pendingSundayRegs   StudentRegistration[] @relation("RegSundaySession")
-
-  // Other relations
-  attendances  Attendance[]
-  fromRequests ReassignmentRequest[] @relation("FromSession")
-  toRequests   ReassignmentRequest[] @relation("ToSession")
+  saturdayStudents    Student[]             @relation("SaturdayStudents")
+  sundayStudents      Student[]             @relation("SundayStudents")
 
   @@map("sessions")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STUDENT
-// ═══════════════════════════════════════════════════════════════════════════
 model Student {
-  id            String  @id @default(cuid())
-  uuid          String  @unique @default(cuid())
-  studentNumber String
-  surname       String
-  firstName     String
-  lastName      String?
-  email         String  @unique
-  phoneNumber   String?
-
-  // Password authentication (set during registration)
-  passwordHash String
-
-  resetToken       String?
-  resetTokenExpiry DateTime?
-
-  // Class membership (derived from session's class on approval)
-  class   Class  @relation(fields: [classId], references: [id])
-  classId String
-
-  // Session assignments (copied from registration on approval)
-  saturdaySession   Session? @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
-  saturdaySessionId String?
-  sundaySession     Session? @relation("SundayStudents", fields: [sundaySessionId], references: [id])
-  sundaySessionId   String?
-
-  createdAt DateTime @default(now())
-
+  id                   String                @id @default(cuid())
+  uuid                 String                @unique @default(cuid())
+  studentNumber        String
+  surname              String
+  firstName            String
+  lastName             String?
+  email                String                @unique
+  phoneNumber          String?
+  classId              String
+  saturdaySessionId    String?
+  sundaySessionId      String?
+  createdAt            DateTime              @default(now())
+  passwordHash         String
+  resetToken           String?
+  resetTokenExpiry     DateTime?
   attendances          Attendance[]
   reassignmentRequests ReassignmentRequest[]
+  class                Class                 @relation(fields: [classId], references: [id])
+  saturdaySession      Session?              @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
+  sundaySession        Session?              @relation("SundayStudents", fields: [sundaySessionId], references: [id])
 
   @@unique([studentNumber, classId])
   @@map("students")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// STUDENT REGISTRATION (Pending approvals)
-// ═══════════════════════════════════════════════════════════════════════════
 model StudentRegistration {
-  id String @id @default(cuid())
-
-  // Personal Info
-  surname     String
-  firstName   String
-  lastName    String?
-  email       String  @unique
-  phoneNumber String?
-
-  // Course Selection
-  course   Course @relation(fields: [courseId], references: [id])
-  courseId String
-
-  // Session Selection (student picks one per day)
-  saturdaySession   Session @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id])
+  id                String             @id @default(cuid())
+  surname           String
+  firstName         String
+  lastName          String?
+  email             String             @unique
+  phoneNumber       String?
+  courseId          String
   saturdaySessionId String
-  sundaySession     Session @relation("RegSundaySession", fields: [sundaySessionId], references: [id])
   sundaySessionId   String
-
-  // Authentication (set at registration)
-  passwordHash String
-
-  // Payment Verification (required)
-  paymentReceiptUrl String // Image upload URL
-  paymentReceiptNo  String // Numeric string (e.g., "123456789")
-
-  // Status & Review
-  status          RegistrationStatus @default(PENDING)
-  reviewedBy      Teacher?           @relation(fields: [reviewedById], references: [id])
-  reviewedById    String?
-  reviewedAt      DateTime?
-  rejectionReason String?
-
-  // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  passwordHash      String
+  paymentReceiptUrl String
+  paymentReceiptNo  String
+  status            RegistrationStatus @default(PENDING)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  rejectionReason   String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  course            Course             @relation(fields: [courseId], references: [id])
+  reviewedBy        Teacher?           @relation(fields: [reviewedById], references: [id])
+  saturdaySession   Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id])
+  sundaySession     Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id])
 
   @@map("student_registrations")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ATTENDANCE
-// ═══════════════════════════════════════════════════════════════════════════
 model Attendance {
   id        String           @id @default(cuid())
-  student   Student          @relation(fields: [studentId], references: [id])
   studentId String
-  session   Session          @relation(fields: [sessionId], references: [id])
   sessionId String
   date      DateTime
   status    AttendanceStatus
   scanTime  DateTime?
-  markedBy  Teacher?         @relation(fields: [teacherId], references: [id])
   teacherId String?
+  session   Session          @relation(fields: [sessionId], references: [id])
+  student   Student          @relation(fields: [studentId], references: [id])
+  markedBy  Teacher?         @relation(fields: [teacherId], references: [id])
 
   @@unique([studentId, sessionId, date])
   @@map("attendances")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// REASSIGNMENT REQUEST
-// ═══════════════════════════════════════════════════════════════════════════
 model ReassignmentRequest {
   id            String        @id @default(cuid())
-  student       Student       @relation(fields: [studentId], references: [id])
   studentId     String
-  fromSession   Session       @relation("FromSession", fields: [fromSessionId], references: [id])
   fromSessionId String
-  toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id])
   toSessionId   String
-  reason        String?
   status        RequestStatus @default(PENDING)
   requestedAt   DateTime      @default(now())
-  approvedBy    Teacher?      @relation(fields: [teacherId], references: [id])
   teacherId     String?
+  fromSession   Session       @relation("FromSession", fields: [fromSessionId], references: [id])
+  student       Student       @relation(fields: [studentId], references: [id])
+  approvedBy    Teacher?      @relation(fields: [teacherId], references: [id])
+  toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id])
 
   @@map("reassignment_requests")
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ENUMS
-// ═══════════════════════════════════════════════════════════════════════════
 enum CourseStatus {
   ACTIVE
   INACTIVE

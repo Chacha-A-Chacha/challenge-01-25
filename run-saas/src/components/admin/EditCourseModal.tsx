@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,96 +8,110 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle } from "lucide-react"
-import { useCourseStore } from "@/store"
-import type { CourseWithDetails, CourseStatus } from "@/types"
-import { COURSE_STATUS } from "@/types"
-import { toast } from "sonner"
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
+import { useCourseStore } from "@/store";
+import type { CourseWithDetails, CourseStatus } from "@/types";
+import { COURSE_STATUS } from "@/types";
+import { toast } from "sonner";
 
 interface EditCourseModalProps {
-  course: CourseWithDetails | null
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  course: CourseWithDetails | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 const statusOptions = [
   { label: "Active", value: COURSE_STATUS.ACTIVE },
   { label: "Inactive", value: COURSE_STATUS.INACTIVE },
   { label: "Completed", value: COURSE_STATUS.COMPLETED },
-]
+];
 
-export function EditCourseModal({ course, open, onOpenChange }: EditCourseModalProps) {
-  const { updateCourse, isUpdating, error } = useCourseStore()
+export function EditCourseModal({
+  course,
+  open,
+  onOpenChange,
+}: EditCourseModalProps) {
+  const { updateCourse, isUpdating, error } = useCourseStore();
 
-  const [courseName, setCourseName] = useState("")
-  const [status, setStatus] = useState<CourseStatus>(COURSE_STATUS.ACTIVE)
-  const [endDate, setEndDate] = useState("")
+  const [courseName, setCourseName] = useState("");
+  const [status, setStatus] = useState<CourseStatus>(COURSE_STATUS.ACTIVE);
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     if (course) {
-      setCourseName(course.name)
-      setStatus(course.status)
-      setEndDate(course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : "")
+      setCourseName(course.name);
+      setStatus(course.status);
+      setEndDate(
+        course.endDate
+          ? new Date(course.endDate).toISOString().split("T")[0]
+          : "",
+      );
     }
-  }, [course])
+  }, [course]);
 
-  if (!course) return null
+  if (!course) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    const updates: any = {}
+    const updates: Record<string, unknown> = {};
 
     // Only include changed fields
     if (courseName !== course.name) {
-      updates.name = courseName
+      updates.name = courseName;
     }
 
     if (status !== course.status) {
-      updates.status = status
+      updates.status = status;
     }
 
     // Handle end date
-    const currentEndDate = course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : ""
+    const currentEndDate = course.endDate
+      ? new Date(course.endDate).toISOString().split("T")[0]
+      : "";
     if (endDate !== currentEndDate) {
-      updates.endDate = endDate ? new Date(endDate) : null
+      updates.endDate = endDate ? new Date(endDate) : null;
     }
 
     // Check if there are any changes
     if (Object.keys(updates).length === 0) {
-      toast.info("No changes to save")
-      return
+      toast.info("No changes to save");
+      return;
     }
 
-    const success = await updateCourse(course.id, updates)
+    const success = await updateCourse(course.id, updates);
 
     if (success) {
-      toast.success("Course updated successfully!")
-      onOpenChange(false)
+      toast.success("Course updated successfully!");
+      onOpenChange(false);
     }
-  }
+  };
 
   const handleClose = () => {
     if (!isUpdating) {
-      onOpenChange(false)
+      onOpenChange(false);
       // Reset to original values
-      setCourseName(course.name)
-      setStatus(course.status)
-      setEndDate(course.endDate ? new Date(course.endDate).toISOString().split('T')[0] : "")
+      setCourseName(course.name);
+      setStatus(course.status);
+      setEndDate(
+        course.endDate
+          ? new Date(course.endDate).toISOString().split("T")[0]
+          : "",
+      );
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -105,7 +119,8 @@ export function EditCourseModal({ course, open, onOpenChange }: EditCourseModalP
         <DialogHeader>
           <DialogTitle>Edit Course</DialogTitle>
           <DialogDescription>
-            Update course name, status, or end date. Head teacher management has its own section.
+            Update course name, status, or end date. Head teacher management has
+            its own section.
           </DialogDescription>
         </DialogHeader>
 
@@ -186,5 +201,5 @@ export function EditCourseModal({ course, open, onOpenChange }: EditCourseModalP
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

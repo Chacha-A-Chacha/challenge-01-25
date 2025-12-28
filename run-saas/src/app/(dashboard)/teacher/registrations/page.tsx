@@ -18,7 +18,9 @@ import {
 } from "@/store/teacher/registration-approval-store";
 import { toast } from "sonner";
 
-const statusOptions = [
+type RegistrationStatusFilter = "PENDING" | "APPROVED" | "REJECTED" | "all";
+
+const statusOptions: { label: string; value: RegistrationStatusFilter }[] = [
   { label: "Pending", value: "PENDING" },
   { label: "Approved", value: "APPROVED" },
   { label: "Rejected", value: "REJECTED" },
@@ -59,7 +61,7 @@ export default function RegistrationsPage() {
     loadRegistrations();
   }, [loadRegistrations]);
 
-  const handleViewDetails = (registration: any) => {
+  const handleViewDetails = (registration: (typeof registrations)[number]) => {
     selectRegistration(registration);
     setIsApprovalModalOpen(true);
   };
@@ -172,7 +174,9 @@ export default function RegistrationsPage() {
           <FilterSelect
             value={filters.status}
             options={statusOptions}
-            onChange={(value) => setFilters({ status: value as any })}
+            onChange={(value) =>
+              setFilters({ status: value as RegistrationStatusFilter })
+            }
             placeholder="Filter by status"
           />
         </div>
@@ -334,7 +338,9 @@ export default function RegistrationsPage() {
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {new Date(registration.createdAt).toLocaleDateString()}
+                          {new Date(
+                            registration.createdAt,
+                          ).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3">
                           <Button

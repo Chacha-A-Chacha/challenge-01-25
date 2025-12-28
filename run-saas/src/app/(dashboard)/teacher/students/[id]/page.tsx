@@ -1,27 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mail, Phone, Calendar, CheckCircle, XCircle, Clock } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { StudentWithSessions } from "@/types";
+
+interface StudentData {
+  id: string;
+  uuid: string;
+  studentNumber: string;
+  surname: string;
+  firstName: string;
+  lastName?: string | null;
+  email: string;
+  phoneNumber?: string | null;
+  createdAt: string;
+  class?: { id: string; name: string; courseId: string } | null;
+  saturdaySession?: {
+    id: string;
+    startTime: string;
+    endTime: string;
+    capacity: number;
+  } | null;
+  sundaySession?: {
+    id: string;
+    startTime: string;
+    endTime: string;
+    capacity: number;
+  } | null;
+  attendances?: Array<{
+    id: string;
+    date: string;
+    status: string;
+    session?: { day: string } | null;
+  }>;
+}
 
 export default function StudentDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const router = useRouter();
-  const [student, setStudent] = useState<StudentWithSessions | null>(null);
+  const [student, setStudent] = useState<StudentData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchStudent = async () => {
       try {
-        const response = await fetch(`/api/teacher/students/${params.id}`);
+        const response = await fetch(`/api/teacher/students/${id}`);
 
         if (!response.ok) {
           throw new Error("Failed to fetch student details");
@@ -42,7 +81,7 @@ export default function StudentDetailsPage({
     };
 
     fetchStudent();
-  }, [params.id]);
+  }, [id]);
 
   if (isLoading) {
     return (
@@ -152,7 +191,9 @@ export default function StudentDetailsPage({
               Class
             </p>
             <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-              <p className="font-medium">{student.class?.name || "Not assigned"}</p>
+              <p className="font-medium">
+                {student.class?.name || "Not assigned"}
+              </p>
             </div>
           </div>
 
@@ -215,12 +256,13 @@ export default function StudentDetailsPage({
                       minute: "2-digit",
                     })}{" "}
                     -{" "}
-                    {new Date(
-                      student.sundaySession.endTime,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {new Date(student.sundaySession.endTime).toLocaleTimeString(
+                      [],
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      },
+                    )}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Capacity: {student.sundaySession.capacity} students
@@ -252,16 +294,14 @@ export default function StudentDetailsPage({
                       {attendance.session?.day || "Unknown"}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(attendance.createdAt).toLocaleDateString()}
+                      {new Date(attendance.date).toLocaleDateString()}
                     </p>
                   </div>
                   <Badge
                     variant={
                       attendance.status === "PRESENT"
                         ? "success"
-                        : attendance.status === "LATE"
-                          ? "warning"
-                          : "destructive"
+                        : "destructive"
                     }
                   >
                     {attendance.status}

@@ -123,13 +123,14 @@ export async function findTeacherByEmail(
   email: string,
 ): Promise<TeacherWithCourse | null> {
   try {
-    return await prisma.teacher.findUnique({
+    const teacher = await prisma.teacher.findUnique({
       where: { email: email.toLowerCase().trim() },
       include: {
         course: true,
         headCourse: true,
       },
     });
+    return teacher as TeacherWithCourse | null;
   } catch (error) {
     console.error("Error finding teacher by email:", error);
     return null;
@@ -149,7 +150,7 @@ export async function findStudentByCredentials(
     if (phoneNumber) baseWhere.phoneNumber = phoneNumber.trim();
     if (email) baseWhere.email = email.toLowerCase().trim();
 
-    return await prisma.student.findFirst({
+    const student = await prisma.student.findFirst({
       where: baseWhere,
       include: {
         class: {
@@ -158,9 +159,11 @@ export async function findStudentByCredentials(
             sessions: true,
           },
         },
-        sessions: true,
+        saturdaySession: true,
+        sundaySession: true,
       },
     });
+    return student as StudentWithSessions | null;
   } catch (error) {
     console.error("Error finding student by credentials:", error);
     return null;
@@ -171,7 +174,7 @@ export async function findStudentByUUID(
   uuid: string,
 ): Promise<StudentWithSessions | null> {
   try {
-    return await prisma.student.findUnique({
+    const student = await prisma.student.findUnique({
       where: { uuid },
       include: {
         class: {
@@ -180,9 +183,11 @@ export async function findStudentByUUID(
             sessions: true,
           },
         },
-        sessions: true,
+        saturdaySession: true,
+        sundaySession: true,
       },
     });
+    return student as StudentWithSessions | null;
   } catch (error) {
     console.error("Error finding student by UUID:", error);
     return null;
@@ -253,8 +258,8 @@ export async function createCourseWithHeadTeacher(
     });
 
     return {
-      course: courseResult as CourseWithDetails,
-      teacher: teacherResult as TeacherWithCourse,
+      course: courseResult as unknown as CourseWithDetails,
+      teacher: teacherResult as unknown as TeacherWithCourse,
     };
   });
 }
@@ -359,9 +364,9 @@ export async function replaceHeadTeacher(
     });
 
     return {
-      course: updatedCourse as CourseWithDetails,
-      oldTeacher: oldTeacher as TeacherWithCourse,
-      newTeacher: updatedNewTeacher as TeacherWithCourse,
+      course: updatedCourse as unknown as CourseWithDetails,
+      oldTeacher: oldTeacher as unknown as TeacherWithCourse,
+      newTeacher: updatedNewTeacher as unknown as TeacherWithCourse,
     };
   });
 }
@@ -374,7 +379,7 @@ export async function getAllTeachers(
   includeDeleted: boolean = false,
 ): Promise<TeacherWithCourse[]> {
   try {
-    return await prisma.teacher.findMany({
+    const teachers = await prisma.teacher.findMany({
       where: includeDeleted ? {} : { isDeleted: false },
       include: {
         course: true,
@@ -391,6 +396,7 @@ export async function getAllTeachers(
       },
       orderBy: { createdAt: "desc" },
     });
+    return teachers as unknown as TeacherWithCourse[];
   } catch (error) {
     console.error("Error fetching teachers:", error);
     throw new Error(handlePrismaError(error));
@@ -559,11 +565,12 @@ export async function getClassesByCourse(
   courseId: string,
 ): Promise<ClassWithSessions[]> {
   try {
-    return await prisma.class.findMany({
+    const classes = await prisma.class.findMany({
       where: { courseId },
       include: {
         sessions: true,
         students: true,
+        course: true,
         _count: {
           select: {
             sessions: true,
@@ -573,6 +580,7 @@ export async function getClassesByCourse(
       },
       orderBy: { createdAt: "desc" },
     });
+    return classes as unknown as ClassWithSessions[];
   } catch (error) {
     console.error("Error fetching classes:", error);
     throw new Error(handlePrismaError(error));
@@ -586,7 +594,7 @@ export async function getClassById(
   classId: string,
 ): Promise<ClassWithSessions | null> {
   try {
-    return await prisma.class.findUnique({
+    const classData = await prisma.class.findUnique({
       where: { id: classId },
       include: {
         course: true,
@@ -602,6 +610,7 @@ export async function getClassById(
         },
       },
     });
+    return classData as unknown as ClassWithSessions | null;
   } catch (error) {
     console.error("Error fetching class:", error);
     throw new Error(handlePrismaError(error));
@@ -645,7 +654,7 @@ export async function createClass(
       },
     });
 
-    return newClass as ClassWithSessions;
+    return newClass as unknown as ClassWithSessions;
   } catch (error) {
     console.error("Error creating class:", error);
     throw new Error(handlePrismaError(error));
@@ -700,7 +709,7 @@ export async function updateClass(
       },
     });
 
-    return updatedClass as ClassWithSessions;
+    return updatedClass as unknown as ClassWithSessions;
   });
 }
 
@@ -945,7 +954,7 @@ export async function getStudentsByCourse(
     const classIds = classes.map((c) => c.id);
 
     // Get students from those classes
-    return await prisma.student.findMany({
+    const students = await prisma.student.findMany({
       where: {
         classId: { in: classIds },
       },
@@ -960,6 +969,7 @@ export async function getStudentsByCourse(
       },
       orderBy: { createdAt: "desc" },
     });
+    return students as unknown as StudentWithSessions[];
   } catch (error) {
     console.error("Error fetching students:", error);
     throw new Error(handlePrismaError(error));
@@ -973,7 +983,7 @@ export async function getStudentById(
   studentId: string,
 ): Promise<StudentWithSessions | null> {
   try {
-    return await prisma.student.findUnique({
+    const student = await prisma.student.findUnique({
       where: { id: studentId },
       include: {
         class: {
@@ -985,7 +995,7 @@ export async function getStudentById(
         saturdaySession: true,
         sundaySession: true,
         attendances: {
-          orderBy: { createdAt: "desc" },
+          orderBy: { date: "desc" },
           take: 10, // Last 10 attendance records
           include: {
             session: true,
@@ -993,6 +1003,7 @@ export async function getStudentById(
         },
       },
     });
+    return student as unknown as StudentWithSessions | null;
   } catch (error) {
     console.error("Error fetching student:", error);
     throw new Error(handlePrismaError(error));
@@ -1074,7 +1085,8 @@ export async function autoAssignStudentsToSessions(
     const unassignedStudents = await tx.student.findMany({
       where: {
         classId,
-        sessions: { none: {} },
+        saturdaySessionId: null,
+        sundaySessionId: null,
       },
     });
 
@@ -1084,28 +1096,36 @@ export async function autoAssignStudentsToSessions(
         failed: 0,
         errors: [],
         assignments: [],
-        unassigned: [],
-      };
+        unassigned: [] as Student[],
+      } as AutoAssignmentResult;
     }
 
     const sessions = await tx.session.findMany({
       where: { classId },
       include: {
-        _count: { select: { students: true } },
+        _count: { select: { saturdayStudents: true, sundayStudents: true } },
       },
       orderBy: [{ day: "asc" }, { startTime: "asc" }],
     });
 
-    const saturdaySessions = sessions.filter(
-      (
-        s: Session & {
-          _count: { students: number };
-        },
-      ) => s.day === "SATURDAY",
+    // Map sessions to include a unified student count based on day
+    type SessionWithCount = Session & {
+      _count: { saturdayStudents: number; sundayStudents: number };
+      studentCount: number;
+    };
+
+    const sessionsWithCount: SessionWithCount[] = sessions.map((s) => ({
+      ...s,
+      studentCount:
+        s.day === "SATURDAY"
+          ? s._count.saturdayStudents
+          : s._count.sundayStudents,
+    }));
+
+    const saturdaySessions = sessionsWithCount.filter(
+      (s) => s.day === "SATURDAY",
     );
-    const sundaySessions = sessions.filter(
-      (s: Session & { _count: { students: number } }) => s.day === "SUNDAY",
-    );
+    const sundaySessions = sessionsWithCount.filter((s) => s.day === "SUNDAY");
 
     if (saturdaySessions.length === 0 || sundaySessions.length === 0) {
       return {
@@ -1115,8 +1135,8 @@ export async function autoAssignStudentsToSessions(
           "Both Saturday and Sunday sessions are required for assignment",
         ],
         assignments: [],
-        unassigned: unassignedStudents,
-      };
+        unassigned: unassignedStudents as unknown as Student[],
+      } as AutoAssignmentResult;
     }
 
     const assignments: Array<{
@@ -1130,50 +1150,36 @@ export async function autoAssignStudentsToSessions(
 
     // Track current enrollment for balanced assignment
     const sessionEnrollment = new Map<string, number>();
-    sessions.forEach((session: Session & { _count: { students: number } }) => {
-      sessionEnrollment.set(session.id, session._count.students);
+    sessionsWithCount.forEach((session) => {
+      sessionEnrollment.set(session.id, session.studentCount);
     });
 
     // Assign students to sessions with load balancing
     for (const student of unassignedStudents) {
       const availableSaturday = saturdaySessions
-        .filter((s: Session & { _count: { students: number } }) => {
+        .filter((s) => {
           const currentEnrollment = sessionEnrollment.get(s.id) ?? 0;
           return currentEnrollment < s.capacity;
         })
-        .sort(
-          (
-            a: Session & { _count: { students: number } },
-            b: Session & {
-              _count: { students: number };
-            },
-          ): number => {
-            const enrollmentA = sessionEnrollment.get(a.id) ?? 0;
-            const enrollmentB = sessionEnrollment.get(b.id) ?? 0;
-            return enrollmentA - enrollmentB;
-          },
-        )[0];
+        .sort((a, b) => {
+          const enrollmentA = sessionEnrollment.get(a.id) ?? 0;
+          const enrollmentB = sessionEnrollment.get(b.id) ?? 0;
+          return enrollmentA - enrollmentB;
+        })[0];
 
       const availableSunday = sundaySessions
-        .filter((s: Session & { _count: { students: number } }) => {
+        .filter((s) => {
           const currentEnrollment = sessionEnrollment.get(s.id) ?? 0;
           return currentEnrollment < s.capacity;
         })
-        .sort(
-          (
-            a: Session & { _count: { students: number } },
-            b: Session & {
-              _count: { students: number };
-            },
-          ): number => {
-            const enrollmentA = sessionEnrollment.get(a.id) ?? 0;
-            const enrollmentB = sessionEnrollment.get(b.id) ?? 0;
-            return enrollmentA - enrollmentB;
-          },
-        )[0];
+        .sort((a, b) => {
+          const enrollmentA = sessionEnrollment.get(a.id) ?? 0;
+          const enrollmentB = sessionEnrollment.get(b.id) ?? 0;
+          return enrollmentA - enrollmentB;
+        })[0];
 
       if (!availableSaturday || !availableSunday) {
-        unassigned.push(student);
+        unassigned.push(student as unknown as Student);
         errors.push(
           `No available sessions for student ${student.studentNumber}`,
         );
@@ -1184,12 +1190,8 @@ export async function autoAssignStudentsToSessions(
         await tx.student.update({
           where: { id: student.id },
           data: {
-            sessions: {
-              connect: [
-                { id: availableSaturday.id },
-                { id: availableSunday.id },
-              ],
-            },
+            saturdaySessionId: availableSaturday.id,
+            sundaySessionId: availableSunday.id,
           },
         });
 
@@ -1205,7 +1207,7 @@ export async function autoAssignStudentsToSessions(
         sessionEnrollment.set(availableSaturday.id, satEnrollment + 1);
         sessionEnrollment.set(availableSunday.id, sunEnrollment + 1);
       } catch (error: unknown) {
-        unassigned.push(student);
+        unassigned.push(student as unknown as Student);
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error";
         errors.push(
@@ -1219,8 +1221,8 @@ export async function autoAssignStudentsToSessions(
       failed: unassigned.length,
       errors,
       assignments,
-      unassigned,
-    };
+      unassigned: unassigned as unknown as Student[],
+    } as AutoAssignmentResult;
   });
 }
 
@@ -1276,20 +1278,34 @@ export async function bulkImportStudents(
             return null;
           }
 
+          // Generate a default password hash (student should reset)
+          const bcrypt = await import("bcryptjs");
+          const defaultPasswordHash = await bcrypt.hash(
+            studentData.student_number.toUpperCase().trim(),
+            10,
+          );
+
+          // Determine surname: use provided surname, or last_name, or first_name as fallback
+          const surname =
+            studentData.surname?.trim() ||
+            studentData.last_name?.trim() ||
+            studentData.first_name.trim();
+
           const student = await tx.student.create({
             data: {
               studentNumber: studentData.student_number.toUpperCase().trim(),
+              surname,
               firstName: studentData.first_name.trim(),
               lastName: studentData.last_name?.trim() || null,
               email: studentData.email.toLowerCase().trim(),
               phoneNumber: studentData.phone_number?.trim() || null,
-              classId,
-              uuid: crypto.randomUUID(),
+              class: { connect: { id: classId } },
+              passwordHash: defaultPasswordHash,
             },
           });
 
           results.success++;
-          results.students.push(student);
+          results.students.push(student as unknown as Student);
           return student;
         } catch (error: unknown) {
           results.failed++;
@@ -1324,7 +1340,8 @@ export async function markAttendanceFromQR(
     const student = await tx.student.findUnique({
       where: { uuid: qrData.uuid },
       include: {
-        sessions: true,
+        saturdaySession: true,
+        sundaySession: true,
         class: { include: { sessions: true } },
       },
     });
@@ -1782,7 +1799,7 @@ export async function autoMarkAbsentForClass(
         // Get the student's assigned session for this day
         const studentSessions = await tx.session.findMany({
           where: {
-            id: { in: student.sessions.map((s: any) => s.id) },
+            id: { in: student.sessions.map((s: { id: string }) => s.id) },
             day: sessionDay,
           },
         });

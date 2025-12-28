@@ -1,13 +1,13 @@
 // hooks/teacher/useQRScanner.ts
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { useAttendanceStore } from '@/store/teacher/attendance-store'
-import { useNotifications } from '@/store/shared/ui-store'
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useAttendanceStore } from "@/store/teacher/attendance-store";
+import { useNotifications } from "@/store/shared/ui-store";
 
 interface QRScannerOptions {
-  sessionId?: string
-  facingMode?: 'user' | 'environment'
-  onScanSuccess?: (result: string) => void
-  onScanError?: (error: string) => void
+  sessionId?: string;
+  facingMode?: "user" | "environment";
+  onScanSuccess?: (result: string) => void;
+  onScanError?: (error: string) => void;
 }
 
 /**
@@ -16,150 +16,170 @@ interface QRScannerOptions {
  * Uses attendance store for actual QR processing
  */
 export function useQRScanner(options: QRScannerOptions = {}) {
-  const { sessionId, facingMode = 'environment', onScanSuccess, onScanError } = options
+  const {
+    sessionId,
+    facingMode = "environment",
+    onScanSuccess,
+    onScanError,
+  } = options;
 
-  const [isScanning, setIsScanning] = useState(false)
-  const [hasPermission, setHasPermission] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [isInitializing, setIsInitializing] = useState(false)
+  const [isScanning, setIsScanning] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const scannerRef = useRef<any>(null) // For QR detection library
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scannerRef = useRef<{ reset?: () => void } | null>(null); // For QR detection library
 
-  const { scanQRCode } = useAttendanceStore()
-  const { showError, showSuccess } = useNotifications()
+  const { scanQRCode } = useAttendanceStore();
+  const { showError, showSuccess } = useNotifications();
 
   // Request camera permission
   const requestPermission = useCallback(async (): Promise<boolean> => {
     try {
-      setIsInitializing(true)
+      setIsInitializing(true);
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode }
-      })
+        video: { facingMode },
+      });
 
-      setHasPermission(true)
-      setError(null)
+      setHasPermission(true);
+      setError(null);
 
       // Stop the test stream immediately
-      stream.getTracks().forEach(track => track.stop())
+      stream.getTracks().forEach((track) => track.stop());
 
-      return true
+      return true;
     } catch (error) {
-      setHasPermission(false)
-      const errorMessage = error instanceof Error ? error.message : 'Camera permission denied'
-      setError(errorMessage)
-      showError('Camera Access Denied', 'Please allow camera access to scan QR codes')
-      return false
+      setHasPermission(false);
+      const errorMessage =
+        error instanceof Error ? error.message : "Camera permission denied";
+      setError(errorMessage);
+      showError(
+        "Camera Access Denied",
+        "Please allow camera access to scan QR codes",
+      );
+      return false;
     } finally {
-      setIsInitializing(false)
+      setIsInitializing(false);
     }
-  }, [facingMode, showError])
+  }, [facingMode, showError]);
 
   // Start video stream and scanning
   const startScanning = useCallback(async (): Promise<boolean> => {
     if (!hasPermission) {
-      const granted = await requestPermission()
-      if (!granted) return false
+      const granted = await requestPermission();
+      if (!granted) return false;
     }
 
     try {
-      setIsInitializing(true)
+      setIsInitializing(true);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode,
           width: { ideal: 640 },
-          height: { ideal: 480 }
-        }
-      })
+          height: { ideal: 480 },
+        },
+      });
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        streamRef.current = stream
-        setIsScanning(true)
-        setError(null)
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setIsScanning(true);
+        setError(null);
 
         // Start video playback
-        await videoRef.current.play()
+        await videoRef.current.play();
       }
 
-      return true
+      return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to start camera'
-      setError(errorMessage)
-      showError('Camera Error', errorMessage)
-      return false
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to start camera";
+      setError(errorMessage);
+      showError("Camera Error", errorMessage);
+      return false;
     } finally {
-      setIsInitializing(false)
+      setIsInitializing(false);
     }
-  }, [hasPermission, requestPermission, facingMode, showError])
+  }, [hasPermission, requestPermission, facingMode, showError]);
 
   // Stop video stream and scanning
   const stopScanning = useCallback(() => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
 
     if (videoRef.current) {
-      videoRef.current.srcObject = null
+      videoRef.current.srcObject = null;
     }
 
     if (scannerRef.current) {
       // Stop QR detection if using a library like @zxing/library
       try {
-        scannerRef.current.reset?.()
+        scannerRef.current.reset?.();
       } catch (error) {
-        console.warn('Failed to reset QR scanner:', error)
+        console.warn("Failed to reset QR scanner:", error);
       }
     }
 
-    setIsScanning(false)
-    setError(null)
-  }, [])
+    setIsScanning(false);
+    setError(null);
+  }, []);
 
   // Handle successful QR code detection
-  const handleQRDetection = useCallback(async (qrData: string) => {
-    try {
-      if (sessionId) {
-        // Use store to process the QR code
-        const success = await scanQRCode(qrData)
-        if (success) {
-          showSuccess('Attendance Marked', 'QR code scanned successfully')
-          onScanSuccess?.(qrData)
+  const handleQRDetection = useCallback(
+    async (qrData: string) => {
+      try {
+        if (sessionId) {
+          // Use store to process the QR code
+          const success = await scanQRCode(qrData);
+          if (success) {
+            showSuccess("Attendance Marked", "QR code scanned successfully");
+            onScanSuccess?.(qrData);
+          } else {
+            onScanError?.("Failed to process QR code");
+          }
         } else {
-          onScanError?.('Failed to process QR code')
+          // No session selected, just return the QR data
+          onScanSuccess?.(qrData);
         }
-      } else {
-        // No session selected, just return the QR data
-        onScanSuccess?.(qrData)
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "QR processing failed";
+        showError("QR Scan Error", errorMessage);
+        onScanError?.(errorMessage);
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'QR processing failed'
-      showError('QR Scan Error', errorMessage)
-      onScanError?.(errorMessage)
-    }
-  }, [sessionId, scanQRCode, showSuccess, showError, onScanSuccess, onScanError])
+    },
+    [sessionId, scanQRCode, showSuccess, showError, onScanSuccess, onScanError],
+  );
 
   // Manual QR code input (for testing or manual entry)
-  const processQRCode = useCallback(async (qrData: string) => {
-    await handleQRDetection(qrData)
-  }, [handleQRDetection])
+  const processQRCode = useCallback(
+    async (qrData: string) => {
+      await handleQRDetection(qrData);
+    },
+    [handleQRDetection],
+  );
 
   // Switch camera (front/back)
   const switchCamera = useCallback(async () => {
-    const newFacingMode = facingMode === 'environment' ? 'user' : 'environment'
+    const newFacingMode = facingMode === "environment" ? "user" : "environment";
 
     if (isScanning) {
-      stopScanning()
+      stopScanning();
       // Wait a bit for cleanup
       setTimeout(() => {
         // This would require reinitializing with new facing mode
         // For now, just inform the user to restart
-        showError('Camera Switch', 'Please stop and restart scanning to switch camera')
-      }, 100)
+        showError(
+          "Camera Switch",
+          "Please stop and restart scanning to switch camera",
+        );
+      }, 100);
     }
-  }, [facingMode, isScanning, stopScanning, showError])
+  }, [facingMode, isScanning, stopScanning, showError]);
 
   // Initialize QR detection when scanning starts
   useEffect(() => {
@@ -186,50 +206,52 @@ export function useQRScanner(options: QRScannerOptions = {}) {
 
       // For now, we'll just set up the reference
       scannerRef.current = {
-        reset: () => {} // Placeholder
-      }
+        reset: () => {}, // Placeholder
+      };
     }
 
     return () => {
       if (scannerRef.current?.reset) {
         try {
-          scannerRef.current.reset()
+          scannerRef.current.reset();
         } catch (error) {
-          console.warn('QR scanner cleanup error:', error)
+          console.warn("QR scanner cleanup error:", error);
         }
       }
-    }
-  }, [isScanning, handleQRDetection])
+    };
+  }, [isScanning, handleQRDetection]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopScanning()
-    }
-  }, [stopScanning])
+      stopScanning();
+    };
+  }, [stopScanning]);
 
   // Check initial permission state
   useEffect(() => {
     const checkPermission = async () => {
       try {
-        const permission = await navigator.permissions.query({ name: 'camera' as PermissionName })
-        setHasPermission(permission.state === 'granted')
+        const permission = await navigator.permissions.query({
+          name: "camera" as PermissionName,
+        });
+        setHasPermission(permission.state === "granted");
 
         // Listen for permission changes
-        permission.addEventListener('change', () => {
-          setHasPermission(permission.state === 'granted')
-          if (permission.state === 'denied' && isScanning) {
-            stopScanning()
+        permission.addEventListener("change", () => {
+          setHasPermission(permission.state === "granted");
+          if (permission.state === "denied" && isScanning) {
+            stopScanning();
           }
-        })
+        });
       } catch (error) {
         // Permissions API not supported, will check on first use
-        console.warn('Permissions API not supported')
+        console.warn("Permissions API not supported");
       }
-    }
+    };
 
-    checkPermission()
-  }, [isScanning, stopScanning])
+    checkPermission();
+  }, [isScanning, stopScanning]);
 
   return {
     // State
@@ -253,6 +275,6 @@ export function useQRScanner(options: QRScannerOptions = {}) {
     canScan: hasPermission && !isInitializing,
 
     // Camera info
-    facingMode
-  }
+    facingMode,
+  };
 }

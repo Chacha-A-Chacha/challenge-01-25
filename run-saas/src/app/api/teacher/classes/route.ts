@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: validationResult.error.errors[0]?.message || "Invalid input",
+          error: validationResult.error.issues[0]?.message || "Invalid input",
         },
         { status: 400 },
       );

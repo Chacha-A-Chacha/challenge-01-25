@@ -57,8 +57,7 @@ export default function TeachersPage() {
     const searchTerm = filters.search.toLowerCase();
     const matchesSearch = teacher.email.toLowerCase().includes(searchTerm);
 
-    const matchesRole =
-      filters.role === "all" || teacher.role === filters.role;
+    const matchesRole = filters.role === "all" || teacher.role === filters.role;
 
     const hasCourse = teacher.course !== null || teacher.headCourse !== null;
     const matchesStatus =
@@ -91,8 +90,7 @@ export default function TeachersPage() {
     // Prevent deactivation of head teachers
     if (teacher.role === TEACHER_ROLES.HEAD) {
       toast.error(
-        "Cannot deactivate head teacher",
-        "Please replace the head teacher first in the course management section.",
+        "Cannot deactivate head teacher. Please replace the head teacher first in the course management section.",
       );
       return;
     }
@@ -116,16 +114,21 @@ export default function TeachersPage() {
     {
       header: "Email",
       accessor: "email",
-      cell: (value) => <span className="font-medium">{value}</span>,
+      cell: (value: unknown) => (
+        <span className="font-medium">{String(value)}</span>
+      ),
     },
     {
       header: "Role",
       accessor: "role",
-      cell: (value) => (
-        <Badge variant={value === TEACHER_ROLES.HEAD ? "success" : "default"}>
-          {value === TEACHER_ROLES.HEAD ? "Head Teacher" : "Additional"}
-        </Badge>
-      ),
+      cell: (value: unknown) => {
+        const role = value as string;
+        return (
+          <Badge variant={role === TEACHER_ROLES.HEAD ? "success" : "default"}>
+            {role === TEACHER_ROLES.HEAD ? "Head Teacher" : "Additional"}
+          </Badge>
+        );
+      },
     },
     {
       header: "Course",
@@ -136,11 +139,18 @@ export default function TeachersPage() {
             : teacher.course;
         return course?.name || "No course";
       },
-      cell: (value) => (
-        <span className={value === "No course" ? "text-muted-foreground" : ""}>
-          {value}
-        </span>
-      ),
+      cell: (value: unknown) => {
+        const courseName = String(value);
+        return (
+          <span
+            className={
+              courseName === "No course" ? "text-muted-foreground" : ""
+            }
+          >
+            {courseName}
+          </span>
+        );
+      },
     },
     {
       header: "Classes",
@@ -158,8 +168,8 @@ export default function TeachersPage() {
     },
     {
       header: "Actions",
-      accessor: (teacher) => teacher,
-      cell: (value, teacher) => (
+      accessor: () => null,
+      cell: (_value, teacher) => (
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -225,9 +235,7 @@ export default function TeachersPage() {
                   .length
               }
             </div>
-            <p className="text-xs text-muted-foreground">
-              Additional Teachers
-            </p>
+            <p className="text-xs text-muted-foreground">Additional Teachers</p>
           </CardContent>
         </Card>
         <Card>
@@ -258,9 +266,7 @@ export default function TeachersPage() {
         <FilterSelect
           value={filters.role}
           options={roleOptions}
-          onChange={(value) =>
-            setFilters((prev) => ({ ...prev, role: value }))
-          }
+          onChange={(value) => setFilters((prev) => ({ ...prev, role: value }))}
           placeholder="Filter by role"
         />
         <FilterSelect

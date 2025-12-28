@@ -7,7 +7,7 @@ import type { ApiResponse, TeacherWithCourse } from "@/types";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -26,7 +26,7 @@ export async function POST(
       );
     }
 
-    const teacherId = params.id;
+    const { id: teacherId } = await params;
 
     if (!teacherId) {
       return NextResponse.json<ApiResponse<null>>(

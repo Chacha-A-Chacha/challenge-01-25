@@ -1,33 +1,30 @@
 // store/student/qr-store.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import type {
-  BaseStoreState,
-  QRCodeData
-} from '@/types'
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { BaseStoreState, QRCodeData } from "@/types";
 
 // ============================================================================
 // TYPES - Only what's needed for QR state
 // ============================================================================
 
 interface QRSettings {
-  size: number
-  errorCorrectionLevel: 'L' | 'M' | 'Q' | 'H'
-  darkColor: string
-  lightColor: string
+  size: number;
+  errorCorrectionLevel: "L" | "M" | "Q" | "H";
+  darkColor: string;
+  lightColor: string;
 }
 
 // QR generation options interface (matches our declaration)
 interface QRCodeOptions {
-  errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H'
-  type?: 'image/png' | 'image/jpeg' | 'image/webp'
-  quality?: number
-  margin?: number
-  width?: number
+  errorCorrectionLevel?: "L" | "M" | "Q" | "H";
+  type?: "image/png" | "image/jpeg" | "image/webp";
+  quality?: number;
+  margin?: number;
+  width?: number;
   color?: {
-    dark?: string
-    light?: string
-  }
+    dark?: string;
+    light?: string;
+  };
 }
 
 // ============================================================================
@@ -36,24 +33,24 @@ interface QRCodeOptions {
 
 interface QRState extends BaseStoreState {
   // Core QR data
-  qrCodeDataUrl: string | null
-  qrData: QRCodeData | null
+  qrCodeDataUrl: string | null;
+  qrData: QRCodeData | null;
 
   // Simple generation state
-  isGenerating: boolean
+  isGenerating: boolean;
 
   // Basic settings
-  settings: QRSettings
+  settings: QRSettings;
 
   // Actions
-  generateQRCode: (data: QRCodeData) => Promise<void>
-  regenerateQRCode: () => Promise<void>
-  clearQRCode: () => void
-  updateSettings: (settings: Partial<QRSettings>) => void
-  downloadQRCode: (filename?: string) => void
+  generateQRCode: (data: QRCodeData) => Promise<void>;
+  regenerateQRCode: () => Promise<void>;
+  clearQRCode: () => void;
+  updateSettings: (settings: Partial<QRSettings>) => void;
+  downloadQRCode: (filename?: string) => void;
 
   // Utils
-  reset: () => void
+  reset: () => void;
 }
 
 // ============================================================================
@@ -62,26 +59,26 @@ interface QRState extends BaseStoreState {
 
 const DEFAULT_SETTINGS: QRSettings = {
   size: 256,
-  errorCorrectionLevel: 'M',
-  darkColor: '#000000',
-  lightColor: '#FFFFFF'
-}
+  errorCorrectionLevel: "M",
+  darkColor: "#000000",
+  lightColor: "#FFFFFF",
+};
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
 function validateQRData(data: QRCodeData): boolean {
-  return !!(data.uuid && data.student_id)
+  return !!(data.uuid && data.student_id);
 }
 
 function createDownloadLink(dataUrl: string, filename: string): void {
-  const link = document.createElement('a')
-  link.download = filename
-  link.href = dataUrl
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = dataUrl;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // ============================================================================
@@ -111,55 +108,57 @@ export const useQRStore = create<QRState>()(
       // ============================================================================
 
       generateQRCode: async (data) => {
-        set({ isGenerating: true, error: null })
+        set({ isGenerating: true, error: null });
 
         try {
           // Validate QR data
           if (!validateQRData(data)) {
-            throw new Error('Invalid QR data: missing uuid or student_id')
+            throw new Error("Invalid QR data: missing uuid or student_id");
           }
 
           // Dynamic import with proper typing (resolves TS7016)
-          const QRCode = (await import('qrcode')).default
-          const { settings } = get()
+          const QRCode = (await import("qrcode")).default;
+          const { settings } = get();
 
-          const qrDataString = JSON.stringify(data)
+          const qrDataString = JSON.stringify(data);
 
           // Type-safe QR generation options
           const qrOptions: QRCodeOptions = {
             errorCorrectionLevel: settings.errorCorrectionLevel,
-            type: 'image/png',
+            type: "image/png",
             quality: 0.92,
             margin: 1,
             width: settings.size,
             color: {
               dark: settings.darkColor,
-              light: settings.lightColor
-            }
-          }
+              light: settings.lightColor,
+            },
+          };
 
-          const dataUrl = await QRCode.toDataURL(qrDataString, qrOptions)
+          const dataUrl = await QRCode.toDataURL(qrDataString, qrOptions);
 
           set({
             qrCodeDataUrl: dataUrl,
             qrData: data,
             isGenerating: false,
-            lastUpdated: new Date()
-          })
-
+            lastUpdated: new Date(),
+          });
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to generate QR code'
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Failed to generate QR code";
           set({
             error: errorMessage,
-            isGenerating: false
-          })
+            isGenerating: false,
+          });
         }
       },
 
       regenerateQRCode: async () => {
-        const { qrData } = get()
+        const { qrData } = get();
         if (qrData) {
-          await get().generateQRCode(qrData)
+          await get().generateQRCode(qrData);
         }
       },
 
@@ -168,30 +167,31 @@ export const useQRStore = create<QRState>()(
           qrCodeDataUrl: null,
           qrData: null,
           error: null,
-          lastUpdated: new Date()
-        })
+          lastUpdated: new Date(),
+        });
       },
 
       updateSettings: (newSettings) => {
-        set(state => ({
+        set((state) => ({
           settings: { ...state.settings, ...newSettings },
-          lastUpdated: new Date()
-        }))
+          lastUpdated: new Date(),
+        }));
       },
 
-      downloadQRCode: (filename = 'attendance-qr-code.png') => {
-        const { qrCodeDataUrl } = get()
+      downloadQRCode: (filename = "attendance-qr-code.png") => {
+        const { qrCodeDataUrl } = get();
 
         if (!qrCodeDataUrl) {
-          set({ error: 'No QR code to download' })
-          return
+          set({ error: "No QR code to download" });
+          return;
         }
 
         try {
-          createDownloadLink(qrCodeDataUrl, filename)
+          createDownloadLink(qrCodeDataUrl, filename);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : 'Download failed'
-          set({ error: errorMessage })
+          const errorMessage =
+            error instanceof Error ? error.message : "Download failed";
+          set({ error: errorMessage });
         }
       },
 
@@ -207,20 +207,20 @@ export const useQRStore = create<QRState>()(
           settings: DEFAULT_SETTINGS,
           isLoading: false,
           error: null,
-          lastUpdated: null
-        })
-      }
+          lastUpdated: null,
+        });
+      },
     }),
     {
-      name: 'qr-store',
+      name: "qr-store",
       partialize: (state) => ({
         // Only persist user preferences
-        settings: state.settings
+        settings: state.settings,
         // Don't persist QR data, generation state, or errors
-      })
-    }
-  )
-)
+      }),
+    },
+  ),
+);
 
 // ============================================================================
 // CONVENIENCE HOOKS
@@ -230,24 +230,36 @@ export const useQRStore = create<QRState>()(
  * Hook for QR code data and generation
  */
 export function useQRCode() {
-  return useQRStore(state => ({
-    dataUrl: state.qrCodeDataUrl,
-    data: state.qrData,
-    isGenerating: state.isGenerating,
-    error: state.error,
-    generateQRCode: state.generateQRCode,
-    regenerateQRCode: state.regenerateQRCode,
-    clearQRCode: state.clearQRCode,
-    downloadQRCode: state.downloadQRCode
-  }))
+  const qrCodeDataUrl = useQRStore((state) => state.qrCodeDataUrl);
+  const qrData = useQRStore((state) => state.qrData);
+  const isGenerating = useQRStore((state) => state.isGenerating);
+  const error = useQRStore((state) => state.error);
+  const generateQRCode = useQRStore((state) => state.generateQRCode);
+  const regenerateQRCode = useQRStore((state) => state.regenerateQRCode);
+  const clearQRCode = useQRStore((state) => state.clearQRCode);
+  const downloadQRCode = useQRStore((state) => state.downloadQRCode);
+
+  return {
+    dataUrl: qrCodeDataUrl,
+    data: qrData,
+    isGenerating,
+    error,
+    generateQRCode,
+    regenerateQRCode,
+    clearQRCode,
+    downloadQRCode,
+  };
 }
 
 /**
  * Hook for QR settings
  */
 export function useQRSettings() {
-  return useQRStore(state => ({
-    settings: state.settings,
-    updateSettings: state.updateSettings
-  }))
+  const settings = useQRStore((state) => state.settings);
+  const updateSettings = useQRStore((state) => state.updateSettings);
+
+  return {
+    settings,
+    updateSettings,
+  };
 }

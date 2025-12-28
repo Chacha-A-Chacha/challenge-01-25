@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid input",
+          error: validation.error.issues[0]?.message || "Invalid input",
         },
         { status: 400 },
       );
@@ -57,8 +57,9 @@ export async function POST(request: NextRequest) {
     const attendanceRecord: AttendanceRecord = {
       id: attendance.id,
       studentId: attendance.studentId,
-      studentName: `${attendance.student.firstName} ${attendance.student.lastName || ""}`.trim(),
-      studentNumber: attendance.student.studentNumber,
+      studentName:
+        `${attendance.student?.firstName || ""} ${attendance.student?.lastName || ""}`.trim(),
+      studentNumber: attendance.student?.studentNumber || "",
       sessionId: attendance.sessionId,
       date: attendance.date.toISOString(),
       status: attendance.status,
@@ -75,9 +76,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to mark attendance",
+          error instanceof Error ? error.message : "Failed to mark attendance",
       },
       { status: 500 },
     );

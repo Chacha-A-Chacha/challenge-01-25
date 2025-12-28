@@ -110,8 +110,8 @@ export default function TeachersPage() {
     },
     {
       header: "Actions",
-      accessor: (teacher) => teacher,
-      cell: (value, teacher) => (
+      accessor: () => null,
+      cell: (_value, teacher) => (
         <div className="flex gap-2">
           {teacher.role === TEACHER_ROLES.ADDITIONAL && (
             <Button

@@ -139,9 +139,8 @@ export const useRegistrationApprovalStore = create<RegistrationApprovalStore>(
           throw new Error(`Failed to load registrations: ${response.status}`);
         }
 
-        const result: ApiResponse<
-          PaginatedResponse<RegistrationDetail>
-        > = await response.json();
+        const result: ApiResponse<PaginatedResponse<RegistrationDetail>> =
+          await response.json();
 
         if (result.success && result.data) {
           set({
@@ -382,52 +381,104 @@ export const useRegistrationApprovalStore = create<RegistrationApprovalStore>(
  * Hook for registration data
  */
 export function useRegistrations() {
-  return useRegistrationApprovalStore((state) => ({
-    registrations: state.registrations,
-    selectedRegistration: state.selectedRegistration,
-    total: state.total,
-    hasMore: state.hasMore,
-    isLoading: state.isLoading,
-    error: state.error,
-    loadRegistrations: state.loadRegistrations,
-    selectRegistration: state.selectRegistration,
-  }));
+  const registrations = useRegistrationApprovalStore(
+    (state) => state.registrations,
+  );
+  const selectedRegistration = useRegistrationApprovalStore(
+    (state) => state.selectedRegistration,
+  );
+  const total = useRegistrationApprovalStore((state) => state.total);
+  const hasMore = useRegistrationApprovalStore((state) => state.hasMore);
+  const isLoading = useRegistrationApprovalStore((state) => state.isLoading);
+  const error = useRegistrationApprovalStore((state) => state.error);
+  const loadRegistrations = useRegistrationApprovalStore(
+    (state) => state.loadRegistrations,
+  );
+  const selectRegistration = useRegistrationApprovalStore(
+    (state) => state.selectRegistration,
+  );
+
+  return {
+    registrations,
+    selectedRegistration,
+    total,
+    hasMore,
+    isLoading,
+    error,
+    loadRegistrations,
+    selectRegistration,
+  };
 }
 
 /**
  * Hook for registration approval actions
  */
 export function useRegistrationActions() {
-  return useRegistrationApprovalStore((state) => ({
-    approveRegistration: state.approveRegistration,
-    rejectRegistration: state.rejectRegistration,
-    bulkApprove: state.bulkApprove,
-    isApproving: state.isApproving,
-    isRejecting: state.isRejecting,
-    error: state.error,
-    clearError: state.clearError,
-  }));
+  const approveRegistration = useRegistrationApprovalStore(
+    (state) => state.approveRegistration,
+  );
+  const rejectRegistration = useRegistrationApprovalStore(
+    (state) => state.rejectRegistration,
+  );
+  const bulkApprove = useRegistrationApprovalStore(
+    (state) => state.bulkApprove,
+  );
+  const isApproving = useRegistrationApprovalStore(
+    (state) => state.isApproving,
+  );
+  const isRejecting = useRegistrationApprovalStore(
+    (state) => state.isRejecting,
+  );
+  const error = useRegistrationApprovalStore((state) => state.error);
+  const clearError = useRegistrationApprovalStore((state) => state.clearError);
+
+  return {
+    approveRegistration,
+    rejectRegistration,
+    bulkApprove,
+    isApproving,
+    isRejecting,
+    error,
+    clearError,
+  };
 }
 
 /**
  * Hook for bulk selection
  */
 export function useBulkSelection() {
-  return useRegistrationApprovalStore((state) => ({
-    selectedForBulk: state.selectedForBulk,
-    toggleBulkSelection: state.toggleBulkSelection,
-    selectAllOnPage: state.selectAllOnPage,
-    clearBulkSelection: state.clearBulkSelection,
-  }));
+  const selectedForBulk = useRegistrationApprovalStore(
+    (state) => state.selectedForBulk,
+  );
+  const toggleBulkSelection = useRegistrationApprovalStore(
+    (state) => state.toggleBulkSelection,
+  );
+  const selectAllOnPage = useRegistrationApprovalStore(
+    (state) => state.selectAllOnPage,
+  );
+  const clearBulkSelection = useRegistrationApprovalStore(
+    (state) => state.clearBulkSelection,
+  );
+
+  return {
+    selectedForBulk,
+    toggleBulkSelection,
+    selectAllOnPage,
+    clearBulkSelection,
+  };
 }
 
 /**
  * Hook for filters and pagination
  */
 export function useRegistrationFilters() {
-  return useRegistrationApprovalStore((state) => ({
-    filters: state.filters,
-    setFilters: state.setFilters,
-    setPage: state.setPage,
-  }));
+  const filters = useRegistrationApprovalStore((state) => state.filters);
+  const setFilters = useRegistrationApprovalStore((state) => state.setFilters);
+  const setPage = useRegistrationApprovalStore((state) => state.setPage);
+
+  return {
+    filters,
+    setFilters,
+    setPage,
+  };
 }

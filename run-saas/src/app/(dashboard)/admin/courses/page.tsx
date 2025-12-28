@@ -1,42 +1,42 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { SearchInput } from "@/components/shared/SearchInput"
-import { FilterSelect } from "@/components/shared/FilterSelect"
-import { Pagination } from "@/components/shared/Pagination"
-import { DataTable, Column } from "@/components/shared/DataTable"
-import { CreateCourseModal } from "@/components/admin/CreateCourseModal"
-import { useCourseStore } from "@/store"
-import type { CourseWithDetails, CourseStatus } from "@/types"
-import { COURSE_STATUS } from "@/types"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/shared/SearchInput";
+import { FilterSelect } from "@/components/shared/FilterSelect";
+import { Pagination } from "@/components/shared/Pagination";
+import { DataTable, Column } from "@/components/shared/DataTable";
+import { CreateCourseModal } from "@/components/admin/CreateCourseModal";
+import { useCourseStore } from "@/store";
+import type { CourseWithDetails, CourseStatus } from "@/types";
+import { COURSE_STATUS } from "@/types";
 
 const statusOptions = [
   { label: "All Statuses", value: "all" },
   { label: "Active", value: COURSE_STATUS.ACTIVE },
   { label: "Inactive", value: COURSE_STATUS.INACTIVE },
   { label: "Completed", value: COURSE_STATUS.COMPLETED },
-]
+];
 
 const getStatusBadgeVariant = (status: CourseStatus) => {
   switch (status) {
     case COURSE_STATUS.ACTIVE:
-      return "success"
+      return "success";
     case COURSE_STATUS.INACTIVE:
-      return "warning"
+      return "warning";
     case COURSE_STATUS.COMPLETED:
-      return "secondary"
+      return "secondary";
     default:
-      return "default"
+      return "default";
   }
-}
+};
 
 export default function CoursesPage() {
-  const router = useRouter()
+  const router = useRouter();
   const {
     courses,
     filters,
@@ -46,16 +46,16 @@ export default function CoursesPage() {
     setFilters,
     setPagination,
     getFilteredCourses,
-  } = useCourseStore()
+  } = useCourseStore();
 
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   useEffect(() => {
-    loadCourses()
-  }, [loadCourses])
+    loadCourses();
+  }, [loadCourses]);
 
-  const filteredCourses = getFilteredCourses()
-  const totalPages = Math.ceil(pagination.total / pagination.limit)
+  const filteredCourses = getFilteredCourses();
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   const columns: Column<CourseWithDetails>[] = [
     {
@@ -70,11 +70,10 @@ export default function CoursesPage() {
     {
       header: "Status",
       accessor: "status",
-      cell: (status: CourseStatus) => (
-        <Badge variant={getStatusBadgeVariant(status)}>
-          {status}
-        </Badge>
-      ),
+      cell: (value: unknown) => {
+        const status = value as CourseStatus;
+        return <Badge variant={getStatusBadgeVariant(status)}>{status}</Badge>;
+      },
     },
     {
       header: "Classes",
@@ -88,7 +87,7 @@ export default function CoursesPage() {
       header: "Created",
       accessor: (row) => new Date(row.createdAt).toLocaleDateString(),
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -122,7 +121,9 @@ export default function CoursesPage() {
               label="Status"
               value={filters.status}
               options={statusOptions}
-              onChange={(value) => setFilters({ status: value as CourseStatus | "all" })}
+              onChange={(value) =>
+                setFilters({ status: value as CourseStatus | "all" })
+              }
             />
           </div>
         </CardContent>
@@ -132,7 +133,8 @@ export default function CoursesPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            {filteredCourses.length} Course{filteredCourses.length !== 1 ? "s" : ""}
+            {filteredCourses.length} Course
+            {filteredCourses.length !== 1 ? "s" : ""}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -165,5 +167,5 @@ export default function CoursesPage() {
         onOpenChange={setIsCreateModalOpen}
       />
     </div>
-  )
+  );
 }

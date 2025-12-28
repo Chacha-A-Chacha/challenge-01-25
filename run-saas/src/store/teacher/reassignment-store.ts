@@ -265,48 +265,96 @@ export const useReassignmentManagementStore =
  * Hook for reassignment requests data
  */
 export function useReassignmentRequests() {
-  return useReassignmentManagementStore((state) => ({
-    requests: state.requests,
-    filteredRequests: state.getFilteredRequests(),
-    isLoading: state.isLoading,
-    loadRequests: state.loadRequests,
-  }));
+  const requests = useReassignmentManagementStore((state) => state.requests);
+  const getFilteredRequests = useReassignmentManagementStore(
+    (state) => state.getFilteredRequests,
+  );
+  const isLoading = useReassignmentManagementStore((state) => state.isLoading);
+  const loadRequests = useReassignmentManagementStore(
+    (state) => state.loadRequests,
+  );
+
+  return {
+    requests,
+    filteredRequests: getFilteredRequests(),
+    isLoading,
+    loadRequests,
+  };
 }
 
 /**
  * Hook for reassignment actions
  */
 export function useReassignmentActions() {
-  return useReassignmentManagementStore((state) => ({
-    approveRequest: state.approveRequest,
-    denyRequest: state.denyRequest,
-    isApproving: state.isApproving,
-    isDenying: state.isDenying,
-    error: state.error,
-    clearErrors: state.clearErrors,
-  }));
+  const approveRequest = useReassignmentManagementStore(
+    (state) => state.approveRequest,
+  );
+  const denyRequest = useReassignmentManagementStore(
+    (state) => state.denyRequest,
+  );
+  const isApproving = useReassignmentManagementStore(
+    (state) => state.isApproving,
+  );
+  const isDenying = useReassignmentManagementStore((state) => state.isDenying);
+  const error = useReassignmentManagementStore((state) => state.error);
+  const clearErrors = useReassignmentManagementStore(
+    (state) => state.clearErrors,
+  );
+
+  return {
+    approveRequest,
+    denyRequest,
+    isApproving,
+    isDenying,
+    error,
+    clearErrors,
+  };
 }
 
 /**
  * Hook for reassignment filters
  */
 export function useReassignmentFilters() {
-  return useReassignmentManagementStore((state) => ({
-    statusFilter: state.statusFilter,
-    searchQuery: state.searchQuery,
-    setStatusFilter: state.setStatusFilter,
-    setSearchQuery: state.setSearchQuery,
-  }));
+  const statusFilter = useReassignmentManagementStore(
+    (state) => state.statusFilter,
+  );
+  const searchQuery = useReassignmentManagementStore(
+    (state) => state.searchQuery,
+  );
+  const setStatusFilter = useReassignmentManagementStore(
+    (state) => state.setStatusFilter,
+  );
+  const setSearchQuery = useReassignmentManagementStore(
+    (state) => state.setSearchQuery,
+  );
+
+  return {
+    statusFilter,
+    searchQuery,
+    setStatusFilter,
+    setSearchQuery,
+  };
 }
 
 /**
  * Hook for reassignment stats
  */
 export function useReassignmentStats() {
-  return useReassignmentManagementStore((state) => ({
-    total: state.requests.length,
-    pending: state.getPendingCount(),
-    approved: state.getApprovedCount(),
-    denied: state.getDeniedCount(),
-  }));
+  const requests = useReassignmentManagementStore((state) => state.requests);
+  const getPendingCount = useReassignmentManagementStore(
+    (state) => state.getPendingCount,
+  );
+  const getApprovedCount = useReassignmentManagementStore(
+    (state) => state.getApprovedCount,
+  );
+  const getDeniedCount = useReassignmentManagementStore(
+    (state) => state.getDeniedCount,
+  );
+
+  return {
+    total: requests.length,
+    pending: getPendingCount(),
+    approved: getApprovedCount(),
+    denied: getDeniedCount(),
+  };
 }

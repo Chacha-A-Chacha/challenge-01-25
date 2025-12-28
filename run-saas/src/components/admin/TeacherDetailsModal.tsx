@@ -1,6 +1,11 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { TeacherWithCourse } from "@/types";
@@ -38,11 +43,15 @@ export function TeacherDetailsModal({
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Email
+                </p>
                 <p className="mt-1">{teacher.email}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Role</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Role
+                </p>
                 <div className="mt-1">
                   <Badge variant={isHeadTeacher ? "success" : "default"}>
                     {isHeadTeacher ? "Head Teacher" : "Additional Teacher"}
@@ -138,8 +147,19 @@ export function TeacherDetailsModal({
                                     {session.day}
                                   </span>
                                   <span className="text-muted-foreground">
-                                    {formatTime(new Date(session.startTime))} -{" "}
-                                    {formatTime(new Date(session.endTime))}
+                                    {new Date(
+                                      session.startTime,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}{" "}
+                                    -{" "}
+                                    {new Date(
+                                      session.endTime,
+                                    ).toLocaleTimeString([], {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
                                   </span>
                                   <Badge variant="outline" className="text-xs">
                                     {session.capacity} seats

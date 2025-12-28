@@ -1,11 +1,20 @@
 // app/api/courses/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { validateForm, createCourseSchema } from '@/lib/validations'
-import { createCourseWithHeadTeacher, getAccessibleCourses, handlePrismaError } from '@/lib/db'
-import { hashPassword } from '@/lib/utils'
-import { USER_ROLES } from '@/types'
-import type { ApiResponse, CourseWithDetails, TeacherWithCourse } from '@/types'
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { validateForm, createCourseSchema } from "@/lib/validations";
+import {
+  createCourseWithHeadTeacher,
+  getAccessibleCourses,
+  handlePrismaError,
+} from "@/lib/db";
+import { hashPassword } from "@/lib/utils";
+import { USER_ROLES } from "@/types";
+import type {
+  ApiResponse,
+  CourseWithDetails,
+  TeacherWithCourse,
+} from "@/types";
 
 /**
  * GET /api/courses
@@ -13,35 +22,39 @@ import type { ApiResponse, CourseWithDetails, TeacherWithCourse } from '@/types'
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Authentication required'
+          error: "Authentication required",
         } as ApiResponse<never>,
-        { status: 401 }
-      )
+        { status: 401 },
+      );
     }
 
-    const courses = await getAccessibleCourses(session.user.id, session.user.role)
+    const courses = await getAccessibleCourses(
+      session.user.id,
+      session.user.role,
+    );
 
     return NextResponse.json({
       success: true,
-      data: courses
-    } as ApiResponse<CourseWithDetails[]>)
+      data: courses,
+    } as ApiResponse<CourseWithDetails[]>);
   } catch (error) {
-    console.error('Error fetching courses:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch courses'
+    console.error("Error fetching courses:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch courses";
 
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       } as ApiResponse<never>,
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }
 
@@ -51,72 +64,76 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth()
+    const session = await getServerSession(authOptions);
 
     if (!session?.user) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Authentication required'
+          error: "Authentication required",
         } as ApiResponse<never>,
-        { status: 401 }
-      )
+        { status: 401 },
+      );
     }
 
     if (session.user.role !== USER_ROLES.ADMIN) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Insufficient permissions'
+          error: "Insufficient permissions",
         } as ApiResponse<never>,
-        { status: 403 }
-      )
+        { status: 403 },
+      );
     }
 
-    const body = await request.json()
+    const body = await request.json();
 
     // Validate request body
-    const validation = validateForm(createCourseSchema, body)
+    const validation = validateForm(createCourseSchema, body);
     if (!validation.isValid || !validation.data) {
       return NextResponse.json(
         {
           success: false,
-          error: Object.values(validation.errors)[0] || 'Invalid request data'
+          error: Object.values(validation.errors)[0] || "Invalid request data",
         } as ApiResponse<never>,
-        { status: 400 }
-      )
+        { status: 400 },
+      );
     }
 
-    const { courseName, headTeacherEmail, headTeacherPassword } = validation.data
+    const { courseName, headTeacherEmail, headTeacherPassword } =
+      validation.data;
 
     // Hash password
-    const hashedPassword = await hashPassword(headTeacherPassword)
+    const hashedPassword = await hashPassword(headTeacherPassword);
 
     // Create course with head teacher in transaction
     const result = await createCourseWithHeadTeacher(
       courseName,
       headTeacherEmail,
-      hashedPassword
-    )
+      hashedPassword,
+    );
 
     return NextResponse.json({
       success: true,
       data: {
         course: result.course,
-        teacher: result.teacher
+        teacher: result.teacher,
       },
-      message: 'Course and head teacher created successfully'
-    } as ApiResponse<{ course: CourseWithDetails; teacher: TeacherWithCourse }>)
+      message: "Course and head teacher created successfully",
+    } as ApiResponse<{
+      course: CourseWithDetails;
+      teacher: TeacherWithCourse;
+    }>);
   } catch (error) {
-    console.error('Error creating course:', error)
-    const errorMessage = handlePrismaError(error)
+    console.error("Error creating course:", error);
+    const errorMessage = handlePrismaError(error);
 
     return NextResponse.json(
       {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       } as ApiResponse<never>,
-      { status: 500 }
-    )
+      { status: 500 },
+    );
   }
 }

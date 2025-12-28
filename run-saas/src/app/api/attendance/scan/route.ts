@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<null>>(
         {
           success: false,
-          error: validation.error.errors[0]?.message || "Invalid input",
+          error: validation.error.issues[0]?.message || "Invalid input",
         },
         { status: 400 },
       );
@@ -74,8 +74,9 @@ export async function POST(request: NextRequest) {
     const attendanceRecord: AttendanceRecord = {
       id: result.attendance.id,
       studentId: result.attendance.studentId,
-      studentName: `${result.attendance.student.firstName} ${result.attendance.student.lastName || ""}`.trim(),
-      studentNumber: result.attendance.student.studentNumber,
+      studentName:
+        `${result.attendance.student?.firstName || ""} ${result.attendance.student?.lastName || ""}`.trim(),
+      studentNumber: result.attendance.student?.studentNumber || "",
       sessionId: result.attendance.sessionId,
       date: result.attendance.date.toISOString(),
       status: result.status,

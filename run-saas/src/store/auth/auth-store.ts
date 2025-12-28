@@ -20,6 +20,9 @@ interface AuthState {
 
   // Actions
   syncSession: (sessionData: { user?: AuthUser } | null) => void;
+  setSessionStatus: (
+    status: "loading" | "authenticated" | "unauthenticated",
+  ) => void;
   clearSession: () => void;
 
   // Computed
@@ -139,6 +142,19 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
             sessionStatus: "unauthenticated",
           });
+        }
+      },
+
+      // Set session status directly (for loading/unauthenticated states)
+      setSessionStatus: (status) => {
+        if (status === "unauthenticated") {
+          set({
+            user: null,
+            isAuthenticated: false,
+            sessionStatus: "unauthenticated",
+          });
+        } else if (status === "loading") {
+          set({ sessionStatus: "loading" });
         }
       },
 
@@ -414,6 +430,7 @@ export function useAuth() {
   const isStudent = useAuthStore((state) => state.isStudent);
   const getUserRole = useAuthStore((state) => state.getUserRole);
   const syncSession = useAuthStore((state) => state.syncSession);
+  const setSessionStatus = useAuthStore((state) => state.setSessionStatus);
 
   return {
     user,
@@ -424,5 +441,6 @@ export function useAuth() {
     isStudent,
     getUserRole,
     syncSession,
+    setSessionStatus,
   };
 }

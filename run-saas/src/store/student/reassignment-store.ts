@@ -369,37 +369,67 @@ export const useReassignmentStore = create<ReassignmentState>()(
  * Hook for reassignment requests data
  */
 export function useReassignmentRequests() {
-  return useReassignmentStore((state) => ({
-    requests: state.requests,
-    pendingRequests: state.getPendingRequests(),
-    isLoading: state.isLoading,
-    loadRequests: state.loadRequests,
-  }));
+  const requests = useReassignmentStore((state) => state.requests);
+  const getPendingRequests = useReassignmentStore(
+    (state) => state.getPendingRequests,
+  );
+  const isLoading = useReassignmentStore((state) => state.isLoading);
+  const loadRequests = useReassignmentStore((state) => state.loadRequests);
+
+  return {
+    requests,
+    pendingRequests: getPendingRequests(),
+    isLoading,
+    loadRequests,
+  };
 }
 
 /**
  * Hook for reassignment actions
  */
 export function useReassignmentActions() {
-  return useReassignmentStore((state) => ({
-    canSubmit: state.canSubmitRequest(),
-    remainingRequests: state.config.remainingRequests,
-    isSubmitting: state.isSubmitting,
-    submitRequest: state.submitRequest,
-    cancelRequest: state.cancelRequest,
-    error: state.error,
-    clearErrors: state.clearErrors,
-  }));
+  const canSubmitRequest = useReassignmentStore(
+    (state) => state.canSubmitRequest,
+  );
+  const config = useReassignmentStore((state) => state.config);
+  const isSubmitting = useReassignmentStore((state) => state.isSubmitting);
+  const submitRequest = useReassignmentStore((state) => state.submitRequest);
+  const cancelRequest = useReassignmentStore((state) => state.cancelRequest);
+  const error = useReassignmentStore((state) => state.error);
+  const clearErrors = useReassignmentStore((state) => state.clearErrors);
+
+  return {
+    canSubmit: canSubmitRequest(),
+    remainingRequests: config.remainingRequests,
+    isSubmitting,
+    submitRequest,
+    cancelRequest,
+    error,
+    clearErrors,
+  };
 }
 
 /**
  * Hook for available options
  */
 export function useReassignmentOptions() {
-  return useReassignmentStore((state) => ({
-    options: state.availableOptions,
-    isLoadingOptions: state.isLoadingOptions,
-    getOptionsForDay: state.getOptionsForDay,
-    loadOptions: state.loadAvailableOptions,
-  }));
+  const availableOptions = useReassignmentStore(
+    (state) => state.availableOptions,
+  );
+  const isLoadingOptions = useReassignmentStore(
+    (state) => state.isLoadingOptions,
+  );
+  const getOptionsForDay = useReassignmentStore(
+    (state) => state.getOptionsForDay,
+  );
+  const loadAvailableOptions = useReassignmentStore(
+    (state) => state.loadAvailableOptions,
+  );
+
+  return {
+    options: availableOptions,
+    isLoadingOptions,
+    getOptionsForDay,
+    loadOptions: loadAvailableOptions,
+  };
 }
