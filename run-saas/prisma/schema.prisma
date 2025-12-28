@@ -89,7 +89,7 @@ model Session {
 model Student {
   id                   String                @id @default(cuid())
   uuid                 String                @unique @default(cuid())
-  studentNumber        String
+  studentNumber        String                @unique
   surname              String
   firstName            String
   lastName             String?
@@ -108,7 +108,6 @@ model Student {
   saturdaySession      Session?              @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
   sundaySession        Session?              @relation("SundayStudents", fields: [sundaySessionId], references: [id])
 
-  @@unique([studentNumber, classId])
   @@map("students")
 }
 
