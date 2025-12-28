@@ -99,7 +99,7 @@ model Student {
   saturdaySessionId    String?
   sundaySessionId      String?
   createdAt            DateTime              @default(now())
-  passwordHash         String
+  password             String
   resetToken           String?
   resetTokenExpiry     DateTime?
   attendances          Attendance[]
