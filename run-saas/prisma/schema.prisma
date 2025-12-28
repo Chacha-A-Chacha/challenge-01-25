@@ -109,6 +109,11 @@ model Student {
   resetTokenExpiry     DateTime?
   isDeleted            Boolean               @default(false)
   deletedAt            DateTime?
+  // Profile photo
+  photoUrl             String?
+  photoKey             String?
+  photoProvider        String?
+  photoUploadedAt      DateTime?
   attendances          Attendance[]
   reassignmentRequests ReassignmentRequest[]
   class                Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
@@ -122,28 +127,31 @@ model Student {
 }
 
 model StudentRegistration {
-  id                String             @id @default(cuid())
-  surname           String
-  firstName         String
-  lastName          String?
-  email             String             @unique
-  phoneNumber       String?
-  courseId          String
-  saturdaySessionId String
-  sundaySessionId   String
-  password          String
-  paymentReceiptUrl String
-  paymentReceiptNo  String
-  status            RegistrationStatus @default(PENDING)
-  reviewedById      String?
-  reviewedAt        DateTime?
-  rejectionReason   String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  course            Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
-  reviewedBy        Teacher?           @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
-  saturdaySession   Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
-  sundaySession     Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id], onDelete: Restrict)
+  id                    String             @id @default(cuid())
+  surname               String
+  firstName             String
+  lastName              String?
+  email                 String             @unique
+  phoneNumber           String?
+  courseId              String
+  saturdaySessionId     String
+  sundaySessionId       String
+  password              String
+  // Payment receipt
+  paymentReceiptUrl     String
+  paymentReceiptKey     String?
+  paymentReceiptProvider String?
+  paymentReceiptNo      String
+  status                RegistrationStatus @default(PENDING)
+  reviewedById          String?
+  reviewedAt            DateTime?
+  rejectionReason       String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  course                Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  reviewedBy            Teacher?           @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  saturdaySession       Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
+  sundaySession         Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id], onDelete: Restrict)
 
   @@index([status])
   @@index([courseId])
