@@ -64,8 +64,8 @@ export interface Session {
   id: string;
   classId: string;
   day: WeekDay;
-  startTime: Date;
-  endTime: Date;
+  startTime: string; // Format: "HH:MM:SS" (24-hour)
+  endTime: string; // Format: "HH:MM:SS" (24-hour)
   capacity: number;
   createdAt: Date;
 

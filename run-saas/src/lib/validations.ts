@@ -58,11 +58,62 @@ export const nameSchema = z
 
 export const timeSchema = z
   .string()
-  .regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format (HH:MM)")
+  .regex(
+    /^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/,
+    "Invalid time format (HH:MM:SS)",
+  )
   .refine((time) => {
     const [hours] = time.split(":").map(Number);
     return hours >= 8 && hours <= 18;
   }, "Session must be between 8:00 AM and 6:00 PM");
+
+// Helper functions for time manipulation
+export function parseTime(timeStr: string): {
+  hours: number;
+  minutes: number;
+  seconds: number;
+} {
+  const [hours, minutes, seconds = 0] = timeStr.split(":").map(Number);
+  return { hours, minutes, seconds };
+}
+
+export function timeToMinutes(timeStr: string): number {
+  const { hours, minutes } = parseTime(timeStr);
+  return hours * 60 + minutes;
+}
+
+export function formatTimeForDisplay(timeStr: string): string {
+  const { hours, minutes } = parseTime(timeStr);
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+}
+
+export function createTimeString(
+  hours: number,
+  minutes: number,
+  seconds: number = 0,
+): string {
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
+
+export function validateTimeRange(startTime: string, endTime: string): boolean {
+  return timeToMinutes(endTime) > timeToMinutes(startTime);
+}
+
+export function checkTimeOverlap(
+  start1: string,
+  end1: string,
+  start2: string,
+  end2: string,
+): boolean {
+  const start1Min = timeToMinutes(start1);
+  const end1Min = timeToMinutes(end1);
+  const start2Min = timeToMinutes(start2);
+  const end2Min = timeToMinutes(end2);
+
+  return start1Min < end2Min && start2Min < end1Min;
+}
 
 export const capacitySchema = z
   .number()

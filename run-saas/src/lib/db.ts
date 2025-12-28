@@ -868,12 +868,14 @@ export async function deleteClass(classId: string): Promise<void> {
 
 /**
  * Create a new session for a class
+ * @param startTime - Time string in "HH:MM:SS" format (24-hour)
+ * @param endTime - Time string in "HH:MM:SS" format (24-hour)
  */
 export async function createSession(
   classId: string,
   day: WeekDay,
-  startTime: Date,
-  endTime: Date,
+  startTime: string,
+  endTime: string,
   capacity: number,
 ): Promise<Session> {
   return withTransaction(async (tx) => {
@@ -889,20 +891,24 @@ export async function createSession(
       throw new Error("Class not found");
     }
 
-    // Check for time conflicts on the same day
+    // Validate time format (basic check)
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+      throw new Error("Invalid time format. Use HH:MM:SS (24-hour)");
+    }
+
+    // Validate time range
+    if (startTime >= endTime) {
+      throw new Error("Start time must be before end time");
+    }
+
+    // Check for time conflicts on the same day (using string comparison is safe for HH:MM:SS)
     const hasConflict = classItem.sessions.some((session) => {
       if (session.day !== day) return false;
 
-      const existingStart = new Date(session.startTime).getTime();
-      const existingEnd = new Date(session.endTime).getTime();
-      const newStart = startTime.getTime();
-      const newEnd = endTime.getTime();
-
-      return (
-        (newStart >= existingStart && newStart < existingEnd) ||
-        (newEnd > existingStart && newEnd <= existingEnd) ||
-        (newStart <= existingStart && newEnd >= existingEnd)
-      );
+      // Check if times overlap
+      // Overlap occurs if: (start1 < end2) AND (start2 < end1)
+      return startTime < session.endTime && session.startTime < endTime;
     });
 
     if (hasConflict) {
@@ -926,13 +932,15 @@ export async function createSession(
 
 /**
  * Update a session
+ * @param startTime - Time string in "HH:MM:SS" format (24-hour)
+ * @param endTime - Time string in "HH:MM:SS" format (24-hour)
  */
 export async function updateSession(
   sessionId: string,
   updates: {
     day?: WeekDay;
-    startTime?: Date;
-    endTime?: Date;
+    startTime?: string;
+    endTime?: string;
     capacity?: number;
   },
 ): Promise<Session> {
@@ -971,25 +979,31 @@ export async function updateSession(
       );
     }
 
+    // Validate time format if provided
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/;
+    if (updates.startTime && !timeRegex.test(updates.startTime)) {
+      throw new Error("Invalid start time format. Use HH:MM:SS (24-hour)");
+    }
+    if (updates.endTime && !timeRegex.test(updates.endTime)) {
+      throw new Error("Invalid end time format. Use HH:MM:SS (24-hour)");
+    }
+
     // If changing day or time, check for conflicts
     const dayToCheck = updates.day || session.day;
     const startToCheck = updates.startTime || session.startTime;
     const endToCheck = updates.endTime || session.endTime;
 
+    // Validate time range
+    if (startToCheck >= endToCheck) {
+      throw new Error("Start time must be before end time");
+    }
+
     const hasConflict = session.class.sessions.some((s) => {
       if (s.id === sessionId) return false; // Skip self
       if (s.day !== dayToCheck) return false;
 
-      const existingStart = new Date(s.startTime).getTime();
-      const existingEnd = new Date(s.endTime).getTime();
-      const newStart = new Date(startToCheck).getTime();
-      const newEnd = new Date(endToCheck).getTime();
-
-      return (
-        (newStart >= existingStart && newStart < existingEnd) ||
-        (newEnd > existingStart && newEnd <= existingEnd) ||
-        (newStart <= existingStart && newEnd >= existingEnd)
-      );
+      // Check if times overlap using string comparison
+      return startToCheck < s.endTime && s.startTime < endToCheck;
     });
 
     if (hasConflict) {

@@ -70,8 +70,8 @@ model Session {
   id                  String                @id @default(cuid())
   classId             String
   day                 WeekDay
-  startTime           DateTime
-  endTime             DateTime
+  startTime           String                // Format: "HH:MM:SS" (24-hour)
+  endTime             String                // Format: "HH:MM:SS" (24-hour)
   capacity            Int
   createdAt           DateTime              @default(now())
   attendances         Attendance[]
