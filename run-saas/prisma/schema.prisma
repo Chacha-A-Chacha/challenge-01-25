@@ -50,6 +50,8 @@ model Teacher {
   reviewedRegistrations StudentRegistration[]
   course                Course?               @relation("CourseTeachers", fields: [courseId], references: [id], onDelete: SetNull)
 
+  @@index([courseId])
+  @@index([isDeleted])
   @@map("teachers")
 }
 
@@ -63,6 +65,7 @@ model Class {
   sessions  Session[]
   students  Student[]
 
+  @@index([courseId])
   @@map("classes")
 }
 
@@ -83,6 +86,8 @@ model Session {
   saturdayStudents    Student[]             @relation("SaturdayStudents")
   sundayStudents      Student[]             @relation("SundayStudents")
 
+  @@index([classId])
+  @@index([classId, day])
   @@map("sessions")
 }
 
@@ -110,6 +115,9 @@ model Student {
   saturdaySession      Session?              @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
   sundaySession        Session?              @relation("SundayStudents", fields: [sundaySessionId], references: [id], onDelete: Restrict)
 
+  @@index([classId])
+  @@index([isDeleted])
+  @@index([isDeleted, classId])
   @@map("students")
 }
 
@@ -137,6 +145,9 @@ model StudentRegistration {
   saturdaySession   Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
   sundaySession     Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id], onDelete: Restrict)
 
+  @@index([status])
+  @@index([courseId])
+  @@index([status, courseId])
   @@map("student_registrations")
 }
 
@@ -153,6 +164,11 @@ model Attendance {
   markedBy  Teacher?         @relation(fields: [teacherId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, sessionId, date])
+  @@index([date])
+  @@index([status])
+  @@index([sessionId])
+  @@index([date, sessionId])
+  @@index([studentId, date])
   @@map("attendances")
 }
 
@@ -169,6 +185,8 @@ model ReassignmentRequest {
   approvedBy    Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
   toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id], onDelete: Cascade)
 
+  @@index([status])
+  @@index([studentId])
   @@map("reassignment_requests")
 }
 
