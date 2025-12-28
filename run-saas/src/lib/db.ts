@@ -554,6 +554,88 @@ export async function removeAdditionalTeacher(
   });
 }
 
+/**
+ * Delete a course (only if no students, no attendance history, no pending registrations)
+ */
+export async function deleteCourse(courseId: string): Promise<void> {
+  return withTransaction(async (tx) => {
+    // Get course with related data
+    const course = await tx.course.findUnique({
+      where: { id: courseId },
+      include: {
+        _count: {
+          select: {
+            classes: true,
+            teachers: true,
+            registrations: true,
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    // Check for students in any class within the course
+    const studentCount = await tx.student.count({
+      where: {
+        class: {
+          courseId,
+        },
+      },
+    });
+
+    if (studentCount > 0) {
+      throw new Error(
+        "Cannot delete course with students. Please reassign or remove students first.",
+      );
+    }
+
+    // Check for pending or approved registrations
+    const activeRegistrationCount = await tx.studentRegistration.count({
+      where: {
+        courseId,
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+    });
+
+    if (activeRegistrationCount > 0) {
+      throw new Error(
+        "Cannot delete course with pending or approved registrations. Please process or reject registrations first.",
+      );
+    }
+
+    // Check for attendance records across all sessions in all classes
+    const attendanceCount = await tx.attendance.count({
+      where: {
+        session: {
+          class: {
+            courseId,
+          },
+        },
+      },
+    });
+
+    if (attendanceCount > 0) {
+      throw new Error(
+        "Cannot delete course with attendance records. This course has historical data that must be preserved.",
+      );
+    }
+
+    // Classes will be cascade deleted (onDelete: Cascade)
+    // Sessions within those classes will also cascade delete
+    // Reassignment requests on those sessions will cascade delete
+    // Teachers will have courseId set to null (onDelete: SetNull)
+    // Rejected/Expired registrations can remain or be deleted separately
+
+    // Delete course (cascade will handle classes -> sessions -> reassignment requests)
+    await tx.course.delete({
+      where: { id: courseId },
+    });
+  });
+}
+
 // ============================================================================
 // CLASS MANAGEMENT
 // ============================================================================
@@ -714,7 +796,7 @@ export async function updateClass(
 }
 
 /**
- * Delete a class (only if no students)
+ * Delete a class (only if no students, no attendance history, no pending registrations)
  */
 export async function deleteClass(classId: string): Promise<void> {
   return withTransaction(async (tx) => {
@@ -723,7 +805,10 @@ export async function deleteClass(classId: string): Promise<void> {
       where: { id: classId },
       include: {
         _count: {
-          select: { students: true },
+          select: {
+            students: true,
+            sessions: true,
+          },
         },
       },
     });
@@ -738,12 +823,39 @@ export async function deleteClass(classId: string): Promise<void> {
       );
     }
 
-    // Delete sessions first (cascade)
-    await tx.session.deleteMany({
-      where: { classId },
+    // Check for attendance records across all sessions in this class
+    const attendanceCount = await tx.attendance.count({
+      where: {
+        session: {
+          classId,
+        },
+      },
     });
 
-    // Delete class
+    if (attendanceCount > 0) {
+      throw new Error(
+        "Cannot delete class with attendance records. This class has historical data that must be preserved.",
+      );
+    }
+
+    // Check for pending student registrations referencing any session in this class
+    const registrationCount = await tx.studentRegistration.count({
+      where: {
+        OR: [{ saturdaySession: { classId } }, { sundaySession: { classId } }],
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+    });
+
+    if (registrationCount > 0) {
+      throw new Error(
+        "Cannot delete class with pending student registrations. Please process or reject registrations first.",
+      );
+    }
+
+    // Sessions will be cascade deleted automatically (onDelete: Cascade)
+    // Orphaned reassignment requests on those sessions will also cascade delete
+
+    // Delete class (cascade will handle sessions and their reassignment requests)
     await tx.class.delete({
       where: { id: classId },
     });
@@ -899,7 +1011,7 @@ export async function updateSession(
  */
 export async function deleteSession(sessionId: string): Promise<void> {
   return withTransaction(async (tx) => {
-    // Check student assignments
+    // Get session with all related counts
     const session = await tx.session.findUnique({
       where: { id: sessionId },
       include: {
@@ -907,6 +1019,11 @@ export async function deleteSession(sessionId: string): Promise<void> {
           select: {
             saturdayStudents: true,
             sundayStudents: true,
+            attendances: true,
+            pendingSaturdayRegs: true,
+            pendingSundayRegs: true,
+            fromRequests: true,
+            toRequests: true,
           },
         },
       },
@@ -916,6 +1033,7 @@ export async function deleteSession(sessionId: string): Promise<void> {
       throw new Error("Session not found");
     }
 
+    // Check for assigned students
     const studentCount =
       session.day === "SATURDAY"
         ? session._count.saturdayStudents
@@ -927,7 +1045,27 @@ export async function deleteSession(sessionId: string): Promise<void> {
       );
     }
 
-    // Delete session
+    // Check for attendance records (historical data must be preserved)
+    if (session._count.attendances > 0) {
+      throw new Error(
+        "Cannot delete session with attendance records. This session has historical data that must be preserved.",
+      );
+    }
+
+    // Check for pending registrations
+    const registrationCount =
+      session._count.pendingSaturdayRegs + session._count.pendingSundayRegs;
+
+    if (registrationCount > 0) {
+      throw new Error(
+        "Cannot delete session with pending student registrations. Please process or reject registrations first.",
+      );
+    }
+
+    // Reassignment requests will be cascade deleted automatically (onDelete: Cascade)
+    // This is acceptable as they become orphaned without the session
+
+    // Delete session (cascade will handle reassignment requests)
     await tx.session.delete({
       where: { id: sessionId },
     });
@@ -937,6 +1075,67 @@ export async function deleteSession(sessionId: string): Promise<void> {
 // ============================================================================
 // STUDENT MANAGEMENT
 // ============================================================================
+
+/**
+ * Delete or soft-delete a student based on attendance history
+ * - If student has NO attendance records: Hard delete (complete removal)
+ * - If student HAS attendance records: Soft delete (preserve historical data)
+ */
+export async function deleteStudent(
+  studentId: string,
+): Promise<{ type: "hard" | "soft"; message: string }> {
+  return withTransaction(async (tx) => {
+    // Get student with attendance count
+    const student = await tx.student.findUnique({
+      where: { id: studentId },
+      include: {
+        _count: {
+          select: {
+            attendances: true,
+            reassignmentRequests: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    // Check if already soft-deleted
+    if (student.isDeleted) {
+      throw new Error("Student is already deleted");
+    }
+
+    // If student has attendance records, must soft delete to preserve history
+    if (student._count.attendances > 0) {
+      await tx.student.update({
+        where: { id: studentId },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      });
+
+      return {
+        type: "soft",
+        message:
+          "Student soft-deleted successfully. Attendance history preserved.",
+      };
+    }
+
+    // No attendance records - safe to hard delete
+    // Reassignment requests will cascade delete automatically
+    await tx.student.delete({
+      where: { id: studentId },
+    });
+
+    return {
+      type: "hard",
+      message: "Student permanently deleted successfully.",
+    };
+  });
+}
 
 /**
  * Get all students for a course with sessions

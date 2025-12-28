@@ -48,7 +48,7 @@ model Teacher {
   headCourse            Course?               @relation("HeadTeacher")
   approvedRequests      ReassignmentRequest[]
   reviewedRegistrations StudentRegistration[]
-  course                Course?               @relation("CourseTeachers", fields: [courseId], references: [id])
+  course                Course?               @relation("CourseTeachers", fields: [courseId], references: [id], onDelete: SetNull)
 
   @@map("teachers")
 }
@@ -59,7 +59,7 @@ model Class {
   capacity  Int
   courseId  String
   createdAt DateTime  @default(now())
-  course    Course    @relation(fields: [courseId], references: [id])
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
   sessions  Session[]
   students  Student[]
 
@@ -77,7 +77,7 @@ model Session {
   attendances         Attendance[]
   fromRequests        ReassignmentRequest[] @relation("FromSession")
   toRequests          ReassignmentRequest[] @relation("ToSession")
-  class               Class                 @relation(fields: [classId], references: [id])
+  class               Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
   pendingSaturdayRegs StudentRegistration[] @relation("RegSaturdaySession")
   pendingSundayRegs   StudentRegistration[] @relation("RegSundaySession")
   saturdayStudents    Student[]             @relation("SaturdayStudents")
@@ -102,11 +102,13 @@ model Student {
   password             String
   resetToken           String?
   resetTokenExpiry     DateTime?
+  isDeleted            Boolean               @default(false)
+  deletedAt            DateTime?
   attendances          Attendance[]
   reassignmentRequests ReassignmentRequest[]
-  class                Class                 @relation(fields: [classId], references: [id])
-  saturdaySession      Session?              @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id])
-  sundaySession        Session?              @relation("SundayStudents", fields: [sundaySessionId], references: [id])
+  class                Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
+  saturdaySession      Session?              @relation("SaturdayStudents", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
+  sundaySession        Session?              @relation("SundayStudents", fields: [sundaySessionId], references: [id], onDelete: Restrict)
 
   @@map("students")
 }
@@ -121,7 +123,7 @@ model StudentRegistration {
   courseId          String
   saturdaySessionId String
   sundaySessionId   String
-  passwordHash      String
+  password          String
   paymentReceiptUrl String
   paymentReceiptNo  String
   status            RegistrationStatus @default(PENDING)
@@ -130,10 +132,10 @@ model StudentRegistration {
   rejectionReason   String?
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
-  course            Course             @relation(fields: [courseId], references: [id])
-  reviewedBy        Teacher?           @relation(fields: [reviewedById], references: [id])
-  saturdaySession   Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id])
-  sundaySession     Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id])
+  course            Course             @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  reviewedBy        Teacher?           @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  saturdaySession   Session            @relation("RegSaturdaySession", fields: [saturdaySessionId], references: [id], onDelete: Restrict)
+  sundaySession     Session            @relation("RegSundaySession", fields: [sundaySessionId], references: [id], onDelete: Restrict)
 
   @@map("student_registrations")
 }
@@ -146,9 +148,9 @@ model Attendance {
   status    AttendanceStatus
   scanTime  DateTime?
   teacherId String?
-  session   Session          @relation(fields: [sessionId], references: [id])
-  student   Student          @relation(fields: [studentId], references: [id])
-  markedBy  Teacher?         @relation(fields: [teacherId], references: [id])
+  session   Session          @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  markedBy  Teacher?         @relation(fields: [teacherId], references: [id], onDelete: SetNull)
 
   @@unique([studentId, sessionId, date])
   @@map("attendances")
@@ -162,10 +164,10 @@ model ReassignmentRequest {
   status        RequestStatus @default(PENDING)
   requestedAt   DateTime      @default(now())
   teacherId     String?
-  fromSession   Session       @relation("FromSession", fields: [fromSessionId], references: [id])
-  student       Student       @relation(fields: [studentId], references: [id])
-  approvedBy    Teacher?      @relation(fields: [teacherId], references: [id])
-  toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id])
+  fromSession   Session       @relation("FromSession", fields: [fromSessionId], references: [id], onDelete: Cascade)
+  student       Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  approvedBy    Teacher?      @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+  toSession     Session       @relation("ToSession", fields: [toSessionId], references: [id], onDelete: Cascade)
 
   @@map("reassignment_requests")
 }
