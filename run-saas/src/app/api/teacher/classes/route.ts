@@ -17,20 +17,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Only head teachers can access classes
-    if (
-      session.user.role !== USER_ROLES.TEACHER ||
-      session.user.teacherRole !== TEACHER_ROLES.HEAD
-    ) {
+    // All teachers (both head and additional) can view classes
+    if (session.user.role !== USER_ROLES.TEACHER) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Forbidden - Head teacher access required" },
+        { success: false, error: "Forbidden - Teacher access required" },
         { status: 403 },
       );
     }
 
     if (!session.user.courseId) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "No course assigned to head teacher" },
+        { success: false, error: "No course assigned to teacher" },
         { status: 400 },
       );
     }
@@ -113,7 +110,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to create class",
+        error:
+          error instanceof Error ? error.message : "Failed to create class",
       },
       { status: 500 },
     );
