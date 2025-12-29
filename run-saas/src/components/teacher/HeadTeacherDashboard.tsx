@@ -47,6 +47,10 @@ interface HeadTeacherStats {
     pending: number;
     approvedThisWeek: number;
   };
+  reassignments: {
+    pending: number;
+    total: number;
+  };
 }
 
 export function HeadTeacherDashboard() {
@@ -333,46 +337,92 @@ export function HeadTeacherDashboard() {
         </div>
       </div>
 
-      {/* Registrations */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Student Registrations</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Pending Approval
-              </CardTitle>
-              <BookOpen className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {stats.registrations.pending}
-              </div>
-              {stats.registrations.pending > 0 && (
-                <Button
-                  className="mt-3"
-                  size="sm"
-                  onClick={() => router.push("/teacher/registrations")}
-                >
-                  Review Now
-                </Button>
-              )}
-            </CardContent>
-          </Card>
+      {/* Registrations & Reassignments */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Registrations */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Student Registrations</h2>
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Pending Approval
+                </CardTitle>
+                <BookOpen className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {stats.registrations.pending}
+                </div>
+                {stats.registrations.pending > 0 && (
+                  <Button
+                    className="mt-3"
+                    size="sm"
+                    onClick={() => router.push("/teacher/registrations")}
+                  >
+                    Review Now
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Approved This Week
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {stats.registrations.approvedThisWeek}
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Approved This Week
+                </CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.registrations.approvedThisWeek}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Reassignments */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Session Reassignments</h2>
+          <div className="grid gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Pending Review
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600">
+                  {stats.reassignments.pending}
+                </div>
+                {stats.reassignments.pending > 0 && (
+                  <Button
+                    className="mt-3"
+                    size="sm"
+                    onClick={() => router.push("/teacher/reassignments")}
+                  >
+                    Review Now
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Requests
+                </CardTitle>
+                <BookOpen className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {stats.reassignments.total}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

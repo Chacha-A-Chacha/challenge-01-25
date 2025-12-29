@@ -36,6 +36,10 @@ interface HeadTeacherStats {
     pending: number;
     approvedThisWeek: number;
   };
+  reassignments: {
+    pending: number;
+    total: number;
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -70,88 +74,120 @@ export async function GET(request: NextRequest) {
     const courseId = session.user.courseId;
 
     // Fetch all stats in parallel
-    const [course, teachers, classes, sessions, students, registrations, recentApprovals] =
-      await Promise.all([
-        // Course info
-        prisma.course.findUnique({
-          where: { id: courseId },
-          select: {
-            name: true,
-            status: true,
-            endDate: true,
-            createdAt: true,
-          },
-        }),
+    const [
+      course,
+      teachers,
+      classes,
+      sessions,
+      students,
+      registrations,
+      recentApprovals,
+      reassignmentRequests,
+      pendingReassignments,
+    ] = await Promise.all([
+      // Course info
+      prisma.course.findUnique({
+        where: { id: courseId },
+        select: {
+          name: true,
+          status: true,
+          endDate: true,
+          createdAt: true,
+        },
+      }),
 
-        // Teacher stats
-        prisma.teacher.findMany({
-          where: {
-            courseId: courseId,
-            isDeleted: false,
-          },
-          select: {
-            role: true,
-          },
-        }),
+      // Teacher stats
+      prisma.teacher.findMany({
+        where: {
+          courseId: courseId,
+          isDeleted: false,
+        },
+        select: {
+          role: true,
+        },
+      }),
 
-        // Class stats
-        prisma.class.findMany({
-          where: { courseId: courseId },
-          select: {
-            capacity: true,
-            _count: {
-              select: {
-                students: true,
-              },
+      // Class stats
+      prisma.class.findMany({
+        where: { courseId: courseId },
+        select: {
+          capacity: true,
+          _count: {
+            select: {
+              students: true,
             },
           },
-        }),
+        },
+      }),
 
-        // Session stats
-        prisma.session.findMany({
-          where: {
+      // Session stats
+      prisma.session.findMany({
+        where: {
+          class: {
+            courseId: courseId,
+          },
+        },
+        select: {
+          day: true,
+        },
+      }),
+
+      // Student stats
+      prisma.student.findMany({
+        where: {
+          class: {
+            courseId: courseId,
+          },
+        },
+        select: {
+          saturdaySessionId: true,
+          sundaySessionId: true,
+          createdAt: true,
+        },
+      }),
+
+      // Pending registrations
+      prisma.studentRegistration.count({
+        where: {
+          courseId: courseId,
+          status: "PENDING",
+        },
+      }),
+
+      // Recent approvals (last 7 days)
+      prisma.studentRegistration.count({
+        where: {
+          courseId: courseId,
+          status: "APPROVED",
+          reviewedAt: {
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
+
+      // Total reassignment requests
+      prisma.reassignmentRequest.count({
+        where: {
+          student: {
             class: {
               courseId: courseId,
             },
           },
-          select: {
-            day: true,
-          },
-        }),
+        },
+      }),
 
-        // Student stats
-        prisma.student.findMany({
-          where: {
+      // Pending reassignment requests
+      prisma.reassignmentRequest.count({
+        where: {
+          student: {
             class: {
               courseId: courseId,
             },
           },
-          select: {
-            saturdaySessionId: true,
-            sundaySessionId: true,
-            createdAt: true,
-          },
-        }),
-
-        // Pending registrations
-        prisma.studentRegistration.count({
-          where: {
-            courseId: courseId,
-            status: "PENDING",
-          },
-        }),
-
-        // Recent approvals (last 7 days)
-        prisma.studentRegistration.count({
-          where: {
-            courseId: courseId,
-            status: "APPROVED",
-            reviewedAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            },
-          },
-        }),
-      ]);
+          status: "PENDING",
+        },
+      }),
+    ]);
 
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
@@ -174,9 +210,7 @@ export async function GET(request: NextRequest) {
       0,
     );
     const utilizationRate =
-      totalCapacity > 0
-        ? Math.round((totalStudents / totalCapacity) * 100)
-        : 0;
+      totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0;
 
     const classStats = {
       total: classes.length,
@@ -221,6 +255,10 @@ export async function GET(request: NextRequest) {
         pending: registrations,
         approvedThisWeek: recentApprovals,
       },
+      reassignments: {
+        pending: pendingReassignments,
+        total: reassignmentRequests,
+      },
     };
 
     return NextResponse.json<ApiResponse<HeadTeacherStats>>({
@@ -232,8 +270,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to fetch stats",
+        error: error instanceof Error ? error.message : "Failed to fetch stats",
       },
       { status: 500 },
     );
