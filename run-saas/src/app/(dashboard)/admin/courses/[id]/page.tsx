@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Edit, Trash2, Users, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,18 +32,21 @@ const getTeacherDisplayName = (teacher: {
   firstName: string;
   lastName: string;
 }) => {
-  return `${teacher.firstName} ${teacher.lastName}`;
+  return (
+    `${teacher?.firstName || ""} ${teacher?.lastName || ""}`.trim() || "Unknown"
+  );
 };
 
 const getTeacherInitial = (teacher: { firstName: string }) => {
-  return teacher.firstName.charAt(0).toUpperCase();
+  return teacher?.firstName?.charAt(0)?.toUpperCase() || "?";
 };
 
 export default function CourseDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = use(params);
   const router = useRouter();
   const {
     courses,
@@ -65,11 +68,11 @@ export default function CourseDetailsPage({
   }, [loadCourses]);
 
   useEffect(() => {
-    const course = courses.find((c) => c.id === params.id);
+    const course = courses.find((c) => c.id === id);
     if (course) {
       selectCourse(course);
     }
-  }, [courses, params.id, selectCourse]);
+  }, [courses, id, selectCourse]);
 
   const handleDeleteCourse = async () => {
     // TODO: Implement delete course functionality
