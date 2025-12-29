@@ -68,6 +68,16 @@ export default function AttendancePage() {
     }
   }, [sessions, selectedSessionId]);
 
+  // Check if today is a weekend day
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId);
+  const isCorrectDay = selectedSession
+    ? (dayOfWeek === 6 && selectedSession.day === "SATURDAY") ||
+      (dayOfWeek === 0 && selectedSession.day === "SUNDAY")
+    : false;
+
   // Load attendance when session is selected
   useEffect(() => {
     if (selectedSessionId) {
@@ -103,6 +113,46 @@ export default function AttendancePage() {
         </p>
       </div>
 
+      {/* Weekend Day Alert */}
+      {!isCorrectDay && selectedSession && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-amber-900 dark:text-amber-100">
+                {isWeekend ? "Different Session Day" : "Weekday Notice"}
+              </h3>
+              <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                {isWeekend
+                  ? `This is a ${selectedSession.day} session, but today is ${dayOfWeek === 0 ? "Sunday" : "Saturday"}. QR scanning will not work.`
+                  : `Today is a weekday. This ${selectedSession.day} session is scheduled for the weekend. You can view records and manually mark attendance, but QR scanning is disabled on weekdays.`}
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-2">
+                ✓ Manual marking is available • ✗ QR scanning disabled
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* No Classes Alert */}
+      {classes.length === 0 && !isLoading && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-medium text-blue-900 dark:text-blue-100">
+                No Classes Available
+              </h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200 mt-1">
+                There are no classes with sessions set up yet. Please create
+                classes and sessions first.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="space-y-2">
@@ -112,11 +162,17 @@ export default function AttendancePage() {
               <SelectValue placeholder="Select class" />
             </SelectTrigger>
             <SelectContent>
-              {classes.map((cls) => (
-                <SelectItem key={cls.id} value={cls.id}>
-                  {cls.name}
+              {classes.length === 0 ? (
+                <SelectItem value="none" disabled>
+                  No classes available
                 </SelectItem>
-              ))}
+              ) : (
+                classes.map((cls) => (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
