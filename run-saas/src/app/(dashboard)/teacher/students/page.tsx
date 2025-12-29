@@ -69,32 +69,14 @@ export default function StudentsPage() {
       accessor: (student) => student.class?.name || "N/A",
     },
     {
-      header: "Saturday Session",
+      header: "Status",
       accessor: () => null,
       cell: (_value, student) => {
-        const session = student.saturdaySession;
-        if (!session)
-          return <span className="text-muted-foreground">Not assigned</span>;
+        const hasAllSessions = student.saturdaySession && student.sundaySession;
         return (
-          <div className="text-sm">
-            {formatTimeForDisplay(session.startTime)} -{" "}
-            {formatTimeForDisplay(session.endTime)}
-          </div>
-        );
-      },
-    },
-    {
-      header: "Sunday Session",
-      accessor: () => null,
-      cell: (_value, student) => {
-        const session = student.sundaySession;
-        if (!session)
-          return <span className="text-muted-foreground">Not assigned</span>;
-        return (
-          <div className="text-sm">
-            {formatTimeForDisplay(session.startTime)} -{" "}
-            {formatTimeForDisplay(session.endTime)}
-          </div>
+          <Badge variant={hasAllSessions ? "success" : "warning"}>
+            {hasAllSessions ? "Assigned" : "Pending"}
+          </Badge>
         );
       },
     },
