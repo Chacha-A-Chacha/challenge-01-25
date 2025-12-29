@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { formatTime } from "@/lib/utils";
 import type {
   RegistrationDetail,
   ApiResponse,
@@ -144,13 +145,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function formatSessionTime(start: Date, end: Date): string {
-  const formatTime = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    const ampm = hours >= 12 ? "PM" : "AM";
-    const displayHour = hours % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
-  };
+function formatSessionTime(start: string, end: string): string {
   return `${formatTime(start)} - ${formatTime(end)}`;
 }
