@@ -1690,7 +1690,6 @@ export async function markManualAttendance(
     const student = await tx.student.findUnique({
       where: { id: studentId },
       include: {
-        sessions: true,
         class: { include: { sessions: true } },
       },
     });
@@ -1902,7 +1901,7 @@ export async function getSessionAttendanceWithRecords(
     const totalStudents = assignedStudents?.length || 0;
 
     // Get all attendance records for this session today
-    const attendanceRecords = await prisma.attendance.findMany({
+    const existingAttendance = await prisma.attendance.findMany({
       where: {
         sessionId,
         date: {
@@ -1915,6 +1914,32 @@ export async function getSessionAttendanceWithRecords(
         session: true,
         markedBy: true,
       },
+    });
+
+    // Create attendance record map
+    const attendanceMap = new Map(
+      existingAttendance.map((a) => [a.studentId, a]),
+    );
+
+    // Build attendance records for ALL assigned students
+    const attendanceRecords = (assignedStudents || []).map((student) => {
+      const existing = attendanceMap.get(student.id);
+      if (existing) {
+        return existing;
+      }
+      // Return a placeholder record for students without attendance yet
+      return {
+        id: `placeholder-${student.id}`,
+        studentId: student.id,
+        sessionId,
+        date: dayStart,
+        status: null,
+        scanTime: null,
+        teacherId: null,
+        student: student,
+        session: session,
+        markedBy: null,
+      } as any;
     });
 
     const presentCount = attendanceRecords.filter(
