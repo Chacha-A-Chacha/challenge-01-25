@@ -171,12 +171,6 @@ export default function StudentDetailsPage({
                 {new Date(student.createdAt).toLocaleDateString()}
               </p>
             </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Student ID
-              </p>
-              <p className="mt-1 font-mono text-sm">{student.uuid}</p>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -210,17 +204,12 @@ export default function StudentDetailsPage({
                 )}
               </div>
               {student.saturdaySession ? (
-                <div className="space-y-2">
-                  <p className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {formatTimeForDisplay(
-                      student.saturdaySession.startTime,
-                    )} - {formatTimeForDisplay(student.saturdaySession.endTime)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Capacity: {student.saturdaySession.capacity} students
-                  </p>
-                </div>
+                <p className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {formatTimeForDisplay(
+                    student.saturdaySession.startTime,
+                  )} - {formatTimeForDisplay(student.saturdaySession.endTime)}
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">Not assigned</p>
               )}
@@ -237,17 +226,11 @@ export default function StudentDetailsPage({
                 )}
               </div>
               {student.sundaySession ? (
-                <div className="space-y-2">
-                  <p className="text-sm flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    {formatTimeForDisplay(
-                      student.sundaySession.startTime,
-                    )} - {formatTimeForDisplay(student.sundaySession.endTime)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Capacity: {student.sundaySession.capacity} students
-                  </p>
-                </div>
+                <p className="text-sm flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {formatTimeForDisplay(student.sundaySession.startTime)} -{" "}
+                  {formatTimeForDisplay(student.sundaySession.endTime)}
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">Not assigned</p>
               )}
