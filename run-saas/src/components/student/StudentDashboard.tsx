@@ -19,6 +19,7 @@ import {
   useAttendanceHistory,
 } from "@/store/student/schedule-store";
 import { useQRCode } from "@/store/student/qr-store";
+import { formatTimeForDisplay } from "@/lib/validations";
 
 export function StudentDashboard() {
   const {
@@ -94,11 +95,6 @@ export function StudentDashboard() {
       </div>
     );
   }
-
-  const formatTime = (time: string | Date) => {
-    const date = typeof time === "string" ? new Date(time) : time;
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
 
   return (
     <div className="space-y-6">
@@ -217,8 +213,8 @@ export function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-lg font-semibold">
-                  {formatTime(schedule.saturdaySession.startTime)} -{" "}
-                  {formatTime(schedule.saturdaySession.endTime)}
+                  {formatTimeForDisplay(schedule.saturdaySession.startTime)} -{" "}
+                  {formatTimeForDisplay(schedule.saturdaySession.endTime)}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Capacity: {schedule.saturdaySession.capacity} students
@@ -245,8 +241,8 @@ export function StudentDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-lg font-semibold">
-                  {formatTime(schedule.sundaySession.startTime)} -{" "}
-                  {formatTime(schedule.sundaySession.endTime)}
+                  {formatTimeForDisplay(schedule.sundaySession.startTime)} -{" "}
+                  {formatTimeForDisplay(schedule.sundaySession.endTime)}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Capacity: {schedule.sundaySession.capacity} students

@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatTimeForDisplay } from "@/lib/validations";
 
 interface StudentData {
   id: string;
@@ -212,19 +213,9 @@ export default function StudentDetailsPage({
                 <div className="space-y-2">
                   <p className="text-sm flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    {new Date(
+                    {formatTimeForDisplay(
                       student.saturdaySession.startTime,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    -{" "}
-                    {new Date(
-                      student.saturdaySession.endTime,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    )} - {formatTimeForDisplay(student.saturdaySession.endTime)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Capacity: {student.saturdaySession.capacity} students
@@ -249,20 +240,9 @@ export default function StudentDetailsPage({
                 <div className="space-y-2">
                   <p className="text-sm flex items-center gap-2">
                     <Clock className="h-4 w-4" />
-                    {new Date(
+                    {formatTimeForDisplay(
                       student.sundaySession.startTime,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    -{" "}
-                    {new Date(student.sundaySession.endTime).toLocaleTimeString(
-                      [],
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      },
-                    )}
+                    )} - {formatTimeForDisplay(student.sundaySession.endTime)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Capacity: {student.sundaySession.capacity} students

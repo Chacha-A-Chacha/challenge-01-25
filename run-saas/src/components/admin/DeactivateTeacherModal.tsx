@@ -3,42 +3,51 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, UserMinus } from "lucide-react";
 import type { TeacherWithCourse } from "@/types";
 
-interface RemoveTeacherModalProps {
+interface DeactivateTeacherModalProps {
   teacher: TeacherWithCourse | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => Promise<void>;
-  isRemoving: boolean;
+  isDeactivating: boolean;
 }
 
-export function RemoveTeacherModal({
+export function DeactivateTeacherModal({
   teacher,
   open,
   onOpenChange,
   onConfirm,
-  isRemoving,
-}: RemoveTeacherModalProps) {
+  isDeactivating,
+}: DeactivateTeacherModalProps) {
   if (!teacher) return null;
 
   const teacherName = `${teacher.firstName} ${teacher.lastName}`;
+  const courseName = teacher.course?.name || teacher.headCourse?.name;
+
+  const handleConfirm = async () => {
+    await onConfirm();
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Remove Teacher</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <UserMinus className="h-5 w-5" />
+            Deactivate Teacher
+          </DialogTitle>
           <DialogDescription>
-            Are you sure you want to remove this teacher from your course?
+            This will remove the teacher from their assigned course.
           </DialogDescription>
         </DialogHeader>
 
@@ -53,15 +62,19 @@ export function RemoveTeacherModal({
                 <span className="text-muted-foreground">Email</span>
                 <span className="font-medium">{teacher.email}</span>
               </div>
+              {courseName && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Course</span>
+                  <span className="font-medium">{courseName}</span>
+                </div>
+              )}
             </div>
           </div>
 
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
+          <Alert>
             <AlertDescription>
-              This teacher will lose access to the course immediately. They will
-              no longer be able to view classes, students, or attendance
-              records.
+              The teacher will lose access to the course and will no longer be
+              able to view classes, students, or attendance records.
             </AlertDescription>
           </Alert>
         </div>
@@ -70,17 +83,19 @@ export function RemoveTeacherModal({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={isRemoving}
+            disabled={isDeactivating}
           >
             Cancel
           </Button>
           <Button
             variant="destructive"
-            onClick={onConfirm}
-            disabled={isRemoving}
+            onClick={handleConfirm}
+            disabled={isDeactivating}
           >
-            {isRemoving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Remove Teacher
+            {isDeactivating && (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            )}
+            Deactivate
           </Button>
         </DialogFooter>
       </DialogContent>

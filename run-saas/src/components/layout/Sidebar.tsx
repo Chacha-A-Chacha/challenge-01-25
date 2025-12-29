@@ -55,7 +55,6 @@ export function Sidebar() {
     { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { label: "Courses", href: "/admin/courses", icon: GraduationCap },
     { label: "Teachers", href: "/admin/teachers", icon: Users },
-    { label: "Classes", href: "/admin/classes", icon: School },
     { label: "Attendance", href: "/admin/attendance", icon: ClipboardList },
     { label: "Settings", href: "/admin/settings", icon: Settings },
   ];

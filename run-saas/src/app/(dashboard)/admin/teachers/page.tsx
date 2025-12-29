@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, Trash2, Users as UsersIcon } from "lucide-react";
+import { Eye, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { SearchInput } from "@/components/shared/SearchInput";
 import { FilterSelect } from "@/components/shared/FilterSelect";
 import { Pagination } from "@/components/shared/Pagination";
 import { TeacherDetailsModal } from "@/components/admin/TeacherDetailsModal";
+import { DeactivateTeacherModal } from "@/components/admin/DeactivateTeacherModal";
 import { useTeacherStore } from "@/store/admin/teacher-store";
 import type { TeacherWithCourse } from "@/types";
 import { TEACHER_ROLES } from "@/types";
@@ -51,6 +52,9 @@ export default function TeachersPage() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [teacherToDeactivate, setTeacherToDeactivate] =
+    useState<TeacherWithCourse | null>(null);
 
   useEffect(() => {
     loadTeachers();
@@ -94,25 +98,20 @@ export default function TeachersPage() {
     setIsDetailsModalOpen(true);
   };
 
-  const handleDeactivate = async (teacher: TeacherWithCourse) => {
-    // Prevent deactivation of head teachers
-    if (teacher.role === TEACHER_ROLES.HEAD) {
-      toast.error(
-        "Cannot deactivate head teacher. Please replace the head teacher first in the course management section.",
-      );
-      return;
-    }
+  const handleOpenDeactivateModal = (teacher: TeacherWithCourse) => {
+    setTeacherToDeactivate(teacher);
+    setIsDeactivateModalOpen(true);
+  };
 
-    const confirmed = window.confirm(
-      `Are you sure you want to deactivate ${getTeacherDisplayName(teacher)}? This will remove them from their course.`,
-    );
+  const handleDeactivate = async () => {
+    if (!teacherToDeactivate) return;
 
-    if (!confirmed) return;
-
-    const success = await deactivateTeacher(teacher.id);
+    const success = await deactivateTeacher(teacherToDeactivate.id);
 
     if (success) {
       toast.success("Teacher deactivated successfully");
+      setIsDeactivateModalOpen(false);
+      setTeacherToDeactivate(null);
     } else {
       toast.error("Failed to deactivate teacher");
     }
@@ -135,7 +134,9 @@ export default function TeachersPage() {
       cell: (value: unknown) => {
         const role = value as string;
         return (
-          <Badge variant={role === TEACHER_ROLES.HEAD ? "success" : "default"}>
+          <Badge
+            variant={role === TEACHER_ROLES.HEAD ? "default" : "secondary"}
+          >
             {role === TEACHER_ROLES.HEAD ? "Head Teacher" : "Additional"}
           </Badge>
         );
@@ -164,15 +165,6 @@ export default function TeachersPage() {
       },
     },
     {
-      header: "Classes",
-      accessor: (teacher) => {
-        if (teacher.role === TEACHER_ROLES.HEAD && teacher.headCourse) {
-          return teacher.headCourse.classes?.length || 0;
-        }
-        return "-";
-      },
-    },
-    {
       header: "Joined",
       accessor: "createdAt",
       cell: (value) => new Date(value).toLocaleDateString(),
@@ -194,15 +186,16 @@ export default function TeachersPage() {
           </Button>
           {teacher.role === TEACHER_ROLES.ADDITIONAL && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
-                handleDeactivate(teacher);
+                handleOpenDeactivateModal(teacher);
               }}
               disabled={isDeleting}
             >
-              <Trash2 className="h-4 w-4" />
+              <UserMinus className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -271,7 +264,7 @@ export default function TeachersPage() {
             onChange={(value) =>
               setFilters((prev) => ({ ...prev, search: value }))
             }
-            placeholder="Search by email..."
+            placeholder="Search by name or email..."
           />
         </div>
         <FilterSelect
@@ -323,6 +316,15 @@ export default function TeachersPage() {
         teacher={selectedTeacher}
         open={isDetailsModalOpen}
         onOpenChange={setIsDetailsModalOpen}
+      />
+
+      {/* Deactivate Modal */}
+      <DeactivateTeacherModal
+        teacher={teacherToDeactivate}
+        open={isDeactivateModalOpen}
+        onOpenChange={setIsDeactivateModalOpen}
+        onConfirm={handleDeactivate}
+        isDeactivating={isDeleting}
       />
     </div>
   );

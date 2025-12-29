@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { formatTimeForDisplay } from "@/lib/validations";
 import { useSessionAttendance } from "@/store/teacher/attendance-store";
 import { useClassStore } from "@/store/teacher/class-store";
 import { AttendanceListTab } from "@/components/teacher/attendance/AttendanceListTab";
@@ -133,17 +134,8 @@ export default function AttendancePage() {
             <SelectContent>
               {sessions.map((session) => (
                 <SelectItem key={session.id} value={session.id}>
-                  {session.day} (
-                  {new Date(session.startTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}{" "}
-                  -{" "}
-                  {new Date(session.endTime).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                  )
+                  {session.day} ({formatTimeForDisplay(session.startTime)} -{" "}
+                  {formatTimeForDisplay(session.endTime)})
                 </SelectItem>
               ))}
             </SelectContent>

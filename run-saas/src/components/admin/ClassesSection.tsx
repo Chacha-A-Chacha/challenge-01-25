@@ -1,17 +1,21 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, Users, Clock } from "lucide-react"
-import type { CourseWithDetails } from "@/types"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, Users, Clock } from "lucide-react";
+import { formatTimeForDisplay } from "@/lib/validations";
+import type { CourseWithDetails } from "@/types";
 
 interface ClassesSectionProps {
-  course: CourseWithDetails
+  course: CourseWithDetails;
 }
 
 export function ClassesSection({ course }: ClassesSectionProps) {
-  const classes = course.classes || []
-  const totalSessions = classes.reduce((sum, cls) => sum + (cls.sessions?.length || 0), 0)
+  const classes = course.classes || [];
+  const totalSessions = classes.reduce(
+    (sum, cls) => sum + (cls.sessions?.length || 0),
+    0,
+  );
 
   if (classes.length === 0) {
     return (
@@ -26,16 +30,7 @@ export function ClassesSection({ course }: ClassesSectionProps) {
           </div>
         </CardContent>
       </Card>
-    )
-  }
-
-  const formatTime = (date: Date | string) => {
-    const d = new Date(date)
-    return d.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    })
+    );
   }
 
   return (
@@ -44,8 +39,12 @@ export function ClassesSection({ course }: ClassesSectionProps) {
         <div className="flex items-center justify-between">
           <CardTitle>Classes & Sessions</CardTitle>
           <div className="flex gap-4 text-sm text-muted-foreground">
-            <span>{classes.length} Class{classes.length !== 1 ? 'es' : ''}</span>
-            <span>{totalSessions} Session{totalSessions !== 1 ? 's' : ''}</span>
+            <span>
+              {classes.length} Class{classes.length !== 1 ? "es" : ""}
+            </span>
+            <span>
+              {totalSessions} Session{totalSessions !== 1 ? "s" : ""}
+            </span>
           </div>
         </div>
       </CardHeader>
@@ -64,7 +63,8 @@ export function ClassesSection({ course }: ClassesSectionProps) {
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        {classItem.sessions?.length || 0} Session{classItem.sessions?.length !== 1 ? 's' : ''}
+                        {classItem.sessions?.length || 0} Session
+                        {classItem.sessions?.length !== 1 ? "s" : ""}
                       </span>
                     </div>
                   </div>
@@ -74,7 +74,9 @@ export function ClassesSection({ course }: ClassesSectionProps) {
               {classItem.sessions && classItem.sessions.length > 0 && (
                 <CardContent className="pt-0">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-muted-foreground">Sessions:</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Sessions:
+                    </p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {classItem.sessions.map((session) => (
                         <div
@@ -83,7 +85,13 @@ export function ClassesSection({ course }: ClassesSectionProps) {
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge variant={session.day === 'SATURDAY' ? 'default' : 'secondary'}>
+                              <Badge
+                                variant={
+                                  session.day === "SATURDAY"
+                                    ? "default"
+                                    : "secondary"
+                                }
+                              >
                                 {session.day}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
@@ -92,7 +100,8 @@ export function ClassesSection({ course }: ClassesSectionProps) {
                             </div>
                             <div className="flex items-center gap-1 text-sm">
                               <Clock className="h-3 w-3" />
-                              {formatTime(session.startTime)} - {formatTime(session.endTime)}
+                              {formatTimeForDisplay(session.startTime)} -{" "}
+                              {formatTimeForDisplay(session.endTime)}
                             </div>
                           </div>
                         </div>
@@ -106,7 +115,7 @@ export function ClassesSection({ course }: ClassesSectionProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function School({ className }: { className?: string }) {
@@ -124,5 +133,5 @@ function School({ className }: { className?: string }) {
       <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
       <path d="M6 12v5c3 3 9 3 12 0v-5" />
     </svg>
-  )
+  );
 }

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useClassSessions } from "@/store/teacher/class-store";
+import { formatTimeForDisplay } from "@/lib/validations";
 import type { Session } from "@/types";
 
 interface SessionCardProps {
@@ -27,25 +28,21 @@ export function SessionCard({ session, isHeadTeacher }: SessionCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Format time for display
-  const formatTime = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  const startTime = formatTime(session.startTime);
-  const endTime = formatTime(session.endTime);
+  const startTime = formatTimeForDisplay(session.startTime);
+  const endTime = formatTimeForDisplay(session.endTime);
 
   // Get student count if available
   const studentCount =
-    (session as Session & { _count?: { saturdayStudents?: number; sundayStudents?: number } })
-      ._count?.saturdayStudents ||
-    (session as Session & { _count?: { saturdayStudents?: number; sundayStudents?: number } })
-      ._count?.sundayStudents ||
+    (
+      session as Session & {
+        _count?: { saturdayStudents?: number; sundayStudents?: number };
+      }
+    )._count?.saturdayStudents ||
+    (
+      session as Session & {
+        _count?: { saturdayStudents?: number; sundayStudents?: number };
+      }
+    )._count?.sundayStudents ||
     0;
 
   const canDelete = studentCount === 0;

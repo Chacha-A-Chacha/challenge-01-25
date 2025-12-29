@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { FilterSelect } from "@/components/shared/FilterSelect";
+import { formatTimeForDisplay } from "@/lib/validations";
 import {
   useStudents,
   useStudentFilters,
@@ -76,15 +77,8 @@ export default function StudentsPage() {
           return <span className="text-muted-foreground">Not assigned</span>;
         return (
           <div className="text-sm">
-            {new Date(session.startTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            -{" "}
-            {new Date(session.endTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatTimeForDisplay(session.startTime)} -{" "}
+            {formatTimeForDisplay(session.endTime)}
           </div>
         );
       },
@@ -98,15 +92,8 @@ export default function StudentsPage() {
           return <span className="text-muted-foreground">Not assigned</span>;
         return (
           <div className="text-sm">
-            {new Date(session.startTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}{" "}
-            -{" "}
-            {new Date(session.endTime).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatTimeForDisplay(session.startTime)} -{" "}
+            {formatTimeForDisplay(session.endTime)}
           </div>
         );
       },
