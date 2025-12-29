@@ -169,12 +169,9 @@ export const useRegistrationApprovalStore = create<RegistrationApprovalStore>(
       set({ isApproving: true, error: null });
 
       try {
-        const response = await fetch(
-          `${API_ROUTES.TEACHER.REGISTRATIONS}/${id}/approve`,
-          {
-            method: "POST",
-          },
-        );
+        const response = await fetch(API_ROUTES.TEACHER.APPROVE(id), {
+          method: "POST",
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to approve registration: ${response.status}`);
@@ -213,14 +210,11 @@ export const useRegistrationApprovalStore = create<RegistrationApprovalStore>(
       set({ isRejecting: true, error: null });
 
       try {
-        const response = await fetch(
-          `${API_ROUTES.TEACHER.REGISTRATIONS}/${id}/reject`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ reason }),
-          },
-        );
+        const response = await fetch(API_ROUTES.TEACHER.REJECT(id), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to reject registration: ${response.status}`);
@@ -259,14 +253,11 @@ export const useRegistrationApprovalStore = create<RegistrationApprovalStore>(
       set({ isApproving: true, error: null });
 
       try {
-        const response = await fetch(
-          `${API_ROUTES.TEACHER.REGISTRATIONS}/bulk-approve`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ registrationIds: ids }),
-          },
-        );
+        const response = await fetch(API_ROUTES.TEACHER.BULK_APPROVE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ registrationIds: ids }),
+        });
 
         if (!response.ok) {
           throw new Error(
