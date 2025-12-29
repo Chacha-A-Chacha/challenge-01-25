@@ -1881,25 +1881,22 @@ export async function getSessionAttendanceWithRecords(
       where: { id: sessionId },
       include: {
         class: true,
-        students: {
-          include: {
-            attendances: {
-              where: {
-                sessionId,
-                date: {
-                  gte: dayStart,
-                  lt: dayEnd,
-                },
-              },
-            },
-          },
-        },
+        saturdayStudents: true,
+        sundayStudents: true,
       },
     });
 
     if (!session) {
       throw new Error("Session not found");
     }
+
+    // Get students assigned to this session based on the day
+    const assignedStudents =
+      session.day === "SATURDAY"
+        ? session.saturdayStudents
+        : session.sundayStudents;
+
+    const totalStudents = assignedStudents?.length || 0;
 
     // Get all attendance records for this session today
     const attendanceRecords = await prisma.attendance.findMany({
@@ -1917,7 +1914,6 @@ export async function getSessionAttendanceWithRecords(
       },
     });
 
-    const totalStudents = session.students.length;
     const presentCount = attendanceRecords.filter(
       (a) => a.status === "PRESENT",
     ).length;
