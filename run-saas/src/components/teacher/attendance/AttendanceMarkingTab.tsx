@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { QrCode, Search, UserCheck, UserX, AlertTriangle } from "lucide-react";
+import { QrCode, Search, UserCheck, UserX } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -270,13 +270,13 @@ export function AttendanceMarkingTab({
                       {getStatusBadge(student.id)}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => handleManualMark(student.id, "PRESENT")}
                         disabled={isMarkingManual || hasAttendance}
-                        className="text-xs"
+                        className="text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
                       >
                         <UserCheck className="h-3 w-3 mr-1" />
                         Present
@@ -286,22 +286,10 @@ export function AttendanceMarkingTab({
                         variant="outline"
                         onClick={() => handleManualMark(student.id, "ABSENT")}
                         disabled={isMarkingManual || hasAttendance}
-                        className="text-xs"
+                        className="text-xs border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
                       >
                         <UserX className="h-3 w-3 mr-1" />
                         Absent
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          handleManualMark(student.id, "WRONG_SESSION")
-                        }
-                        disabled={isMarkingManual || hasAttendance}
-                        className="text-xs"
-                      >
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Wrong
                       </Button>
                     </div>
                   </div>
