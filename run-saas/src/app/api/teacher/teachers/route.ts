@@ -42,7 +42,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, password } = validationResult.data;
+    const { email, password, firstName, lastName } = validationResult.data;
+
+    // Validate required name fields
+    if (!firstName || !lastName) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "First name and last name are required" },
+        { status: 400 },
+      );
+    }
 
     // Get the head teacher's course
     if (!session.user.courseId) {
@@ -60,6 +68,8 @@ export async function POST(request: NextRequest) {
       session.user.courseId,
       email,
       hashedPassword,
+      firstName,
+      lastName,
     );
 
     return NextResponse.json<ApiResponse<TeacherWithCourse>>(
@@ -75,8 +85,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse<null>>(
       {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Failed to add teacher",
+        error: error instanceof Error ? error.message : "Failed to add teacher",
       },
       { status: 500 },
     );

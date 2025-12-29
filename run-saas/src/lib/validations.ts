@@ -193,8 +193,8 @@ export const updateCourseSchema = z
 export const addTeacherSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  firstName: nameSchema.optional(),
-  lastName: nameSchema.optional(),
+  firstName: nameSchema,
+  lastName: nameSchema,
 });
 
 export const replaceHeadTeacherSchema = z

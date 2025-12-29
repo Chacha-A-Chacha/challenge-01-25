@@ -465,6 +465,8 @@ export async function addAdditionalTeacher(
   courseId: string,
   email: string,
   hashedPassword: string,
+  firstName: string,
+  lastName: string,
 ): Promise<TeacherWithCourse> {
   return withTransaction(async (tx) => {
     // 1. Verify course exists
@@ -491,6 +493,8 @@ export async function addAdditionalTeacher(
       data: {
         email: email.toLowerCase().trim(),
         password: hashedPassword,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         role: "ADDITIONAL" as TeacherRole,
         courseId: courseId,
       },
