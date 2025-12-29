@@ -29,6 +29,10 @@ const statusOptions = [
   { label: "No Course", value: "no_course" },
 ];
 
+const getTeacherDisplayName = (teacher: TeacherWithCourse) => {
+  return `${teacher.firstName} ${teacher.lastName}`;
+};
+
 export default function TeachersPage() {
   const {
     teachers,
@@ -55,7 +59,11 @@ export default function TeachersPage() {
   // Filter teachers
   const filteredTeachers = teachers.filter((teacher) => {
     const searchTerm = filters.search.toLowerCase();
-    const matchesSearch = teacher.email.toLowerCase().includes(searchTerm);
+    const teacherName =
+      `${teacher.firstName} ${teacher.lastName}`.toLowerCase();
+    const matchesSearch =
+      teacher.email.toLowerCase().includes(searchTerm) ||
+      teacherName.includes(searchTerm);
 
     const matchesRole = filters.role === "all" || teacher.role === filters.role;
 
@@ -96,7 +104,7 @@ export default function TeachersPage() {
     }
 
     const confirmed = window.confirm(
-      `Are you sure you want to deactivate ${teacher.email}? This will remove them from their course.`,
+      `Are you sure you want to deactivate ${getTeacherDisplayName(teacher)}? This will remove them from their course.`,
     );
 
     if (!confirmed) return;
@@ -112,10 +120,13 @@ export default function TeachersPage() {
 
   const columns: Column<TeacherWithCourse>[] = [
     {
-      header: "Email",
-      accessor: "email",
-      cell: (value: unknown) => (
-        <span className="font-medium">{String(value)}</span>
+      header: "Name",
+      accessor: (teacher) => getTeacherDisplayName(teacher),
+      cell: (_value: unknown, teacher: TeacherWithCourse) => (
+        <div>
+          <p className="font-medium">{getTeacherDisplayName(teacher)}</p>
+          <p className="text-sm text-muted-foreground">{teacher.email}</p>
+        </div>
       ),
     },
     {

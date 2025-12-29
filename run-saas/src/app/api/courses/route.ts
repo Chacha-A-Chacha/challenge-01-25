@@ -100,8 +100,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { courseName, headTeacherEmail, headTeacherPassword } =
-      validation.data;
+    const {
+      courseName,
+      headTeacherEmail,
+      headTeacherPassword,
+      headTeacherFirstName,
+      headTeacherLastName,
+    } = validation.data;
 
     // Hash password
     const hashedPassword = await hashPassword(headTeacherPassword);
@@ -111,6 +116,8 @@ export async function POST(request: NextRequest) {
       courseName,
       headTeacherEmail,
       hashedPassword,
+      headTeacherFirstName,
+      headTeacherLastName,
     );
 
     return NextResponse.json({

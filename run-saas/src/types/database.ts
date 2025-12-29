@@ -13,6 +13,8 @@ export interface Admin {
   id: string;
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
   createdAt: Date;
 }
 
@@ -35,6 +37,8 @@ export interface Teacher {
   id: string;
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
   courseId?: string;
   role: TeacherRole;
   createdAt: Date;

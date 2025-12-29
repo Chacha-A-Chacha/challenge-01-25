@@ -28,6 +28,17 @@ const getStatusBadgeVariant = (status: CourseStatus) => {
   }
 };
 
+const getTeacherDisplayName = (teacher: {
+  firstName: string;
+  lastName: string;
+}) => {
+  return `${teacher.firstName} ${teacher.lastName}`;
+};
+
+const getTeacherInitial = (teacher: { firstName: string }) => {
+  return teacher.firstName.charAt(0).toUpperCase();
+};
+
 export default function CourseDetailsPage({
   params,
 }: {
@@ -227,12 +238,16 @@ export default function CourseDetailsPage({
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
               <span className="text-emerald-700 font-semibold text-lg">
-                {selectedCourse.headTeacher.email.charAt(0).toUpperCase()}
+                {getTeacherInitial(selectedCourse.headTeacher)}
               </span>
             </div>
             <div className="flex-1">
-              <p className="font-medium">{selectedCourse.headTeacher.email}</p>
-              <p className="text-sm text-muted-foreground">Head Teacher</p>
+              <p className="font-medium">
+                {getTeacherDisplayName(selectedCourse.headTeacher)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {selectedCourse.headTeacher.email}
+              </p>
             </div>
           </div>
         </CardContent>
@@ -263,13 +278,15 @@ export default function CourseDetailsPage({
                 >
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
                     <span className="text-blue-700 font-semibold">
-                      {teacher.email.charAt(0).toUpperCase()}
+                      {getTeacherInitial(teacher)}
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{teacher.email}</p>
+                    <p className="font-medium">
+                      {getTeacherDisplayName(teacher)}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      Additional Teacher
+                      {teacher.email}
                     </p>
                   </div>
                 </div>

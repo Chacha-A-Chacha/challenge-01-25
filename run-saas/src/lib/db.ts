@@ -202,6 +202,8 @@ export async function createCourseWithHeadTeacher(
   courseName: string,
   headTeacherEmail: string,
   hashedPassword: string,
+  headTeacherFirstName?: string,
+  headTeacherLastName?: string,
 ): Promise<{ course: CourseWithDetails; teacher: TeacherWithCourse }> {
   return withTransaction(async (tx) => {
     // Check if email already exists
@@ -219,6 +221,8 @@ export async function createCourseWithHeadTeacher(
         email: headTeacherEmail.toLowerCase().trim(),
         password: hashedPassword,
         role: "HEAD" as TeacherRole,
+        firstName: headTeacherFirstName?.trim(),
+        lastName: headTeacherLastName?.trim(),
       },
     });
 

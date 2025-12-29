@@ -25,6 +25,8 @@ interface CourseFormData {
   courseName: string;
   headTeacherEmail: string;
   headTeacherPassword: string;
+  headTeacherFirstName?: string;
+  headTeacherLastName?: string;
 }
 
 interface CourseFilters {
@@ -318,11 +320,15 @@ export const useCourseStore = create<CourseState>()(
         // Search filter
         if (filters.search.trim()) {
           const query = filters.search.toLowerCase();
-          filtered = filtered.filter(
-            (course) =>
+          filtered = filtered.filter((course) => {
+            const teacherName =
+              `${course.headTeacher.firstName} ${course.headTeacher.lastName}`.toLowerCase();
+            return (
               course.name.toLowerCase().includes(query) ||
-              course.headTeacher.email.toLowerCase().includes(query),
-          );
+              course.headTeacher.email.toLowerCase().includes(query) ||
+              teacherName.includes(query)
+            );
+          });
         }
 
         // Status filter

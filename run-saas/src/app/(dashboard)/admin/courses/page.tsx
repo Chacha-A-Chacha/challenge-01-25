@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +65,8 @@ export default function CoursesPage() {
     },
     {
       header: "Head Teacher",
-      accessor: (row) => row.headTeacher.email,
+      accessor: (row) =>
+        `${row.headTeacher.firstName} ${row.headTeacher.lastName}`,
     },
     {
       header: "Status",
@@ -84,8 +85,21 @@ export default function CoursesPage() {
       accessor: (row) => row._count?.teachers || 0,
     },
     {
-      header: "Created",
-      accessor: (row) => new Date(row.createdAt).toLocaleDateString(),
+      header: "Actions",
+      accessor: () => null,
+      cell: (_value, row) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/admin/courses/${row.id}`);
+          }}
+        >
+          <Eye className="mr-2 h-4 w-4" />
+          View Details
+        </Button>
+      ),
     },
   ];
 
@@ -111,11 +125,11 @@ export default function CoursesPage() {
           <CardTitle>Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 items-end">
             <SearchInput
               value={filters.search}
               onChange={(value) => setFilters({ search: value })}
-              placeholder="Search by course name or teacher email..."
+              placeholder="Search by course name or teacher..."
             />
             <FilterSelect
               label="Status"

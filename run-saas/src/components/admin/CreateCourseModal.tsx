@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,54 +8,65 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, AlertCircle } from "lucide-react"
-import { useCourseStore } from "@/store"
-import { toast } from "sonner"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, AlertCircle } from "lucide-react";
+import { useCourseStore } from "@/store";
+import { toast } from "sonner";
 
 interface CreateCourseModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function CreateCourseModal({ open, onOpenChange }: CreateCourseModalProps) {
-  const { createCourse, isCreating, error } = useCourseStore()
+export function CreateCourseModal({
+  open,
+  onOpenChange,
+}: CreateCourseModalProps) {
+  const { createCourse, isCreating, error } = useCourseStore();
 
-  const [courseName, setCourseName] = useState("")
-  const [headTeacherEmail, setHeadTeacherEmail] = useState("")
-  const [headTeacherPassword, setHeadTeacherPassword] = useState("")
+  const [courseName, setCourseName] = useState("");
+  const [headTeacherFirstName, setHeadTeacherFirstName] = useState("");
+  const [headTeacherLastName, setHeadTeacherLastName] = useState("");
+  const [headTeacherEmail, setHeadTeacherEmail] = useState("");
+  const [headTeacherPassword, setHeadTeacherPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const result = await createCourse({
       courseName,
       headTeacherEmail,
-      headTeacherPassword
-    })
+      headTeacherPassword,
+      headTeacherFirstName: headTeacherFirstName || undefined,
+      headTeacherLastName: headTeacherLastName || undefined,
+    });
 
     if (result) {
-      toast.success("Course created successfully!")
-      onOpenChange(false)
+      toast.success("Course created successfully!");
+      onOpenChange(false);
       // Reset form
-      setCourseName("")
-      setHeadTeacherEmail("")
-      setHeadTeacherPassword("")
+      setCourseName("");
+      setHeadTeacherFirstName("");
+      setHeadTeacherLastName("");
+      setHeadTeacherEmail("");
+      setHeadTeacherPassword("");
     }
-  }
+  };
 
   const handleClose = () => {
     if (!isCreating) {
-      onOpenChange(false)
-      setCourseName("")
-      setHeadTeacherEmail("")
-      setHeadTeacherPassword("")
+      onOpenChange(false);
+      setCourseName("");
+      setHeadTeacherFirstName("");
+      setHeadTeacherLastName("");
+      setHeadTeacherEmail("");
+      setHeadTeacherPassword("");
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -63,7 +74,8 @@ export function CreateCourseModal({ open, onOpenChange }: CreateCourseModalProps
         <DialogHeader>
           <DialogTitle>Create New Course</DialogTitle>
           <DialogDescription>
-            Create a new course and assign a head teacher. The head teacher will manage the course.
+            Create a new course and assign a head teacher. The head teacher will
+            manage the course.
           </DialogDescription>
         </DialogHeader>
 
@@ -86,6 +98,29 @@ export function CreateCourseModal({ open, onOpenChange }: CreateCourseModalProps
                 disabled={isCreating}
                 required
               />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="headTeacherFirstName">First Name</Label>
+                <Input
+                  id="headTeacherFirstName"
+                  placeholder="John"
+                  value={headTeacherFirstName}
+                  onChange={(e) => setHeadTeacherFirstName(e.target.value)}
+                  disabled={isCreating}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="headTeacherLastName">Last Name</Label>
+                <Input
+                  id="headTeacherLastName"
+                  placeholder="Doe"
+                  value={headTeacherLastName}
+                  onChange={(e) => setHeadTeacherLastName(e.target.value)}
+                  disabled={isCreating}
+                />
+              </div>
             </div>
 
             <div className="grid gap-2">
@@ -136,5 +171,5 @@ export function CreateCourseModal({ open, onOpenChange }: CreateCourseModalProps
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

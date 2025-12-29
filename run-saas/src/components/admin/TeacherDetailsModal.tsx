@@ -28,11 +28,15 @@ export function TeacherDetailsModal({
   const isHeadTeacher = teacher.role === TEACHER_ROLES.HEAD;
   const course = isHeadTeacher ? teacher.headCourse : teacher.course;
 
+  const getTeacherDisplayName = () => {
+    return `${teacher.firstName} ${teacher.lastName}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Teacher Details</DialogTitle>
+          <DialogTitle>{getTeacherDisplayName()}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -42,6 +46,12 @@ export function TeacherDetailsModal({
               <CardTitle className="text-lg">Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Name
+                </p>
+                <p className="mt-1">{getTeacherDisplayName()}</p>
+              </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Email

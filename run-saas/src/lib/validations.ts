@@ -178,6 +178,8 @@ export const createCourseSchema = z.object({
 
   headTeacherEmail: emailSchema,
   headTeacherPassword: passwordSchema,
+  headTeacherFirstName: nameSchema.optional(),
+  headTeacherLastName: nameSchema.optional(),
 });
 
 export const updateCourseSchema = z
@@ -191,6 +193,8 @@ export const updateCourseSchema = z
 export const addTeacherSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
+  firstName: nameSchema.optional(),
+  lastName: nameSchema.optional(),
 });
 
 export const replaceHeadTeacherSchema = z

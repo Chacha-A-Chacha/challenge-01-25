@@ -1,6 +1,8 @@
 // prisma/seed.ts - Comprehensive Database Seed Script
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import * as fs from "fs";
+import * as path from "path";
 
 const prisma = new PrismaClient();
 
@@ -9,15 +11,94 @@ async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, saltRounds);
 }
 
-// Helper to create time objects
-function createTime(hours: number, minutes: number = 0): Date {
-  return new Date(
-    `2000-01-01T${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00Z`,
-  );
+// Generate random 4-digit student number
+function generateStudentNumber(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
+}
+
+// Helper to create time string in HH:MM:SS format
+function createTimeString(hours: number, minutes: number = 0): string {
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+}
+
+// Parse CSV and extract valid entries
+interface PersonData {
+  lastName: string;
+  firstName: string;
+  email: string;
+}
+
+function parseCSV(): PersonData[] {
+  const csvPath = path.join(__dirname, "sample_random_data.csv");
+  const csvContent = fs.readFileSync(csvPath, "utf-8");
+  const lines = csvContent.split("\n");
+
+  const people: PersonData[] = [];
+
+  // Skip first 3 rows (header, date, points)
+  for (let i = 3; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const columns = line.split(",");
+    const lastName = columns[0]?.trim() || "";
+    const firstName = columns[1]?.trim() || "";
+    const email = columns[2]?.trim() || "";
+
+    // Only include entries with valid email and at least one name
+    if (email && email.includes("@") && (firstName || lastName)) {
+      people.push({
+        lastName: lastName || firstName, // Use firstName as lastName if missing
+        firstName: firstName || lastName, // Use lastName as firstName if missing
+        email,
+      });
+    }
+  }
+
+  return people;
+}
+
+// Capitalize first letter of each word
+function capitalize(str: string): string {
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }
 
 async function main() {
   console.log("🌱 Starting comprehensive database seed...\n");
+
+  // Parse CSV data
+  console.log("📂 Parsing CSV data...");
+  const allPeople = parseCSV();
+  console.log(`✅ Found ${allPeople.length} valid entries in CSV\n`);
+
+  // Shuffle the array to randomize distribution
+  const shuffled = [...allPeople].sort(() => Math.random() - 0.5);
+
+  // Split into teachers (first 25) and students (rest)
+  const teacherPool = shuffled.slice(0, 25);
+  const studentPool = shuffled.slice(25);
+  const pendingPool = studentPool.splice(-10); // Last 10 for pending registrations
+
+  console.log(`📊 Distribution:`);
+  console.log(`   - Teachers pool: ${teacherPool.length}`);
+  console.log(`   - Students pool: ${studentPool.length}`);
+  console.log(`   - Pending registrations: ${pendingPool.length}\n`);
+
+  // Track used student numbers to ensure uniqueness
+  const usedStudentNumbers = new Set<string>();
+
+  function getUniqueStudentNumber(): string {
+    let num: string;
+    do {
+      num = generateStudentNumber();
+    } while (usedStudentNumbers.has(num));
+    usedStudentNumbers.add(num);
+    return num;
+  }
 
   // ============================================================================
   // 1. CREATE ADMIN
@@ -29,9 +110,11 @@ async function main() {
     create: {
       email: "admin@weekend.academy",
       password: await hashPassword("Admin123!"),
+      firstName: "System",
+      lastName: "Administrator",
     },
   });
-  console.log("✅ Admin created\n");
+  console.log(`✅ Admin created: ${admin.firstName} ${admin.lastName}\n`);
 
   // ============================================================================
   // 2. COURSES WITH HEAD TEACHERS
@@ -102,21 +185,30 @@ async function main() {
     classId: string;
     day: string;
   }[] = [];
-  let studentCounter = 1;
+  const allClasses: { id: string; courseId: string; name: string }[] = [];
+
+  let teacherIndex = 0;
 
   for (const courseInfo of courseData) {
     console.log(`\n🎓 ${courseInfo.name}`);
     console.log("─".repeat(60));
 
-    // Create Head Teacher
+    // Get head teacher data from CSV pool
+    const headTeacherData = teacherPool[teacherIndex++];
+
+    // Create Head Teacher with real name from CSV
     const headTeacher = await prisma.teacher.create({
       data: {
         email: courseInfo.email,
         password: await hashPassword("Teacher123!"),
+        firstName: capitalize(headTeacherData.firstName),
+        lastName: capitalize(headTeacherData.lastName),
         role: "HEAD",
       },
     });
-    console.log(`✅ Head Teacher: ${headTeacher.email}`);
+    console.log(
+      `✅ Head Teacher: ${headTeacher.firstName} ${headTeacher.lastName} (${headTeacher.email})`,
+    );
 
     // Create Course
     const course = await prisma.course.create({
@@ -135,19 +227,26 @@ async function main() {
 
     courses.push(course);
 
-    // Create Additional Teachers (1-2 per course)
+    // Create Additional Teachers (1-2 per course) with real names
     const additionalTeachersCount = Math.floor(Math.random() * 2) + 1;
     for (let t = 1; t <= additionalTeachersCount; t++) {
-      await prisma.teacher.create({
+      const additionalTeacherData = teacherPool[teacherIndex++];
+      if (!additionalTeacherData) break;
+
+      const additionalTeacher = await prisma.teacher.create({
         data: {
-          email: `teacher${t}.${courseInfo.name.toLowerCase().replace(/\s+/g, "")}@academy.com`,
+          email: `teacher${t}.${courseInfo.name.toLowerCase().replace(/\s+/g, "").replace(/&/g, "")}@academy.com`,
           password: await hashPassword("Teacher123!"),
+          firstName: capitalize(additionalTeacherData.firstName),
+          lastName: capitalize(additionalTeacherData.lastName),
           courseId: course.id,
           role: "ADDITIONAL",
         },
       });
+      console.log(
+        `   ➕ Additional: ${additionalTeacher.firstName} ${additionalTeacher.lastName}`,
+      );
     }
-    console.log(`✅ ${additionalTeachersCount} Additional Teacher(s) created`);
 
     // Create Classes and Sessions
     for (let c = 1; c <= courseInfo.classes; c++) {
@@ -163,6 +262,13 @@ async function main() {
           courseId: course.id,
         },
       });
+
+      allClasses.push({
+        id: classEntity.id,
+        courseId: course.id,
+        name: className,
+      });
+
       console.log(`  📚 Class: ${className}`);
 
       // Saturday Sessions
@@ -177,8 +283,8 @@ async function main() {
           data: {
             classId: classEntity.id,
             day: "SATURDAY",
-            startTime: createTime(saturdayTimes[s].start),
-            endTime: createTime(saturdayTimes[s].end),
+            startTime: createTimeString(saturdayTimes[s].start),
+            endTime: createTimeString(saturdayTimes[s].end),
             capacity: 15,
           },
         });
@@ -205,8 +311,8 @@ async function main() {
           data: {
             classId: classEntity.id,
             day: "SUNDAY",
-            startTime: createTime(sundayTimes[s].start),
-            endTime: createTime(sundayTimes[s].end),
+            startTime: createTimeString(sundayTimes[s].start),
+            endTime: createTimeString(sundayTimes[s].end),
             capacity: 15,
           },
         });
@@ -220,54 +326,67 @@ async function main() {
           day: "SUNDAY",
         });
       }
-
-      // Create 2-3 students per class
-      const studentsPerClass = Math.floor(Math.random() * 2) + 2;
-      for (let st = 1; st <= studentsPerClass; st++) {
-        const studentNumber = `STU${studentCounter.toString().padStart(3, "0")}`;
-
-        // Get random Saturday and Sunday sessions for this class
-        const classSessions = allSessions.filter(
-          (s) => s.classId === classEntity.id,
-        );
-        const saturdaySessions = classSessions.filter(
-          (s) => s.day === "SATURDAY",
-        );
-        const sundaySessions = classSessions.filter((s) => s.day === "SUNDAY");
-
-        const randomSaturdaySession =
-          saturdaySessions[Math.floor(Math.random() * saturdaySessions.length)];
-        const randomSundaySession =
-          sundaySessions[Math.floor(Math.random() * sundaySessions.length)];
-
-        await prisma.student.create({
-          data: {
-            studentNumber,
-            surname: `Surname${studentCounter}`,
-            firstName: `Student${studentCounter}`,
-            lastName: `Name${studentCounter}`,
-            email: `student${studentCounter}@academy.com`,
-            phoneNumber: `07${(10000000 + studentCounter).toString()}`,
-            passwordHash: await hashPassword("Student123!"),
-            classId: classEntity.id,
-            saturdaySessionId: randomSaturdaySession.session.id,
-            sundaySessionId: randomSundaySession.session.id,
-          },
-        });
-
-        studentCounter++;
-      }
-      console.log(`  👥 ${studentsPerClass} Students enrolled`);
     }
   }
 
   // ============================================================================
-  // 3. CREATE PENDING REGISTRATIONS (5-10 across different courses)
+  // 3. CREATE STUDENTS FROM CSV DATA
   // ============================================================================
-  console.log("\n\n📌 Creating Pending Registrations...");
+  console.log("\n\n📌 Creating Students from CSV data...");
 
-  const pendingCount = 7;
-  for (let i = 1; i <= pendingCount; i++) {
+  let studentIndex = 0;
+  const studentsPerClass = Math.ceil(studentPool.length / allClasses.length);
+
+  for (const classInfo of allClasses) {
+    const classSessions = allSessions.filter((s) => s.classId === classInfo.id);
+    const saturdaySessions = classSessions.filter((s) => s.day === "SATURDAY");
+    const sundaySessions = classSessions.filter((s) => s.day === "SUNDAY");
+
+    if (saturdaySessions.length === 0 || sundaySessions.length === 0) continue;
+
+    let studentsInClass = 0;
+
+    while (
+      studentIndex < studentPool.length &&
+      studentsInClass < studentsPerClass
+    ) {
+      const studentData = studentPool[studentIndex++];
+      const studentNumber = getUniqueStudentNumber();
+
+      // Randomly assign to a session
+      const randomSaturdaySession =
+        saturdaySessions[Math.floor(Math.random() * saturdaySessions.length)];
+      const randomSundaySession =
+        sundaySessions[Math.floor(Math.random() * sundaySessions.length)];
+
+      await prisma.student.create({
+        data: {
+          studentNumber,
+          surname: capitalize(studentData.lastName),
+          firstName: capitalize(studentData.firstName),
+          email: studentData.email.toLowerCase(),
+          phoneNumber: `07${Math.floor(10000000 + Math.random() * 90000000)}`,
+          password: await hashPassword("Student123!"),
+          classId: classInfo.id,
+          saturdaySessionId: randomSaturdaySession.session.id,
+          sundaySessionId: randomSundaySession.session.id,
+        },
+      });
+
+      studentsInClass++;
+    }
+
+    console.log(`  👥 ${classInfo.name}: ${studentsInClass} students`);
+  }
+
+  // ============================================================================
+  // 4. CREATE PENDING REGISTRATIONS
+  // ============================================================================
+  console.log("\n📌 Creating Pending Registrations...");
+
+  for (let i = 0; i < pendingPool.length; i++) {
+    const pendingData = pendingPool[i];
+
     // Pick random course and sessions
     const randomCourseIndex = Math.floor(Math.random() * courses.length);
     const courseSessions = allSessions.filter(
@@ -286,22 +405,21 @@ async function main() {
 
     await prisma.studentRegistration.create({
       data: {
-        surname: `Pending${i}`,
-        firstName: `Registration${i}`,
-        lastName: `Test${i}`,
-        email: `pending${i}@test.com`,
-        phoneNumber: `072${(1000000 + i).toString()}`,
+        surname: capitalize(pendingData.lastName),
+        firstName: capitalize(pendingData.firstName),
+        email: pendingData.email.toLowerCase(),
+        phoneNumber: `07${Math.floor(10000000 + Math.random() * 90000000)}`,
         courseId: courses[randomCourseIndex].id,
         saturdaySessionId: randomSaturday.session.id,
         sundaySessionId: randomSunday.session.id,
-        passwordHash: await hashPassword("Pending123!"),
-        paymentReceiptUrl: `https://example.com/receipts/pending${i}.jpg`,
-        paymentReceiptNo: `RCT${(100000 + i).toString()}`,
+        password: await hashPassword("Pending123!"),
+        paymentReceiptUrl: `https://storage.example.com/receipts/${Date.now()}-${i}.jpg`,
+        paymentReceiptNo: `RCT${Math.floor(100000 + Math.random() * 900000)}`,
         status: "PENDING",
       },
     });
   }
-  console.log(`✅ ${pendingCount} Pending Registrations created\n`);
+  console.log(`✅ ${pendingPool.length} Pending Registrations created\n`);
 
   // ============================================================================
   // SUMMARY
@@ -336,15 +454,17 @@ async function main() {
   console.log("   Email: head.programming@academy.com");
   console.log("   Password: Teacher123!");
 
-  console.log("\n3️⃣  SAMPLE STUDENT:");
-  console.log("   Email: student1@academy.com");
-  console.log("   Password: Student123!");
-  console.log("   Student Number: STU001");
+  console.log("\n3️⃣  SAMPLE STUDENT (from CSV):");
+  if (studentPool.length > 0) {
+    console.log(`   Email: ${studentPool[0].email.toLowerCase()}`);
+    console.log("   Password: Student123!");
+  }
 
   console.log("\n4️⃣  ALL OTHER LOGINS:");
+  console.log("   Teachers: head.{course}@academy.com / Teacher123!");
   console.log("   Teachers: teacher*.{course}@academy.com / Teacher123!");
-  console.log("   Students: student*@academy.com / Student123!");
-  console.log("   Pending: pending*@test.com (not yet approved)");
+  console.log("   Students: {csv-email} / Student123!");
+  console.log("   Pending: {csv-email} (not yet approved)");
 
   console.log("\n" + "=".repeat(70));
   console.log("\n🌐 Access the app at: http://localhost:3000");

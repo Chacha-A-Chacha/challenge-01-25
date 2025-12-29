@@ -40,6 +40,8 @@ export const authOptions: NextAuthOptions = {
           return {
             id: admin.id,
             email: admin.email,
+            firstName: admin.firstName ?? undefined,
+            lastName: admin.lastName ?? undefined,
             role: "admin" as UserRole,
           };
         }
@@ -53,6 +55,8 @@ export const authOptions: NextAuthOptions = {
           return {
             id: teacher.id,
             email: teacher.email ?? undefined,
+            firstName: teacher.firstName ?? undefined,
+            lastName: teacher.lastName ?? undefined,
             role: "teacher" as UserRole,
             teacherRole: teacher.role as TeacherRole,
             courseId: teacher.courseId ?? teacher.headCourse?.id,
