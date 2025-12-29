@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserPlus, Trash2 } from "lucide-react";
+import { UserPlus, UserMinus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,10 @@ import { useAuthStore } from "@/store/auth/auth-store";
 import type { TeacherWithCourse } from "@/types";
 import { TEACHER_ROLES } from "@/types";
 import { toast } from "sonner";
+
+const getTeacherDisplayName = (teacher: TeacherWithCourse) => {
+  return `${teacher.firstName} ${teacher.lastName}`;
+};
 
 export default function TeachersPage() {
   const { user } = useAuthStore();
@@ -76,7 +80,7 @@ export default function TeachersPage() {
       } else {
         toast.error(result.error || "Failed to remove teacher");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove teacher");
     } finally {
       setIsRemoving(false);
@@ -90,15 +94,20 @@ export default function TeachersPage() {
 
   const columns: Column<TeacherWithCourse>[] = [
     {
-      header: "Email",
-      accessor: "email",
-      cell: (value) => <span className="font-medium">{value}</span>,
+      header: "Name",
+      accessor: (teacher) => getTeacherDisplayName(teacher),
+      cell: (_value: unknown, teacher: TeacherWithCourse) => (
+        <div>
+          <p className="font-medium">{getTeacherDisplayName(teacher)}</p>
+          <p className="text-sm text-muted-foreground">{teacher.email}</p>
+        </div>
+      ),
     },
     {
       header: "Role",
       accessor: "role",
       cell: (value) => (
-        <Badge variant={value === TEACHER_ROLES.HEAD ? "success" : "default"}>
+        <Badge variant={value === TEACHER_ROLES.HEAD ? "default" : "secondary"}>
           {value === TEACHER_ROLES.HEAD ? "Head Teacher" : "Additional"}
         </Badge>
       ),
@@ -115,15 +124,16 @@ export default function TeachersPage() {
         <div className="flex gap-2">
           {teacher.role === TEACHER_ROLES.ADDITIONAL && (
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedTeacher(teacher);
                 setIsRemoveModalOpen(true);
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <UserMinus className="h-4 w-4" />
             </Button>
           )}
           {teacher.role === TEACHER_ROLES.HEAD && (
