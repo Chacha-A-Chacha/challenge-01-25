@@ -1619,9 +1619,12 @@ export async function markAttendanceFromQR(
     let status: AttendanceStatus;
     let message: string;
 
-    const isAssignedToSession = student.sessions.some(
-      (s: Session) => s.id === sessionId,
-    );
+    // Check if student is assigned to this specific session
+    const isAssignedToSession =
+      student.saturdaySessionId === sessionId ||
+      student.sundaySessionId === sessionId;
+
+    // Check if session belongs to student's class (but not their assigned session)
     const isCorrectClass =
       student.class?.sessions?.some((s: Session) => s.id === sessionId) ??
       false;
