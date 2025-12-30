@@ -78,6 +78,16 @@ export type {
   RejectRegistrationRequest,
   BulkApprovalRequest,
   BulkApprovalResponse,
+  CourseAttendanceStats,
+  ClassAttendanceStats,
+  SessionInfo,
+  CourseAttendanceDetail,
+  StudentAttendanceRecord,
+  StudentAttendanceInfo,
+  StudentAttendanceHistory,
+  StudentSearchResult,
+  AttendanceExportFilters,
+  AttendanceExportRow,
 } from "./api";
 
 // Component types
@@ -121,7 +131,6 @@ export type {
   ReassignmentOption,
   AttendanceRecord,
   SessionWithAttendance,
-  StudentAttendanceHistory,
   AttendanceReport,
 } from "./business";
 

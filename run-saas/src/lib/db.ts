@@ -2713,5 +2713,619 @@ export async function deleteReassignmentRequest(
   }
 }
 
+// ============================================================================
+// ADMIN ATTENDANCE FUNCTIONS
+// ============================================================================
+
+/**
+ * Get attendance statistics for all courses
+ */
+export async function getAllCoursesAttendanceStats(
+  startDate: Date,
+  endDate: Date,
+): Promise<
+  Array<{
+    courseId: string;
+    courseName: string;
+    courseStatus: string;
+    totalStudents: number;
+    totalClasses: number;
+    totalSessions: number;
+    attendanceRecords: number;
+    attendanceRate: number;
+    presentCount: number;
+    absentCount: number;
+    wrongSessionCount: number;
+    lastRecordedDate: string | null;
+  }>
+> {
+  try {
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(startDate);
+    const { end: endDayEnd } = getStartEndOfDay(endDate);
+
+    const courses = await prisma.course.findMany({
+      include: {
+        classes: {
+          include: {
+            sessions: true,
+            students: {
+              include: {
+                attendances: {
+                  where: {
+                    date: {
+                      gte: dayStart,
+                      lt: endDayEnd,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return courses.map((course) => {
+      const totalStudents = course.classes.reduce(
+        (sum, cls) => sum + cls.students.length,
+        0,
+      );
+      const totalClasses = course.classes.length;
+      const totalSessions = course.classes.reduce(
+        (sum, cls) => sum + cls.sessions.length,
+        0,
+      );
+
+      let totalAttendanceRecords = 0;
+      let presentCount = 0;
+      let absentCount = 0;
+      let wrongSessionCount = 0;
+      let lastRecordedDate: Date | null = null;
+
+      course.classes.forEach((cls) => {
+        cls.students.forEach((student) => {
+          student.attendances.forEach((attendance) => {
+            totalAttendanceRecords++;
+            if (attendance.status === "PRESENT") presentCount++;
+            if (attendance.status === "ABSENT") absentCount++;
+            if (attendance.status === "WRONG_SESSION") wrongSessionCount++;
+
+            if (!lastRecordedDate || attendance.date > lastRecordedDate) {
+              lastRecordedDate = attendance.date;
+            }
+          });
+        });
+      });
+
+      const attendanceRate =
+        totalAttendanceRecords > 0
+          ? Math.round((presentCount / totalAttendanceRecords) * 100)
+          : 0;
+
+      return {
+        courseId: course.id,
+        courseName: course.name,
+        courseStatus: course.status,
+        totalStudents,
+        totalClasses,
+        totalSessions,
+        attendanceRecords: totalAttendanceRecords,
+        attendanceRate,
+        presentCount,
+        absentCount,
+        wrongSessionCount,
+        lastRecordedDate: lastRecordedDate
+          ? lastRecordedDate.toISOString()
+          : null,
+      };
+    });
+  } catch (error) {
+    console.error("Error getting all courses attendance stats:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Get detailed attendance for a specific course
+ */
+export async function getCourseAttendanceDetail(
+  courseId: string,
+  startDate: Date,
+  endDate: Date,
+  sessionId?: string,
+): Promise<{
+  course: {
+    id: string;
+    name: string;
+    status: string;
+    startDate: string;
+    endDate: string | null;
+  };
+  overallStats: {
+    totalStudents: number;
+    totalClasses: number;
+    attendanceRate: number;
+    presentCount: number;
+    absentCount: number;
+    wrongSessionCount: number;
+  };
+  classBreakdown: Array<{
+    classId: string;
+    className: string;
+    totalStudents: number;
+    saturdaySessionsCount: number;
+    sundaySessionsCount: number;
+    totalSessionsCount: number;
+    attendanceRate: number;
+    presentCount: number;
+    absentCount: number;
+    wrongSessionCount: number;
+    lastRecordedDate: string | null;
+  }>;
+  sessions: Array<{
+    id: string;
+    day: string;
+    startTime: string;
+    endTime: string;
+    capacity: number;
+    className: string;
+  }>;
+}> {
+  try {
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(startDate);
+    const { end: endDayEnd } = getStartEndOfDay(endDate);
+
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        classes: {
+          include: {
+            sessions: true,
+            students: {
+              include: {
+                attendances: {
+                  where: {
+                    date: {
+                      gte: dayStart,
+                      lt: endDayEnd,
+                    },
+                    ...(sessionId ? { sessionId } : {}),
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course) {
+      throw new Error("Course not found");
+    }
+
+    const totalStudents = course.classes.reduce(
+      (sum, cls) => sum + cls.students.length,
+      0,
+    );
+    const totalClasses = course.classes.length;
+
+    let overallPresentCount = 0;
+    let overallAbsentCount = 0;
+    let overallWrongSessionCount = 0;
+    let overallAttendanceRecords = 0;
+
+    const classBreakdown = course.classes.map((cls) => {
+      let presentCount = 0;
+      let absentCount = 0;
+      let wrongSessionCount = 0;
+      let lastRecordedDate: Date | null = null;
+
+      cls.students.forEach((student) => {
+        student.attendances.forEach((attendance) => {
+          if (attendance.status === "PRESENT") presentCount++;
+          if (attendance.status === "ABSENT") absentCount++;
+          if (attendance.status === "WRONG_SESSION") wrongSessionCount++;
+
+          if (!lastRecordedDate || attendance.date > lastRecordedDate) {
+            lastRecordedDate = attendance.date;
+          }
+        });
+      });
+
+      const totalRecords = presentCount + absentCount + wrongSessionCount;
+      const attendanceRate =
+        totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 0;
+
+      overallPresentCount += presentCount;
+      overallAbsentCount += absentCount;
+      overallWrongSessionCount += wrongSessionCount;
+      overallAttendanceRecords += totalRecords;
+
+      const saturdaySessionsCount = cls.sessions.filter(
+        (s) => s.day === "SATURDAY",
+      ).length;
+      const sundaySessionsCount = cls.sessions.filter(
+        (s) => s.day === "SUNDAY",
+      ).length;
+
+      return {
+        classId: cls.id,
+        className: cls.name,
+        totalStudents: cls.students.length,
+        saturdaySessionsCount,
+        sundaySessionsCount,
+        totalSessionsCount: cls.sessions.length,
+        attendanceRate,
+        presentCount,
+        absentCount,
+        wrongSessionCount,
+        lastRecordedDate: lastRecordedDate
+          ? lastRecordedDate.toISOString()
+          : null,
+      };
+    });
+
+    const overallAttendanceRate =
+      overallAttendanceRecords > 0
+        ? Math.round((overallPresentCount / overallAttendanceRecords) * 100)
+        : 0;
+
+    const sessions = course.classes.flatMap((cls) =>
+      cls.sessions.map((session) => ({
+        id: session.id,
+        day: session.day,
+        startTime: formatTime(session.startTime),
+        endTime: formatTime(session.endTime),
+        capacity: session.capacity,
+        className: cls.name,
+      })),
+    );
+
+    return {
+      course: {
+        id: course.id,
+        name: course.name,
+        status: course.status,
+        startDate: course.createdAt.toISOString(),
+        endDate: course.endDate ? course.endDate.toISOString() : null,
+      },
+      overallStats: {
+        totalStudents,
+        totalClasses,
+        attendanceRate: overallAttendanceRate,
+        presentCount: overallPresentCount,
+        absentCount: overallAbsentCount,
+        wrongSessionCount: overallWrongSessionCount,
+      },
+      classBreakdown,
+      sessions,
+    };
+  } catch (error) {
+    console.error("Error getting course attendance detail:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Get student attendance history
+ */
+export async function getStudentAttendanceHistory(
+  studentId: string,
+  startDate: Date,
+  endDate: Date,
+): Promise<{
+  student: {
+    id: string;
+    studentNumber: string;
+    firstName: string;
+    lastName: string;
+    surname: string;
+    email: string;
+    phoneNumber: string | null;
+    className: string;
+    classId: string;
+    saturdaySession: {
+      id: string;
+      time: string;
+      className: string;
+    };
+    sundaySession: {
+      id: string;
+      time: string;
+      className: string;
+    };
+  };
+  attendanceRecords: Array<{
+    id: string;
+    date: string;
+    day: string;
+    sessionId: string;
+    sessionName: string;
+    sessionTime: string;
+    status: string;
+    scanTime: string | null;
+    markedBy: string | null;
+    markedByName: string | null;
+  }>;
+  stats: {
+    totalClassDays: number;
+    presentDays: number;
+    absentDays: number;
+    wrongSessionDays: number;
+    attendanceRate: number;
+    saturdayAttendanceRate: number;
+    sundayAttendanceRate: number;
+  };
+}> {
+  try {
+    const { start: dayStart, end: dayEnd } = getStartEndOfDay(startDate);
+    const { end: endDayEnd } = getStartEndOfDay(endDate);
+
+    const student = await prisma.student.findUnique({
+      where: { id: studentId },
+      include: {
+        class: true,
+        saturdaySession: true,
+        sundaySession: true,
+        attendances: {
+          where: {
+            date: {
+              gte: dayStart,
+              lt: endDayEnd,
+            },
+          },
+          include: {
+            session: {
+              include: {
+                class: true,
+              },
+            },
+            markedBy: true,
+          },
+          orderBy: {
+            date: "desc",
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new Error("Student not found");
+    }
+
+    const attendanceRecords = student.attendances.map((attendance) => ({
+      id: attendance.id,
+      date: attendance.date.toISOString(),
+      day: attendance.session.day,
+      sessionId: attendance.sessionId,
+      sessionName: attendance.session.class.name,
+      sessionTime: `${formatTime(attendance.session.startTime)} - ${formatTime(attendance.session.endTime)}`,
+      status: attendance.status,
+      scanTime: attendance.scanTime ? attendance.scanTime.toISOString() : null,
+      markedBy: attendance.teacherId,
+      markedByName: attendance.markedBy
+        ? `${attendance.markedBy.firstName} ${attendance.markedBy.lastName}`
+        : null,
+    }));
+
+    const presentDays = student.attendances.filter(
+      (a) => a.status === "PRESENT",
+    ).length;
+    const absentDays = student.attendances.filter(
+      (a) => a.status === "ABSENT",
+    ).length;
+    const wrongSessionDays = student.attendances.filter(
+      (a) => a.status === "WRONG_SESSION",
+    ).length;
+    const totalClassDays = student.attendances.length;
+
+    const saturdayAttendances = student.attendances.filter(
+      (a) => a.session.day === "SATURDAY",
+    );
+    const sundayAttendances = student.attendances.filter(
+      (a) => a.session.day === "SUNDAY",
+    );
+
+    const saturdayPresent = saturdayAttendances.filter(
+      (a) => a.status === "PRESENT",
+    ).length;
+    const sundayPresent = sundayAttendances.filter(
+      (a) => a.status === "PRESENT",
+    ).length;
+
+    const attendanceRate =
+      totalClassDays > 0 ? Math.round((presentDays / totalClassDays) * 100) : 0;
+    const saturdayAttendanceRate =
+      saturdayAttendances.length > 0
+        ? Math.round((saturdayPresent / saturdayAttendances.length) * 100)
+        : 0;
+    const sundayAttendanceRate =
+      sundayAttendances.length > 0
+        ? Math.round((sundayPresent / sundayAttendances.length) * 100)
+        : 0;
+
+    return {
+      student: {
+        id: student.id,
+        studentNumber: student.studentNumber,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        surname: student.surname,
+        email: student.email,
+        phoneNumber: student.phoneNumber,
+        className: student.class.name,
+        classId: student.classId,
+        saturdaySession: {
+          id: student.saturdaySession.id,
+          time: `${formatTime(student.saturdaySession.startTime)} - ${formatTime(student.saturdaySession.endTime)}`,
+          className: student.class.name,
+        },
+        sundaySession: {
+          id: student.sundaySession.id,
+          time: `${formatTime(student.sundaySession.startTime)} - ${formatTime(student.sundaySession.endTime)}`,
+          className: student.class.name,
+        },
+      },
+      attendanceRecords,
+      stats: {
+        totalClassDays,
+        presentDays,
+        absentDays,
+        wrongSessionDays,
+        attendanceRate,
+        saturdayAttendanceRate,
+        sundayAttendanceRate,
+      },
+    };
+  } catch (error) {
+    console.error("Error getting student attendance history:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Search for students by name or student number
+ */
+export async function searchStudents(query: string): Promise<
+  Array<{
+    id: string;
+    studentNumber: string;
+    firstName: string;
+    lastName: string;
+    surname: string;
+    className: string;
+    email: string;
+  }>
+> {
+  try {
+    const students = await prisma.student.findMany({
+      where: {
+        OR: [
+          { studentNumber: { contains: query, mode: "insensitive" } },
+          { firstName: { contains: query, mode: "insensitive" } },
+          { lastName: { contains: query, mode: "insensitive" } },
+          { surname: { contains: query, mode: "insensitive" } },
+          { email: { contains: query, mode: "insensitive" } },
+        ],
+      },
+      include: {
+        class: true,
+      },
+      take: 20,
+      orderBy: {
+        studentNumber: "asc",
+      },
+    });
+
+    return students.map((student) => ({
+      id: student.id,
+      studentNumber: student.studentNumber,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      surname: student.surname,
+      className: student.class.name,
+      email: student.email,
+    }));
+  } catch (error) {
+    console.error("Error searching students:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
+/**
+ * Get attendance data for export
+ */
+export async function getAttendanceExportData(filters: {
+  courseId?: string;
+  classId?: string;
+  sessionId?: string;
+  startDate: Date;
+  endDate: Date;
+  status?: string;
+}): Promise<
+  Array<{
+    date: string;
+    studentNumber: string;
+    studentName: string;
+    className: string;
+    courseName: string;
+    sessionDay: string;
+    sessionTime: string;
+    status: string;
+    scanTime: string;
+    markedBy: string;
+  }>
+> {
+  try {
+    const { start: dayStart } = getStartEndOfDay(filters.startDate);
+    const { end: endDayEnd } = getStartEndOfDay(filters.endDate);
+
+    const where: any = {
+      date: {
+        gte: dayStart,
+        lt: endDayEnd,
+      },
+    };
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.sessionId) {
+      where.sessionId = filters.sessionId;
+    }
+
+    if (filters.classId) {
+      where.student = {
+        classId: filters.classId,
+      };
+    }
+
+    if (filters.courseId) {
+      where.student = {
+        class: {
+          courseId: filters.courseId,
+        },
+      };
+    }
+
+    const attendances = await prisma.attendance.findMany({
+      where,
+      include: {
+        student: {
+          include: {
+            class: {
+              include: {
+                course: true,
+              },
+            },
+          },
+        },
+        session: true,
+        markedBy: true,
+      },
+      orderBy: [{ date: "desc" }, { student: { studentNumber: "asc" } }],
+    });
+
+    return attendances.map((attendance) => ({
+      date: attendance.date.toISOString().split("T")[0],
+      studentNumber: attendance.student.studentNumber,
+      studentName: `${attendance.student.surname}, ${attendance.student.firstName} ${attendance.student.lastName}`,
+      className: attendance.student.class.name,
+      courseName: attendance.student.class.course.name,
+      sessionDay: attendance.session.day,
+      sessionTime: `${formatTime(attendance.session.startTime)} - ${formatTime(attendance.session.endTime)}`,
+      status: attendance.status,
+      scanTime: attendance.scanTime ? attendance.scanTime.toISOString() : "N/A",
+      markedBy: attendance.markedBy
+        ? `${attendance.markedBy.firstName} ${attendance.markedBy.lastName}`
+        : "System",
+    }));
+  } catch (error) {
+    console.error("Error getting attendance export data:", error);
+    throw new Error(handlePrismaError(error));
+  }
+}
+
 export default prisma;
 export type { Prisma } from "@prisma/client";
