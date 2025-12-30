@@ -313,18 +313,18 @@ export default function RegistrationsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-xs space-y-1">
-                            <p>
+                            <div>
                               <Badge variant="outline" className="text-xs">
                                 Sat
                               </Badge>{" "}
                               {registration.saturdaySession.className}
-                            </p>
-                            <p>
+                            </div>
+                            <div>
                               <Badge variant="outline" className="text-xs">
                                 Sun
                               </Badge>{" "}
                               {registration.sundaySession.className}
-                            </p>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
