@@ -34,6 +34,7 @@ export default function RegistrationsPage() {
     total,
     hasMore,
     isLoading,
+    error,
     loadRegistrations,
     selectRegistration,
   } = useRegistrations();
@@ -218,6 +219,13 @@ export default function RegistrationsPage() {
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading registrations...</p>
+          </div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-red-600 font-medium mb-4">{error}</p>
+            <Button onClick={loadRegistrations}>Retry</Button>
           </div>
         </div>
       ) : registrations.length === 0 ? (
