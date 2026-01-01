@@ -9,6 +9,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  ArrowRightLeft,
+  Lock,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +21,10 @@ import {
   useAttendanceHistory,
 } from "@/store/student/schedule-store";
 import { useQRCode } from "@/store/student/qr-store";
+import { useReassignmentRequests } from "@/store/student/reassignment-store";
 import { formatTimeForDisplay } from "@/lib/validations";
+import { ReassignmentRequestModal } from "./ReassignmentRequestModal";
+import { ChangePasswordModal } from "./ChangePasswordModal";
 
 export function StudentDashboard() {
   const {
@@ -35,13 +40,17 @@ export function StudentDashboard() {
     loadHistory,
   } = useAttendanceHistory();
   const { dataUrl, isGenerating, generateQRCode, clearQRCode } = useQRCode();
+  const { loadRequests } = useReassignmentRequests();
 
   const [showQR, setShowQR] = useState(false);
+  const [showReassignmentModal, setShowReassignmentModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   useEffect(() => {
     loadSchedule();
     loadHistory();
-  }, [loadSchedule, loadHistory]);
+    loadRequests();
+  }, [loadSchedule, loadHistory, loadRequests]);
 
   // Refresh session info periodically
   useEffect(() => {
@@ -99,13 +108,25 @@ export function StudentDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome, {schedule.student.firstName}!
-        </h1>
-        <p className="text-muted-foreground">
-          Student Number: {schedule.student.studentNumber}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome, {schedule.student.firstName}!
+          </h1>
+          <p className="text-muted-foreground">
+            Student Number: {schedule.student.studentNumber}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowChangePasswordModal(true)}
+          >
+            <Lock className="mr-2 h-4 w-4" />
+            Change Password
+          </Button>
+        </div>
       </div>
 
       {/* QR Code Generation Section */}
@@ -203,7 +224,17 @@ export function StudentDashboard() {
 
       {/* Sessions Schedule */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Your Sessions</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Your Sessions</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowReassignmentModal(true)}
+          >
+            <ArrowRightLeft className="mr-2 h-4 w-4" />
+            Request Reassignment
+          </Button>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           {schedule.saturdaySession ? (
             <Card>
@@ -326,6 +357,16 @@ export function StudentDashboard() {
           </Card>
         </div>
       </div>
+
+      {/* Modals */}
+      <ReassignmentRequestModal
+        open={showReassignmentModal}
+        onOpenChange={setShowReassignmentModal}
+      />
+      <ChangePasswordModal
+        open={showChangePasswordModal}
+        onOpenChange={setShowChangePasswordModal}
+      />
     </div>
   );
 }
