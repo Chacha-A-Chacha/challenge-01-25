@@ -70,6 +70,7 @@ export default function AdminAttendancePage() {
   // Load course overview on mount
   useEffect(() => {
     loadCoursesStats(overviewDateRange.startDate, overviewDateRange.endDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleOverviewDateRangeChange = (
