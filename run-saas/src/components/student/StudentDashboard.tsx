@@ -24,7 +24,7 @@ import { useQRCode } from "@/store/student/qr-store";
 import { useReassignmentRequests } from "@/store/student/reassignment-store";
 import { formatTimeForDisplay } from "@/lib/validations";
 import { ReassignmentRequestModal } from "./ReassignmentRequestModal";
-import { ChangePasswordModal } from "./ChangePasswordModal";
+import { ChangePasswordModal } from "../auth/ChangePasswordModal";
 
 export function StudentDashboard() {
   const {
