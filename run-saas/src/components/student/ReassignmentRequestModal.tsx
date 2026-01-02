@@ -264,8 +264,7 @@ export function ReassignmentRequestModal({
                                 />
                                 <div>
                                   <p className="font-medium">
-                                    {formatTimeForDisplay(option.startTime)} -{" "}
-                                    {formatTimeForDisplay(option.endTime)}
+                                    {option.startTime} - {option.endTime}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     {option.availableSpots} / {option.capacity}{" "}
