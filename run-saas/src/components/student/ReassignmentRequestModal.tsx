@@ -137,9 +137,7 @@ export function ReassignmentRequestModal({
                     {formatTimeForDisplay(schedule.saturdaySession.endTime)}
                   </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Not scheduled
-                  </p>
+                  <p className="text-sm text-muted-foreground">Not scheduled</p>
                 )}
               </div>
               <div>
@@ -150,9 +148,7 @@ export function ReassignmentRequestModal({
                     {formatTimeForDisplay(schedule.sundaySession.endTime)}
                   </p>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Not scheduled
-                  </p>
+                  <p className="text-sm text-muted-foreground">Not scheduled</p>
                 )}
               </div>
             </div>
@@ -177,7 +173,10 @@ export function ReassignmentRequestModal({
                 <Label className="text-sm font-medium mb-3 block">
                   Select Day to Reassign:
                 </Label>
-                <RadioGroup value={selectedDay || ""} onValueChange={handleDayChange}>
+                <RadioGroup
+                  value={selectedDay || ""}
+                  onValueChange={handleDayChange}
+                >
                   <div className="grid grid-cols-2 gap-3">
                     {schedule.saturdaySession && (
                       <Label
@@ -222,7 +221,10 @@ export function ReassignmentRequestModal({
                   ) : dayOptions.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No other sessions available for {selectedDay.toLowerCase()}</p>
+                      <p>
+                        No other sessions available for{" "}
+                        {selectedDay.toLowerCase()}
+                      </p>
                     </div>
                   ) : (
                     <RadioGroup
@@ -231,6 +233,8 @@ export function ReassignmentRequestModal({
                     >
                       <div className="space-y-2">
                         {dayOptions.map((option) => {
+                          if (!option || !option.session) return null;
+
                           const isFull = option.availableSpots <= 0;
                           const isCurrentSession =
                             (selectedDay === "SATURDAY" &&
@@ -265,7 +269,9 @@ export function ReassignmentRequestModal({
                                       option.session.startTime,
                                     )}{" "}
                                     -{" "}
-                                    {formatTimeForDisplay(option.session.endTime)}
+                                    {formatTimeForDisplay(
+                                      option.session.endTime,
+                                    )}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
                                     {option.availableSpots} /{" "}
@@ -290,7 +296,10 @@ export function ReassignmentRequestModal({
               {/* Optional Reason */}
               {selectedDay && selectedSessionId && (
                 <div>
-                  <Label htmlFor="reason" className="text-sm font-medium mb-2 block">
+                  <Label
+                    htmlFor="reason"
+                    className="text-sm font-medium mb-2 block"
+                  >
                     Reason (Optional):
                   </Label>
                   <Textarea
@@ -311,8 +320,8 @@ export function ReassignmentRequestModal({
             <Info className="h-4 w-4 text-blue-600 mt-0.5" />
             <p className="text-sm text-blue-800">
               You have <strong>{remainingRequests}</strong> reassignment request
-              {remainingRequests !== 1 ? "s" : ""} remaining. Your request will be
-              reviewed by your teacher.
+              {remainingRequests !== 1 ? "s" : ""} remaining. Your request will
+              be reviewed by your teacher.
             </p>
           </div>
         </div>
