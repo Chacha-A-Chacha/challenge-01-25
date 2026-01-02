@@ -93,11 +93,17 @@ export async function POST(request: NextRequest) {
       expiryMinutes: EMAIL_CONFIG.RESET_TOKEN.EXPIRY_MINUTES,
     });
 
-    await sendEmail({
+    const emailSent = await sendEmail({
       to: user.email,
       subject: EMAIL_CONFIG.SUBJECTS.PASSWORD_RESET,
       html,
     });
+
+    if (!emailSent) {
+      console.error("Failed to send password reset email to:", user.email);
+      // Still return success to prevent email enumeration
+      // But log the error for admin debugging
+    }
 
     return NextResponse.json({
       success: true,

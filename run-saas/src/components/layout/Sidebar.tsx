@@ -90,10 +90,10 @@ export function Sidebar() {
   const studentNav: NavItem[] = [
     { label: "Dashboard", href: "/student", icon: LayoutDashboard },
     { label: "My Schedule", href: "/student/schedule", icon: CalendarDays },
-    { label: "QR Code", href: "/student/qr", icon: QrCode },
+    // { label: "QR Code", href: "/student/qr", icon: QrCode },
     { label: "Attendance", href: "/student/attendance", icon: ClipboardList },
-    { label: "Reassignment", href: "/student/reassignment", icon: BookOpen },
-    { label: "Profile", href: "/student/profile", icon: UserCog },
+    // { label: "Reassignment", href: "/student/reassignment", icon: BookOpen },
+    // { label: "Profile", href: "/student/profile", icon: UserCog },
   ];
 
   // Select navigation based on role
