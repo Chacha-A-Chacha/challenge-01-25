@@ -22,7 +22,14 @@ interface StudentSchedule {
     id: string;
     firstName: string;
     lastName?: string;
+    surname: string;
     studentNumber: string;
+    email: string;
+    phoneNumber?: string;
+    photoUrl?: string | null;
+    photoKey?: string | null;
+    photoProvider?: string | null;
+    photoUploadedAt?: Date | null;
   };
   class: Class;
   course: Course;

@@ -14,6 +14,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutDashboard,
   GraduationCap,
   Users,
@@ -29,9 +37,13 @@ import {
   QrCode,
   CalendarDays,
   UserCog,
+  Lock,
+  ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { ChangePasswordModal } from "@/components/auth/ChangePasswordModal";
 
 interface NavItem {
   label: string;
@@ -43,6 +55,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   if (!user) return null;
 
@@ -195,47 +208,69 @@ export function Sidebar() {
         </nav>
       </ScrollArea>
 
-      {/* User Info */}
+      {/* User Info with Dropdown */}
       <div className="p-4 border-t">
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "w-9 h-9 rounded-full flex items-center justify-center",
-              portalConfig.color === "emerald"
-                ? "bg-emerald-100"
-                : "bg-blue-100",
-            )}
-          >
-            <span
-              className={cn(
-                "font-semibold text-sm",
-                portalConfig.color === "emerald"
-                  ? "text-emerald-700"
-                  : "text-blue-700",
-              )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full h-auto p-2 hover:bg-gray-100 justify-start"
             >
-              {user.email?.charAt(0).toUpperCase() ||
-                user.firstName?.charAt(0).toUpperCase() ||
-                "U"}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {user.firstName && user.lastName
-                ? `${user.firstName} ${user.lastName}`
-                : user.email || "User"}
-            </p>
-            <p className="text-xs text-gray-600">
-              {isAdmin
-                ? "Administrator"
-                : isHeadTeacher
-                  ? "Head Teacher"
-                  : isAdditionalTeacher
-                    ? "Teacher"
-                    : "Student"}
-            </p>
-          </div>
-        </div>
+              <div className="flex items-center gap-3 w-full">
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
+                    portalConfig.color === "emerald"
+                      ? "bg-emerald-100"
+                      : "bg-blue-100",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "font-semibold text-sm",
+                      portalConfig.color === "emerald"
+                        ? "text-emerald-700"
+                        : "text-blue-700",
+                    )}
+                  >
+                    {user.email?.charAt(0).toUpperCase() ||
+                      user.firstName?.charAt(0).toUpperCase() ||
+                      "U"}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium truncate">
+                    {user.firstName && user.lastName
+                      ? `${user.firstName} ${user.lastName}`
+                      : user.email || "User"}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {isAdmin
+                      ? "Administrator"
+                      : isHeadTeacher
+                        ? "Head Teacher"
+                        : isAdditionalTeacher
+                          ? "Teacher"
+                          : "Student"}
+                  </p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+              </div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowChangePasswordModal(true)}>
+              <Lock className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem>
+              <HelpCircle className="mr-2 h-4 w-4" />
+              <span>Help & Support</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -263,6 +298,12 @@ export function Sidebar() {
           <SidebarContent />
         </SheetContent>
       </Sheet>
+
+      {/* Change Password Modal - Available to all users */}
+      <ChangePasswordModal
+        open={showChangePasswordModal}
+        onOpenChange={setShowChangePasswordModal}
+      />
     </>
   );
 }

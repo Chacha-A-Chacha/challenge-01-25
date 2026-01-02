@@ -2,9 +2,18 @@
 
 import { useEffect } from "react";
 import { RoleGuard } from "@/components/auth/RoleGuard";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, Users, BookOpen, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Users,
+  BookOpen,
+  AlertCircle,
+  GraduationCap,
+  School,
+  Sparkles,
+  Info,
+} from "lucide-react";
 import { useStudentSchedule } from "@/store/student/schedule-store";
 import { formatTimeForDisplay } from "@/lib/validations";
 
@@ -53,178 +62,329 @@ function SchedulePage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Schedule</h1>
-        <p className="text-muted-foreground">
-          View your class schedule and session times
-        </p>
-      </div>
+    <div className="w-full">
+      {/* Max-width container for consistency */}
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Hero Header with Gradient */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 text-white shadow-xl">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
 
-      {/* Course Information */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Course Information
-            </CardTitle>
-            <Badge variant="secondary" className="bg-green-100 text-green-700">
-              {schedule.course.status}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Course Name
-            </label>
-            <p className="text-xl font-semibold mt-1">{schedule.course.name}</p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Class
-              </label>
-              <p className="text-lg font-medium mt-1">{schedule.class.name}</p>
+          <div className="relative px-6 py-8 md:px-8 md:py-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                <Calendar className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold">My Schedule</h1>
+                <p className="text-blue-100 text-sm md:text-base">
+                  Your weekly class timetable
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">
-                Class Capacity
-              </label>
-              <p className="text-lg font-medium mt-1 flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                {schedule.class.capacity} students
+            {/* Course & Class Info in Banner */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <GraduationCap className="h-4 w-4 text-blue-200" />
+                  <span className="text-xs text-blue-200 font-medium">
+                    Course
+                  </span>
+                </div>
+                <div className="text-lg font-bold">{schedule.course.name}</div>
+                <Badge
+                  variant="secondary"
+                  className="mt-2 bg-white/20 text-white border-0"
+                >
+                  {schedule.course.status}
+                </Badge>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <School className="h-4 w-4 text-blue-200" />
+                  <span className="text-xs text-blue-200 font-medium">
+                    Class
+                  </span>
+                </div>
+                <div className="text-lg font-bold">{schedule.class.name}</div>
+                <div className="mt-2 flex items-center gap-2 text-sm text-blue-100">
+                  <Users className="h-3 w-3" />
+                  <span>{schedule.class.capacity} students</span>
+                </div>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="h-4 w-4 text-blue-200" />
+                  <span className="text-xs text-blue-200 font-medium">
+                    Sessions
+                  </span>
+                </div>
+                <div className="text-lg font-bold">2 Weekly</div>
+                <div className="mt-2 text-sm text-blue-100">
+                  Saturday & Sunday
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Schedule Section */}
+        <div>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-yellow-500" />
+              Weekly Sessions
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Your class schedule for this week
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Saturday Session */}
+            {schedule.saturdaySession ? (
+              <div className="bg-white border-2 border-blue-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">
+                          SATURDAY
+                        </h3>
+                        <p className="text-blue-100 text-sm">Weekend Session</p>
+                      </div>
+                    </div>
+                    <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm">
+                      {getDayOfWeek("Saturday")}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-6">
+                  {/* Time Display */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Session Time
+                      </span>
+                    </div>
+                    <div className="ml-12">
+                      <div className="text-3xl font-bold text-gray-900">
+                        {formatTimeForDisplay(
+                          schedule.saturdaySession.startTime,
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-px w-6 bg-blue-300"></div>
+                        <span className="text-sm text-muted-foreground">
+                          Until{" "}
+                          {formatTimeForDisplay(
+                            schedule.saturdaySession.endTime,
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Capacity */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Class Capacity
+                        </span>
+                      </div>
+                      <span className="font-semibold text-lg">
+                        {schedule.saturdaySession.capacity} students
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-blue-900">
+                        Active Session
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center">
+                <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="h-10 w-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">
+                  SATURDAY
+                </h3>
+                <p className="text-muted-foreground">No session scheduled</p>
+              </div>
+            )}
+
+            {/* Sunday Session */}
+            {schedule.sundaySession ? (
+              <div className="bg-white border-2 border-indigo-200 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 px-6 py-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                        <Calendar className="h-6 w-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">
+                          SUNDAY
+                        </h3>
+                        <p className="text-indigo-100 text-sm">
+                          Weekend Session
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm">
+                      {getDayOfWeek("Sunday")}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 space-y-6">
+                  {/* Time Display */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <Clock className="h-5 w-5 text-indigo-600" />
+                      </div>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Session Time
+                      </span>
+                    </div>
+                    <div className="ml-12">
+                      <div className="text-3xl font-bold text-gray-900">
+                        {formatTimeForDisplay(schedule.sundaySession.startTime)}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-px w-6 bg-indigo-300"></div>
+                        <span className="text-sm text-muted-foreground">
+                          Until{" "}
+                          {formatTimeForDisplay(schedule.sundaySession.endTime)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Capacity */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Class Capacity
+                        </span>
+                      </div>
+                      <span className="font-semibold text-lg">
+                        {schedule.sundaySession.capacity} students
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Badge */}
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-indigo-900">
+                        Active Session
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center">
+                <div className="w-20 h-20 bg-gray-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="h-10 w-10 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">SUNDAY</h3>
+                <p className="text-muted-foreground">No session scheduled</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Important Info Section */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shrink-0">
+              <Info className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-blue-900 mb-2 text-lg">
+                Remember: QR Code Attendance
+              </h3>
+              <p className="text-blue-800 mb-3">
+                QR codes can be generated <strong>30 minutes before</strong>{" "}
+                your class starts and <strong>during the session</strong>.
               </p>
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                <span>
+                  Go to the Dashboard to generate your attendance QR code
+                </span>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Weekly Schedule */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Weekly Schedule</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Saturday Session */}
-          <Card className={schedule.saturdaySession ? "border-2 border-blue-500" : ""}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  Saturday
-                </span>
-                {schedule.saturdaySession && (
-                  <Badge className="bg-blue-600">
-                    {getDayOfWeek("Saturday")}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {schedule.saturdaySession ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      Time
-                    </label>
-                    <p className="text-2xl font-bold mt-1 text-blue-600">
-                      {formatTimeForDisplay(schedule.saturdaySession.startTime)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      to {formatTimeForDisplay(schedule.saturdaySession.endTime)}
-                    </p>
-                  </div>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 shadow border border-gray-200">
+            <div className="text-2xl font-bold text-gray-900">
+              {schedule.saturdaySession && schedule.sundaySession
+                ? "2"
+                : schedule.saturdaySession || schedule.sundaySession
+                  ? "1"
+                  : "0"}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">
+              Weekly Sessions
+            </div>
+          </div>
 
-                  <div className="pt-3 border-t">
-                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      Capacity
-                    </label>
-                    <p className="text-lg font-medium mt-1">
-                      {schedule.saturdaySession.capacity} students
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MapPin className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                  <p>No session scheduled</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-xl p-4 shadow border border-gray-200">
+            <div className="text-2xl font-bold text-gray-900">
+              {schedule.class.capacity}
+            </div>
+            <div className="text-sm text-muted-foreground mt-1">Class Size</div>
+          </div>
 
-          {/* Sunday Session */}
-          <Card className={schedule.sundaySession ? "border-2 border-purple-500" : ""}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-purple-600" />
-                  Sunday
-                </span>
-                {schedule.sundaySession && (
-                  <Badge className="bg-purple-600">
-                    {getDayOfWeek("Sunday")}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {schedule.sundaySession ? (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      Time
-                    </label>
-                    <p className="text-2xl font-bold mt-1 text-purple-600">
-                      {formatTimeForDisplay(schedule.sundaySession.startTime)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      to {formatTimeForDisplay(schedule.sundaySession.endTime)}
-                    </p>
-                  </div>
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 shadow text-white">
+            <div className="text-2xl font-bold">SAT</div>
+            <div className="text-sm text-blue-100 mt-1">
+              {schedule.saturdaySession ? "Active" : "No Session"}
+            </div>
+          </div>
 
-                  <div className="pt-3 border-t">
-                    <label className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5" />
-                      Capacity
-                    </label>
-                    <p className="text-lg font-medium mt-1">
-                      {schedule.sundaySession.capacity} students
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <MapPin className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                  <p>No session scheduled</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-4 shadow text-white">
+            <div className="text-2xl font-bold">SUN</div>
+            <div className="text-sm text-indigo-100 mt-1">
+              {schedule.sundaySession ? "Active" : "No Session"}
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Quick Info */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-medium text-blue-900">Remember to generate your QR code</p>
-              <p className="text-sm text-blue-700">
-                QR codes can be generated 30 minutes before your class starts and during the session.
-                Go to the Dashboard to generate your attendance QR code.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
