@@ -195,9 +195,7 @@ export const useScheduleStore = create<ScheduleState>()(
         set({ isLoadingSchedule: true, error: null });
 
         try {
-          const response = await fetchWithTimeout(
-            `${API_ROUTES.STUDENT}/schedule`,
-          );
+          const response = await fetchWithTimeout(API_ROUTES.STUDENT.SCHEDULE);
 
           if (!response.ok) {
             throw new Error(`Failed to load schedule: ${response.status}`);
@@ -232,7 +230,7 @@ export const useScheduleStore = create<ScheduleState>()(
 
         try {
           const response = await fetchWithTimeout(
-            `${API_ROUTES.STUDENT}/attendance?limit=${limit}`,
+            `${API_ROUTES.STUDENT.ATTENDANCE}?limit=${limit}`,
           );
 
           if (!response.ok) {

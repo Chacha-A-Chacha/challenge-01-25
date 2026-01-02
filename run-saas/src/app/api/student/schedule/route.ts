@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
+    console.log("[Student Schedule API] Session:", session?.user);
+
     if (!session?.user) {
+      console.log("[Student Schedule API] No session found");
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -21,20 +24,31 @@ export async function GET(request: NextRequest) {
     }
 
     if (session.user.role !== USER_ROLES.STUDENT) {
+      console.log("[Student Schedule API] Wrong role:", session.user.role);
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden - Student access required" },
         { status: 403 },
       );
     }
 
+    console.log(
+      "[Student Schedule API] Fetching student with ID:",
+      session.user.id,
+    );
     const student = await getStudentById(session.user.id);
 
     if (!student) {
+      console.log(
+        "[Student Schedule API] Student not found for ID:",
+        session.user.id,
+      );
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Student not found" },
         { status: 404 },
       );
     }
+
+    console.log("[Student Schedule API] Student found:", student.id);
 
     // Transform to match expected schedule format
     const scheduleData = {
