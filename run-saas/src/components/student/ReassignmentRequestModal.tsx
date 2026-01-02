@@ -233,24 +233,23 @@ export function ReassignmentRequestModal({
                     >
                       <div className="space-y-2">
                         {dayOptions.map((option) => {
-                          if (!option || !option.session) return null;
+                          if (!option) return null;
 
                           const isFull = option.availableSpots <= 0;
                           const isCurrentSession =
                             (selectedDay === "SATURDAY" &&
-                              option.session.id ===
-                                schedule.saturdaySession?.id) ||
+                              option.id === schedule.saturdaySession?.id) ||
                             (selectedDay === "SUNDAY" &&
-                              option.session.id === schedule.sundaySession?.id);
+                              option.id === schedule.sundaySession?.id);
 
                           if (isCurrentSession) return null;
 
                           return (
                             <Label
-                              key={option.session.id}
-                              htmlFor={option.session.id}
+                              key={option.id}
+                              htmlFor={option.id}
                               className={`flex items-center justify-between border rounded-lg p-4 cursor-pointer transition-colors ${
-                                selectedSessionId === option.session.id
+                                selectedSessionId === option.id
                                   ? selectedDay === "SATURDAY"
                                     ? "border-blue-500 bg-blue-50"
                                     : "border-purple-500 bg-purple-50"
@@ -259,23 +258,18 @@ export function ReassignmentRequestModal({
                             >
                               <div className="flex items-center space-x-3 flex-1">
                                 <RadioGroupItem
-                                  value={option.session.id}
-                                  id={option.session.id}
+                                  value={option.id}
+                                  id={option.id}
                                   disabled={isFull}
                                 />
                                 <div>
                                   <p className="font-medium">
-                                    {formatTimeForDisplay(
-                                      option.session.startTime,
-                                    )}{" "}
-                                    -{" "}
-                                    {formatTimeForDisplay(
-                                      option.session.endTime,
-                                    )}
+                                    {formatTimeForDisplay(option.startTime)} -{" "}
+                                    {formatTimeForDisplay(option.endTime)}
                                   </p>
                                   <p className="text-sm text-muted-foreground">
-                                    {option.availableSpots} /{" "}
-                                    {option.session.capacity} spots available
+                                    {option.availableSpots} / {option.capacity}{" "}
+                                    spots available
                                   </p>
                                 </div>
                               </div>

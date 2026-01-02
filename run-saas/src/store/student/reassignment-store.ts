@@ -16,9 +16,13 @@ import { fetchWithTimeout } from "@/lib/utils";
 // ============================================================================
 
 interface ReassignmentOption {
-  session: Session;
+  id: string;
+  day: WeekDay;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  currentCount: number;
   availableSpots: number;
-  canRequest: boolean;
 }
 
 interface ReassignmentConfig {
