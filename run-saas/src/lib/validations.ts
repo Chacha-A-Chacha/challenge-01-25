@@ -418,6 +418,11 @@ export const studentRegistrationSchema = z
       .or(z.literal("")),
     email: emailSchema,
     phoneNumber: phoneSchema,
+    portraitPhotoUrl: z
+      .string()
+      .url("Invalid portrait photo URL")
+      .optional()
+      .or(z.literal("")),
 
     // Authentication
     password: passwordSchema,

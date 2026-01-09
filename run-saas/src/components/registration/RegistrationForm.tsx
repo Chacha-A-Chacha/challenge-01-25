@@ -43,10 +43,13 @@ export function RegistrationForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
 
   // Field validation states
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({});
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>(
+    {},
+  );
 
   const {
     formData,
@@ -72,7 +75,10 @@ export function RegistrationForm() {
   useEffect(() => {
     if (classes.length === 1 && !formData.classId) {
       const firstClass = classes[0];
-      if (firstClass.hasSaturdayAvailability && firstClass.hasSundayAvailability) {
+      if (
+        firstClass.hasSaturdayAvailability &&
+        firstClass.hasSundayAvailability
+      ) {
         setField("classId", firstClass.id);
       }
     }
@@ -152,7 +158,7 @@ export function RegistrationForm() {
 
   const handleFieldChange = (field: keyof typeof formData, value: string) => {
     setField(field, value);
-    
+
     // Clear error when user starts typing
     if (touchedFields[field]) {
       setFieldErrors((prev) => ({ ...prev, [field]: "" }));
@@ -164,17 +170,23 @@ export function RegistrationForm() {
 
     // Validate all fields before submission
     const errors: Record<string, string> = {};
-    
-    if (validateEmail(formData.email)) errors.email = validateEmail(formData.email)!;
+
+    if (validateEmail(formData.email))
+      errors.email = validateEmail(formData.email)!;
     if (formData.phoneNumber && validatePhone(formData.phoneNumber)) {
       errors.phoneNumber = validatePhone(formData.phoneNumber)!;
     }
-    if (validatePassword(formData.password)) errors.password = validatePassword(formData.password)!;
+    if (validatePassword(formData.password))
+      errors.password = validatePassword(formData.password)!;
     if (validateConfirmPassword(formData.confirmPassword)) {
-      errors.confirmPassword = validateConfirmPassword(formData.confirmPassword)!;
+      errors.confirmPassword = validateConfirmPassword(
+        formData.confirmPassword,
+      )!;
     }
     if (validateReceiptNumber(formData.paymentReceiptNo)) {
-      errors.paymentReceiptNo = validateReceiptNumber(formData.paymentReceiptNo)!;
+      errors.paymentReceiptNo = validateReceiptNumber(
+        formData.paymentReceiptNo,
+      )!;
     }
 
     if (Object.keys(errors).length > 0) {
@@ -199,19 +211,19 @@ export function RegistrationForm() {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setFieldErrors(prev => ({
+      if (!file.type.startsWith("image/")) {
+        setFieldErrors((prev) => ({
           ...prev,
-          paymentReceiptUrl: 'Please upload an image file'
+          paymentReceiptUrl: "Please upload an image file",
         }));
         return;
       }
 
       // Validate file size (5MB)
       if (file.size > 5 * 1024 * 1024) {
-        setFieldErrors(prev => ({
+        setFieldErrors((prev) => ({
           ...prev,
-          paymentReceiptUrl: 'File size must be less than 5MB'
+          paymentReceiptUrl: "File size must be less than 5MB",
         }));
         return;
       }
@@ -219,13 +231,46 @@ export function RegistrationForm() {
       const url = URL.createObjectURL(file);
       setField("paymentReceiptUrl", url);
       setImagePreview(url);
-      setFieldErrors(prev => ({ ...prev, paymentReceiptUrl: '' }));
+      setFieldErrors((prev) => ({ ...prev, paymentReceiptUrl: "" }));
     }
   };
 
   const clearUploadedFile = () => {
     setField("paymentReceiptUrl", "");
     setImagePreview(null);
+  };
+
+  const handlePortraitUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          portraitPhotoUrl: "Please upload an image file",
+        }));
+        return;
+      }
+
+      // Validate file size (2MB for portrait)
+      if (file.size > 2 * 1024 * 1024) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          portraitPhotoUrl: "File size must be less than 2MB",
+        }));
+        return;
+      }
+
+      const url = URL.createObjectURL(file);
+      setField("portraitPhotoUrl", url);
+      setPortraitPreview(url);
+      setFieldErrors((prev) => ({ ...prev, portraitPhotoUrl: "" }));
+    }
+  };
+
+  const clearPortraitPhoto = () => {
+    setField("portraitPhotoUrl", "");
+    setPortraitPreview(null);
   };
 
   if (!ready || isLoadingCourses) {
@@ -269,7 +314,9 @@ export function RegistrationForm() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-blue-600 mb-4">
             <GraduationCap className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Student Registration</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Student Registration
+          </h1>
           <p className="text-gray-600 mt-2">Join Weekend Academy</p>
         </div>
 
@@ -290,7 +337,9 @@ export function RegistrationForm() {
                 </div>
                 <div>
                   <CardTitle className="text-lg">Select Course</CardTitle>
-                  <CardDescription>Choose your program of study</CardDescription>
+                  <CardDescription>
+                    Choose your program of study
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -299,7 +348,7 @@ export function RegistrationForm() {
                 value={formData.courseId}
                 onValueChange={(value) => setField("courseId", value)}
               >
-                <SelectTrigger className="h-12">
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
                 <SelectContent>
@@ -327,7 +376,9 @@ export function RegistrationForm() {
                   <div>
                     <CardTitle className="text-lg">Select Class</CardTitle>
                     <CardDescription>
-                      {classes.length === 1 && classes[0].hasSaturdayAvailability && classes[0].hasSundayAvailability
+                      {classes.length === 1 &&
+                      classes[0].hasSaturdayAvailability &&
+                      classes[0].hasSundayAvailability
                         ? "Class automatically selected"
                         : "Choose your class - you'll attend both sessions here"}
                     </CardDescription>
@@ -338,45 +389,58 @@ export function RegistrationForm() {
                 {isLoadingClasses ? (
                   <div className="text-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-purple-600" />
-                    <p className="text-sm text-gray-600 mt-2">Loading classes...</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Loading classes...
+                    </p>
                   </div>
                 ) : classes.length === 0 ? (
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      No classes available for this course. Please select a different course.
+                      No classes available for this course. Please select a
+                      different course.
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <div className="space-y-3">
                     {classes.map((cls) => {
-                      const isDisabled = !cls.hasSaturdayAvailability || !cls.hasSundayAvailability;
+                      const isDisabled =
+                        !cls.hasSaturdayAvailability ||
+                        !cls.hasSundayAvailability;
                       const isSelected = formData.classId === cls.id;
 
                       return (
                         <button
                           key={cls.id}
                           type="button"
-                          onClick={() => !isDisabled && setField("classId", cls.id)}
+                          onClick={() =>
+                            !isDisabled && setField("classId", cls.id)
+                          }
                           disabled={isDisabled}
                           className={cn(
                             "w-full p-4 rounded-lg border-2 text-left transition-all",
                             isSelected
                               ? "border-purple-500 bg-purple-50 shadow-sm"
                               : "border-gray-200 hover:border-purple-200 hover:bg-gray-50",
-                            isDisabled && "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white"
+                            isDisabled &&
+                              "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white",
                           )}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-gray-900">{cls.name}</span>
+                                <span className="font-semibold text-gray-900">
+                                  {cls.name}
+                                </span>
                                 {isSelected && (
                                   <CheckCircle2 className="w-4 h-4 text-purple-600" />
                                 )}
                               </div>
                               <p className="text-sm text-gray-600">
-                                {cls.saturdaySessions} Saturday session{cls.saturdaySessions !== 1 ? 's' : ''} • {cls.sundaySessions} Sunday session{cls.sundaySessions !== 1 ? 's' : ''}
+                                {cls.saturdaySessions} Saturday session
+                                {cls.saturdaySessions !== 1 ? "s" : ""} •{" "}
+                                {cls.sundaySessions} Sunday session
+                                {cls.sundaySessions !== 1 ? "s" : ""}
                               </p>
                               {isDisabled && (
                                 <p className="text-xs text-red-600 mt-1 font-medium">
@@ -385,11 +449,16 @@ export function RegistrationForm() {
                               )}
                             </div>
                             <div className="text-right">
-                              <div className={cn(
-                                "text-sm font-semibold",
-                                isDisabled ? "text-gray-400" : "text-purple-700"
-                              )}>
-                                {cls.availableSpots} {cls.availableSpots === 1 ? 'spot' : 'spots'}
+                              <div
+                                className={cn(
+                                  "text-sm font-semibold",
+                                  isDisabled
+                                    ? "text-gray-400"
+                                    : "text-purple-700",
+                                )}
+                              >
+                                {cls.availableSpots}{" "}
+                                {cls.availableSpots === 1 ? "spot" : "spots"}
                               </div>
                               <div className="text-xs text-gray-500 mt-1">
                                 of {cls.capacity}
@@ -411,11 +480,15 @@ export function RegistrationForm() {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                    <span className="text-emerald-700 font-bold text-sm">3</span>
+                    <span className="text-emerald-700 font-bold text-sm">
+                      3
+                    </span>
                   </div>
                   <div>
                     <CardTitle className="text-lg">Select Sessions</CardTitle>
-                    <CardDescription>Choose one time slot for each day</CardDescription>
+                    <CardDescription>
+                      Choose one time slot for each day
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -423,20 +496,24 @@ export function RegistrationForm() {
                 {isLoadingSessions ? (
                   <div className="text-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" />
-                    <p className="text-sm text-gray-600 mt-2">Loading sessions...</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Loading sessions...
+                    </p>
                   </div>
                 ) : sessions ? (
                   <div className="space-y-6">
                     {/* Saturday */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                        <div className="w-2 h-2 rounded-full bg-emerald-600"></div>
                         Saturday Sessions
                       </h4>
                       {sessions.saturday.length === 0 ? (
                         <Alert>
                           <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>No Saturday sessions available</AlertDescription>
+                          <AlertDescription>
+                            No Saturday sessions available
+                          </AlertDescription>
                         </Alert>
                       ) : (
                         <div className="space-y-2">
@@ -445,29 +522,36 @@ export function RegistrationForm() {
                               key={s.id}
                               type="button"
                               disabled={s.isFull}
-                              onClick={() => setField("saturdaySessionId", s.id)}
+                              onClick={() =>
+                                setField("saturdaySessionId", s.id)
+                              }
                               className={cn(
                                 "w-full p-3 rounded-lg border-2 text-left transition-all",
                                 formData.saturdaySessionId === s.id
-                                  ? "border-blue-500 bg-blue-50 shadow-sm"
-                                  : "border-gray-200 hover:border-blue-200 hover:bg-gray-50",
-                                s.isFull && "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white"
+                                  ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                                  : "border-gray-200 hover:border-emerald-200 hover:bg-gray-50",
+                                s.isFull &&
+                                  "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white",
                               )}
                             >
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
                                   {formData.saturdaySessionId === s.id && (
-                                    <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                                   )}
                                   <span className="font-medium text-gray-900">
                                     {s.startTime} - {s.endTime}
                                   </span>
                                 </div>
-                                <span className={cn(
-                                  "text-sm font-medium",
-                                  s.isFull ? "text-red-600" : "text-gray-600"
-                                )}>
-                                  {s.isFull ? "FULL" : `${s.available} spots left`}
+                                <span
+                                  className={cn(
+                                    "text-sm font-medium",
+                                    s.isFull ? "text-red-600" : "text-gray-600",
+                                  )}
+                                >
+                                  {s.isFull
+                                    ? "FULL"
+                                    : `${s.available} spots left`}
                                 </span>
                               </div>
                             </button>
@@ -485,7 +569,9 @@ export function RegistrationForm() {
                       {sessions.sunday.length === 0 ? (
                         <Alert>
                           <AlertCircle className="h-4 w-4" />
-                          <AlertDescription>No Sunday sessions available</AlertDescription>
+                          <AlertDescription>
+                            No Sunday sessions available
+                          </AlertDescription>
                         </Alert>
                       ) : (
                         <div className="space-y-2">
@@ -500,7 +586,8 @@ export function RegistrationForm() {
                                 formData.sundaySessionId === s.id
                                   ? "border-emerald-500 bg-emerald-50 shadow-sm"
                                   : "border-gray-200 hover:border-emerald-200 hover:bg-gray-50",
-                                s.isFull && "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white"
+                                s.isFull &&
+                                  "opacity-50 cursor-not-allowed hover:border-gray-200 hover:bg-white",
                               )}
                             >
                               <div className="flex justify-between items-center">
@@ -512,11 +599,15 @@ export function RegistrationForm() {
                                     {s.startTime} - {s.endTime}
                                   </span>
                                 </div>
-                                <span className={cn(
-                                  "text-sm font-medium",
-                                  s.isFull ? "text-red-600" : "text-gray-600"
-                                )}>
-                                  {s.isFull ? "FULL" : `${s.available} spots left`}
+                                <span
+                                  className={cn(
+                                    "text-sm font-medium",
+                                    s.isFull ? "text-red-600" : "text-gray-600",
+                                  )}
+                                >
+                                  {s.isFull
+                                    ? "FULL"
+                                    : `${s.available} spots left`}
                                 </span>
                               </div>
                             </button>
@@ -531,14 +622,16 @@ export function RegistrationForm() {
           )}
 
           {/* Personal Info */}
-          <Card className="border-gray-200">
+          <Card className="border-orange-100">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <span className="text-gray-700 font-bold text-sm">4</span>
+                <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <span className="text-orange-700 font-bold text-sm">4</span>
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Personal Information</CardTitle>
+                  <CardTitle className="text-lg">
+                    Personal Information
+                  </CardTitle>
                   <CardDescription>Tell us about yourself</CardDescription>
                 </div>
               </div>
@@ -552,7 +645,9 @@ export function RegistrationForm() {
                   <Input
                     id="surname"
                     value={formData.surname}
-                    onChange={(e) => handleFieldChange("surname", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("surname", e.target.value)
+                    }
                     required
                     className="h-11"
                   />
@@ -564,21 +659,87 @@ export function RegistrationForm() {
                   <Input
                     id="firstName"
                     value={formData.firstName}
-                    onChange={(e) => handleFieldChange("firstName", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("firstName", e.target.value)
+                    }
                     required
                     className="h-11"
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="lastName">Other Names</Label>
                 <Input
                   id="lastName"
                   value={formData.lastName}
-                  onChange={(e) => handleFieldChange("lastName", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("lastName", e.target.value)
+                  }
                   className="h-11"
                 />
+              </div>
+
+              {/* Portrait Photo Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="portraitPhoto">Portrait Photo (Optional)</Label>
+
+                {!portraitPreview ? (
+                  <div className="relative">
+                    <input
+                      id="portraitPhoto"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePortraitUpload}
+                      className="hidden"
+                    />
+                    <label
+                      htmlFor="portraitPhoto"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-orange-300 rounded-lg cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors"
+                    >
+                      <Upload className="w-8 h-8 text-orange-400 mb-2" />
+                      <span className="text-sm text-gray-600 font-medium">
+                        Click to upload portrait
+                      </span>
+                      <span className="text-xs text-gray-500 mt-1">
+                        Passport-size photo (PNG, JPG max 2MB)
+                      </span>
+                    </label>
+                  </div>
+                ) : (
+                  <div className="relative border-2 border-orange-200 rounded-lg p-3 bg-orange-50">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={portraitPreview}
+                        alt="Portrait preview"
+                        className="w-20 h-20 object-cover rounded border"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-orange-900 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-orange-600" />
+                          Portrait uploaded successfully
+                        </p>
+                        <p className="text-xs text-orange-700 mt-1">
+                          Click the × button to change
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearPortraitPhoto}
+                        className="text-gray-500 hover:text-red-600 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {fieldErrors.portraitPhotoUrl && (
+                  <p className="text-sm text-red-600 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {fieldErrors.portraitPhotoUrl}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -594,7 +755,9 @@ export function RegistrationForm() {
                   required
                   className={cn(
                     "h-11",
-                    touchedFields.email && fieldErrors.email && "border-red-500"
+                    touchedFields.email &&
+                      fieldErrors.email &&
+                      "border-red-500",
                   )}
                 />
                 {touchedFields.email && fieldErrors.email && (
@@ -612,11 +775,15 @@ export function RegistrationForm() {
                   type="tel"
                   placeholder="0712345678"
                   value={formData.phoneNumber}
-                  onChange={(e) => handleFieldChange("phoneNumber", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("phoneNumber", e.target.value)
+                  }
                   onBlur={(e) => handleFieldBlur("phoneNumber", e.target.value)}
                   className={cn(
                     "h-11",
-                    touchedFields.phoneNumber && fieldErrors.phoneNumber && "border-red-500"
+                    touchedFields.phoneNumber &&
+                      fieldErrors.phoneNumber &&
+                      "border-red-500",
                   )}
                 />
                 {touchedFields.phoneNumber && fieldErrors.phoneNumber && (
@@ -630,11 +797,11 @@ export function RegistrationForm() {
           </Card>
 
           {/* Password */}
-          <Card className="border-gray-200">
+          <Card className="border-indigo-100">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <span className="text-gray-700 font-bold text-sm">5</span>
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <span className="text-indigo-700 font-bold text-sm">5</span>
                 </div>
                 <div>
                   <CardTitle className="text-lg">Create Password</CardTitle>
@@ -652,13 +819,17 @@ export function RegistrationForm() {
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
-                    onChange={(e) => handleFieldChange("password", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("password", e.target.value)
+                    }
                     onBlur={(e) => handleFieldBlur("password", e.target.value)}
                     required
                     minLength={8}
                     className={cn(
                       "h-11 pr-10",
-                      touchedFields.password && fieldErrors.password && "border-red-500"
+                      touchedFields.password &&
+                        fieldErrors.password &&
+                        "border-red-500",
                     )}
                   />
                   <button
@@ -693,12 +864,18 @@ export function RegistrationForm() {
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
                     value={formData.confirmPassword}
-                    onChange={(e) => handleFieldChange("confirmPassword", e.target.value)}
-                    onBlur={(e) => handleFieldBlur("confirmPassword", e.target.value)}
+                    onChange={(e) =>
+                      handleFieldChange("confirmPassword", e.target.value)
+                    }
+                    onBlur={(e) =>
+                      handleFieldBlur("confirmPassword", e.target.value)
+                    }
                     required
                     className={cn(
                       "h-11 pr-10",
-                      touchedFields.confirmPassword && fieldErrors.confirmPassword && "border-red-500"
+                      touchedFields.confirmPassword &&
+                        fieldErrors.confirmPassword &&
+                        "border-red-500",
                     )}
                   />
                   <button
@@ -713,22 +890,23 @@ export function RegistrationForm() {
                     )}
                   </button>
                 </div>
-                {touchedFields.confirmPassword && fieldErrors.confirmPassword && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {fieldErrors.confirmPassword}
-                  </p>
-                )}
+                {touchedFields.confirmPassword &&
+                  fieldErrors.confirmPassword && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {fieldErrors.confirmPassword}
+                    </p>
+                  )}
               </div>
             </CardContent>
           </Card>
 
           {/* Payment */}
-          <Card className="border-gray-200">
+          <Card className="border-pink-100">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-                  <span className="text-gray-700 font-bold text-sm">6</span>
+                <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
+                  <span className="text-pink-700 font-bold text-sm">6</span>
                 </div>
                 <div>
                   <CardTitle className="text-lg">Payment Proof</CardTitle>
@@ -745,27 +923,34 @@ export function RegistrationForm() {
                   id="receiptNo"
                   placeholder="Enter receipt number (digits only)"
                   value={formData.paymentReceiptNo}
-                  onChange={(e) => handleFieldChange("paymentReceiptNo", e.target.value)}
-                  onBlur={(e) => handleFieldBlur("paymentReceiptNo", e.target.value)}
+                  onChange={(e) =>
+                    handleFieldChange("paymentReceiptNo", e.target.value)
+                  }
+                  onBlur={(e) =>
+                    handleFieldBlur("paymentReceiptNo", e.target.value)
+                  }
                   required
                   className={cn(
                     "h-11",
-                    touchedFields.paymentReceiptNo && fieldErrors.paymentReceiptNo && "border-red-500"
+                    touchedFields.paymentReceiptNo &&
+                      fieldErrors.paymentReceiptNo &&
+                      "border-red-500",
                   )}
                 />
-                {touchedFields.paymentReceiptNo && fieldErrors.paymentReceiptNo && (
-                  <p className="text-sm text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {fieldErrors.paymentReceiptNo}
-                  </p>
-                )}
+                {touchedFields.paymentReceiptNo &&
+                  fieldErrors.paymentReceiptNo && (
+                    <p className="text-sm text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {fieldErrors.paymentReceiptNo}
+                    </p>
+                  )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="receiptImage">
                   Receipt Image <span className="text-red-500">*</span>
                 </Label>
-                
+
                 {!imagePreview ? (
                   <div className="relative">
                     <input
@@ -790,7 +975,7 @@ export function RegistrationForm() {
                     </label>
                   </div>
                 ) : (
-                  <div className="relative border-2 border-green-200 rounded-lg p-3 bg-green-50">
+                  <div className="relative border-2 border-pink-200 rounded-lg p-3 bg-pink-50">
                     <div className="flex items-start gap-3">
                       <img
                         src={imagePreview}
@@ -798,11 +983,11 @@ export function RegistrationForm() {
                         className="w-20 h-20 object-cover rounded border"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-green-900 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4" />
+                        <p className="text-sm font-medium text-pink-900 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-pink-600" />
                           Receipt uploaded successfully
                         </p>
-                        <p className="text-xs text-green-700 mt-1">
+                        <p className="text-xs text-pink-700 mt-1">
                           Click the × button to change
                         </p>
                       </div>
@@ -845,7 +1030,10 @@ export function RegistrationForm() {
 
           <p className="text-center text-sm text-gray-600">
             Already registered?{" "}
-            <Link href="/login" className="text-blue-600 hover:underline font-medium">
+            <Link
+              href="/login"
+              className="text-blue-600 hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>

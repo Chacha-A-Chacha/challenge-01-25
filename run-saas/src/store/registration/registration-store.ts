@@ -14,7 +14,7 @@ import { API_ROUTES } from "@/lib/constants";
 
 interface RegistrationFormData {
   courseId: string;
-  classId: string;  // NEW - ensures same class for both sessions
+  classId: string; // NEW - ensures same class for both sessions
   saturdaySessionId: string;
   sundaySessionId: string;
   surname: string;
@@ -22,6 +22,7 @@ interface RegistrationFormData {
   lastName: string;
   email: string;
   phoneNumber: string;
+  portraitPhotoUrl: string;
   password: string;
   confirmPassword: string;
   paymentReceiptNo: string;
@@ -34,12 +35,12 @@ interface RegistrationStore {
 
   // API data
   courses: CoursePublic[];
-  classes: ClassPublic[];  // NEW
+  classes: ClassPublic[]; // NEW
   sessions: CourseSessionsResponse | null;
 
   // UI state
   isLoadingCourses: boolean;
-  isLoadingClasses: boolean;  // NEW
+  isLoadingClasses: boolean; // NEW
   isLoadingSessions: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -48,15 +49,15 @@ interface RegistrationStore {
   // Actions
   setField: (field: keyof RegistrationFormData, value: string) => void;
   loadCourses: () => Promise<void>;
-  loadClasses: (courseId: string) => Promise<void>;  // NEW
-  loadSessions: (courseId: string, classId: string) => Promise<void>;  // UPDATED
+  loadClasses: (courseId: string) => Promise<void>; // NEW
+  loadSessions: (courseId: string, classId: string) => Promise<void>; // UPDATED
   submit: () => Promise<boolean>;
   reset: () => void;
 }
 
 const INITIAL_FORM: RegistrationFormData = {
   courseId: "",
-  classId: "",  // NEW
+  classId: "", // NEW
   saturdaySessionId: "",
   sundaySessionId: "",
   surname: "",
@@ -64,6 +65,7 @@ const INITIAL_FORM: RegistrationFormData = {
   lastName: "",
   email: "",
   phoneNumber: "",
+  portraitPhotoUrl: "",
   password: "",
   confirmPassword: "",
   paymentReceiptNo: "",
@@ -77,10 +79,10 @@ const INITIAL_FORM: RegistrationFormData = {
 export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
   formData: { ...INITIAL_FORM },
   courses: [],
-  classes: [],  // NEW
+  classes: [], // NEW
   sessions: null,
   isLoadingCourses: false,
-  isLoadingClasses: false,  // NEW
+  isLoadingClasses: false, // NEW
   isLoadingSessions: false,
   isSubmitting: false,
   error: null,
@@ -225,7 +227,7 @@ export const useRegistrationStore = create<RegistrationStore>((set, get) => ({
     set({
       formData: { ...INITIAL_FORM },
       courses: [],
-      classes: [],  // NEW
+      classes: [], // NEW
       sessions: null,
       error: null,
       submissionResult: null,

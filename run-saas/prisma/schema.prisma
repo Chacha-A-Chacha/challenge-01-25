@@ -146,6 +146,10 @@ model StudentRegistration {
   paymentReceiptKey     String?
   paymentReceiptProvider String?
   paymentReceiptNo      String
+  // Portrait photo
+  portraitPhotoUrl      String?
+  portraitPhotoKey      String?
+  portraitPhotoProvider String?
   status                RegistrationStatus @default(PENDING)
   reviewedById          String?
   reviewedAt            DateTime?

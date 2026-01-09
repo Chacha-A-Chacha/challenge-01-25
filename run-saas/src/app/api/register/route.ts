@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
         lastName: data.lastName?.trim() || null,
         email: data.email.toLowerCase().trim(),
         phoneNumber: data.phoneNumber?.trim() || null,
+        portraitPhotoUrl: data.portraitPhotoUrl?.trim() || null,
         courseId: data.courseId,
         saturdaySessionId: data.saturdaySessionId,
         sundaySessionId: data.sundaySessionId,
