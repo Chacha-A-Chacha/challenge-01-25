@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { QrCode, Search, UserCheck, UserX } from "lucide-react";
+import { QrCode, Search, UserCheck, UserX, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useQRScanner } from "@/hooks/teacher/useQRScanner";
-import { useSessionAttendance } from "@/store/teacher/attendance-store";
+import {
+  useSessionAttendance,
+  useAttendanceActions,
+} from "@/store/teacher/attendance-store";
 import { toast } from "sonner";
 import type { AttendanceStatus } from "@/types";
+import { ScannerOverlay } from "./ScannerOverlay";
 
 interface AttendanceMarkingTabProps {
   sessionId: string;
@@ -21,8 +25,8 @@ export function AttendanceMarkingTab({
   isLoading,
 }: AttendanceMarkingTabProps) {
   const { sessionData } = useSessionAttendance();
+  const { markManual, isMarkingAttendance } = useAttendanceActions();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMarkingManual, setIsMarkingManual] = useState(false);
 
   const {
     isScanning,
@@ -31,6 +35,7 @@ export function AttendanceMarkingTab({
     stopScanning,
     canScan,
     error: scannerError,
+    scanStatus,
   } = useQRScanner({
     sessionId,
     onScanSuccess: (result) => {
@@ -70,34 +75,18 @@ export function AttendanceMarkingTab({
   ) => {
     if (!sessionId) return;
 
-    setIsMarkingManual(true);
+    const success = await markManual(studentId, status);
 
-    try {
-      const response = await fetch("/api/attendance/scan/manual", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId,
-          sessionId,
-          status,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success(
-          `Marked ${result.data.studentName} as ${status.toLowerCase()}`,
-        );
-        // Reload to update the list
-        window.location.reload();
-      } else {
-        toast.error(result.error || "Failed to mark attendance");
-      }
-    } catch (error) {
+    if (success) {
+      const statusText =
+        status === "PRESENT"
+          ? "present"
+          : status === "ABSENT"
+            ? "absent"
+            : "wrong session";
+      toast.success(`Attendance marked as ${statusText}`);
+    } else {
       toast.error("Failed to mark attendance");
-    } finally {
-      setIsMarkingManual(false);
     }
   };
 
@@ -164,6 +153,10 @@ export function AttendanceMarkingTab({
               playsInline
               muted
             />
+
+            {/* Scanner Overlay with Visual Feedback */}
+            <ScannerOverlay isScanning={isScanning} scanStatus={scanStatus} />
+
             {!isScanning && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                 <div className="text-center text-white p-4">
@@ -190,7 +183,7 @@ export function AttendanceMarkingTab({
               {!isScanning ? (
                 <Button
                   onClick={startScanning}
-                  disabled={!canScan}
+                  disabled={!canScan || !!scannerError}
                   className="flex-1"
                   size="lg"
                 >
@@ -209,11 +202,20 @@ export function AttendanceMarkingTab({
               )}
             </div>
 
+            {scannerError && scannerError.includes("not supported") && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                <p className="text-xs text-amber-800 dark:text-amber-200 mb-2">
+                  <strong>Alternative:</strong> Use manual marking below to
+                  record attendance.
+                </p>
+              </div>
+            )}
+
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <p className="text-xs text-blue-800 dark:text-blue-200">
-                <strong>Instructions:</strong> Students should scan their QR
-                code. The system will automatically mark them present or
-                identify if they&apos;re in the wrong session.
+                <strong>Instructions:</strong> Scan student QR codes to
+                automatically mark attendance. The system will identify if
+                they&apos;re in the wrong session.
               </p>
             </div>
           </div>
@@ -251,7 +253,11 @@ export function AttendanceMarkingTab({
               </div>
             ) : (
               filteredStudents.map((student) => {
-                const hasAttendance = attendanceMap.has(student.id);
+                const attendance = attendanceMap.get(student.id);
+                const hasAttendance = !!attendance;
+                const currentStatus = attendance?.status;
+                const isPresentMarked = currentStatus === "PRESENT";
+                const isAbsentMarked = currentStatus === "ABSENT";
 
                 return (
                   <div
@@ -273,23 +279,49 @@ export function AttendanceMarkingTab({
                     <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={isPresentMarked ? "default" : "outline"}
                         onClick={() => handleManualMark(student.id, "PRESENT")}
-                        disabled={isMarkingManual || hasAttendance}
-                        className="text-xs border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
+                        disabled={isMarkingAttendance || isPresentMarked}
+                        className={`text-xs ${
+                          isPresentMarked
+                            ? "bg-green-600 hover:bg-green-700"
+                            : "border-green-200 text-green-700 hover:bg-green-50 hover:text-green-800 dark:border-green-800 dark:text-green-400 dark:hover:bg-green-950"
+                        }`}
                       >
-                        <UserCheck className="h-3 w-3 mr-1" />
-                        Present
+                        {isPresentMarked ? (
+                          <>
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            Marked
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="h-3 w-3 mr-1" />
+                            {hasAttendance ? "Update" : "Mark"} Present
+                          </>
+                        )}
                       </Button>
                       <Button
                         size="sm"
-                        variant="outline"
+                        variant={isAbsentMarked ? "default" : "outline"}
                         onClick={() => handleManualMark(student.id, "ABSENT")}
-                        disabled={isMarkingManual || hasAttendance}
-                        className="text-xs border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                        disabled={isMarkingAttendance || isAbsentMarked}
+                        className={`text-xs ${
+                          isAbsentMarked
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                        }`}
                       >
-                        <UserX className="h-3 w-3 mr-1" />
-                        Absent
+                        {isAbsentMarked ? (
+                          <>
+                            <UserX className="h-3 w-3 mr-1" />
+                            Marked
+                          </>
+                        ) : (
+                          <>
+                            <UserX className="h-3 w-3 mr-1" />
+                            {hasAttendance ? "Update" : "Mark"} Absent
+                          </>
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -298,10 +330,11 @@ export function AttendanceMarkingTab({
             )}
           </div>
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-            <p className="text-xs text-amber-800 dark:text-amber-200">
-              <strong>Note:</strong> Attendance cannot be edited once marked.
-              Please verify before marking.
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              <strong>Note:</strong> You can update attendance status if needed.
+              Click &quot;Update Present&quot; or &quot;Update Absent&quot; to
+              change a student&apos;s status.
             </p>
           </div>
         </CardContent>

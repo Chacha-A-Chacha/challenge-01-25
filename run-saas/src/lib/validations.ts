@@ -122,7 +122,22 @@ export const capacitySchema = z
     `Capacity cannot exceed ${CLASS_RULES.MAX_CAPACITY}`,
   );
 
-export const uuidSchema = z.string().uuid("Invalid ID format");
+// CUID schema - supports both CUID (cuid()) and CUID2 (cuid2()) formats
+export const uuidSchema = z
+  .string()
+  .min(1, "ID is required")
+  .refine(
+    (val) => {
+      // CUID format: starts with 'c' followed by alphanumeric
+      // CUID2 format: similar pattern
+      // Also allow standard UUID format for backwards compatibility
+      const cuidPattern = /^c[a-z0-9]{24,}$/i;
+      const uuidPattern =
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+      return cuidPattern.test(val) || uuidPattern.test(val);
+    },
+    { message: "Invalid ID format" },
+  );
 
 export const adminTeacherLoginSchema = z.object({
   email: emailSchema,

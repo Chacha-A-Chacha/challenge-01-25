@@ -40,6 +40,7 @@ import {
   Lock,
   ChevronDown,
   HelpCircle,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -84,6 +85,7 @@ export function Sidebar() {
     { label: "Classes", href: "/teacher/classes", icon: School },
     { label: "Students", href: "/teacher/students", icon: UserPlus },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
+    { label: "Reports", href: "/teacher/attendance/reports", icon: BarChart3 },
     { label: "Reassignments", href: "/teacher/reassignments", icon: BookOpen },
     { label: "Registrations", href: "/teacher/registrations", icon: FileCheck },
     { label: "Settings", href: "/teacher/settings", icon: Settings },
@@ -94,6 +96,7 @@ export function Sidebar() {
     { label: "Dashboard", href: "/teacher", icon: LayoutDashboard },
     { label: "Students", href: "/teacher/students", icon: UserPlus },
     { label: "Attendance", href: "/teacher/attendance", icon: ClipboardList },
+    { label: "Reports", href: "/teacher/attendance/reports", icon: BarChart3 },
     { label: "Reassignments", href: "/teacher/reassignments", icon: BookOpen },
     { label: "Sessions", href: "/teacher/sessions", icon: Clock },
     { label: "Settings", href: "/teacher/settings", icon: Settings },

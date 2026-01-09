@@ -65,7 +65,9 @@ interface AttendanceState extends BaseStoreState {
 
   // Actions
   loadSessionAttendance: (sessionId: string) => Promise<void>;
-  scanQRCode: (qrData: string) => Promise<boolean>;
+  scanQRCode: (
+    qrData: string,
+  ) => Promise<{ success: boolean; status?: AttendanceStatus }>;
   markManualAttendance: (
     studentId: string,
     status: AttendanceStatus,
@@ -225,7 +227,7 @@ export const useAttendanceStore = create<AttendanceState>()(
               scanError: "No active session selected",
             },
           });
-          return false;
+          return { success: false };
         }
 
         set({ isMarkingAttendance: true });
@@ -295,7 +297,7 @@ export const useAttendanceStore = create<AttendanceState>()(
               lastUpdated: new Date(),
             });
 
-            return true;
+            return { success: true, status };
           } else {
             throw new Error(result.error || "Failed to process QR scan");
           }
@@ -310,7 +312,7 @@ export const useAttendanceStore = create<AttendanceState>()(
             },
             isMarkingAttendance: false,
           });
-          return false;
+          return { success: false };
         }
       },
 
@@ -338,11 +340,13 @@ export const useAttendanceStore = create<AttendanceState>()(
             },
           );
 
-          if (!response.ok) {
-            throw new Error(`Manual attendance failed: ${response.status}`);
-          }
-
           const result: ApiResponse<AttendanceRecord> = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result.error || `Manual attendance failed: ${response.status}`,
+            );
+          }
 
           if (result.success && result.data) {
             const attendance = result.data;

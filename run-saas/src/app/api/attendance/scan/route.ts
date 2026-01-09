@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       id: result.attendance.id,
       studentId: result.attendance.studentId,
       studentName:
-        `${result.attendance.student?.firstName || ""} ${result.attendance.student?.lastName || ""}`.trim(),
+        `${result.attendance.student?.surname || ""} ${result.attendance.student?.firstName || ""} ${result.attendance.student?.lastName || ""}`.trim(),
       studentNumber: result.attendance.student?.studentNumber || "",
       sessionId: result.attendance.sessionId,
       date: result.attendance.date.toISOString(),
