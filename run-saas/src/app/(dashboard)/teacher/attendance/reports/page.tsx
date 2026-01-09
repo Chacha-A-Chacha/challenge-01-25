@@ -20,29 +20,30 @@ export default function AttendanceReportsPage() {
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/teacher/attendance")}
+            className="gap-2"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4" />
             Back to Attendance
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Attendance Reports & Analytics
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              View and analyze attendance data for your course
-            </p>
-          </div>
+          <TeacherExportButton
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+          />
         </div>
-        <TeacherExportButton
-          startDate={dateRange.startDate}
-          endDate={dateRange.endDate}
-        />
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Attendance Reports & Analytics
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            View and analyze attendance data for your course
+          </p>
+        </div>
       </div>
 
       {/* Tabs */}

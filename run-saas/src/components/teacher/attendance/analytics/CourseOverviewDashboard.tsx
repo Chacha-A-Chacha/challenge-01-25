@@ -59,7 +59,7 @@ export function CourseOverviewDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         {/* Total Students */}
         <Card>
           <CardContent className="pt-6">
@@ -148,7 +148,7 @@ export function CourseOverviewDashboard() {
       </div>
 
       {/* Breakdown Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
@@ -179,7 +179,7 @@ export function CourseOverviewDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="col-span-2 md:col-span-1">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
