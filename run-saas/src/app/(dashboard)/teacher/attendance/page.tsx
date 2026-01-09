@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, ClipboardList, QrCode, Users } from "lucide-react";
+import {
+  Calendar,
+  ClipboardList,
+  QrCode,
+  Users,
+  BarChart3,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -12,11 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { formatTimeForDisplay } from "@/lib/validations";
 import { useSessionAttendance } from "@/store/teacher/attendance-store";
 import { useClassStore } from "@/store/teacher/class-store";
 import { AttendanceListTab } from "@/components/teacher/attendance/AttendanceListTab";
 import { AttendanceMarkingTab } from "@/components/teacher/attendance/AttendanceMarkingTab";
+import Link from "next/link";
 
 export default function AttendancePage() {
   const { sessionData, isLoading, attendanceRate, loadSession } =
@@ -104,13 +112,21 @@ export default function AttendancePage() {
   return (
     <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-          Attendance
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Mark and manage student attendance
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            Attendance
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Mark and manage student attendance
+          </p>
+        </div>
+        <Link href="/teacher/attendance/reports">
+          <Button variant="outline" size="sm" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Reports</span>
+          </Button>
+        </Link>
       </div>
 
       {/* Weekend Day Alert */}
