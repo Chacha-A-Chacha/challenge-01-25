@@ -80,6 +80,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           classId: registration.saturdaySession.class.id,
           saturdaySessionId: registration.saturdaySessionId,
           sundaySessionId: registration.sundaySessionId,
+          // Transfer portrait photo from registration
+          photoUrl: registration.portraitPhotoUrl,
+          photoKey: registration.portraitPhotoKey,
+          photoProvider: registration.portraitPhotoProvider,
         },
       });
 

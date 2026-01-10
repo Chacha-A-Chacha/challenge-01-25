@@ -98,6 +98,7 @@ export async function GET(request: NextRequest) {
       lastName: reg.lastName ?? undefined,
       email: reg.email,
       phoneNumber: reg.phoneNumber ?? undefined,
+      portraitPhotoUrl: reg.portraitPhotoUrl ?? undefined,
       courseName: reg.course.name,
       saturdaySession: {
         id: reg.saturdaySession.id,

@@ -215,6 +215,7 @@ export interface RegistrationDetail {
   lastName?: string;
   email: string;
   phoneNumber?: string;
+  portraitPhotoUrl?: string;
   courseName: string;
   saturdaySession: {
     id: string;

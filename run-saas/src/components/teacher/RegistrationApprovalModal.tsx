@@ -149,6 +149,24 @@ export function RegistrationApprovalModal({
 
             <Separator />
 
+            {/* Portrait Photo */}
+            {registration.portraitPhotoUrl && (
+              <>
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium">Student Portrait</h4>
+                  <div className="relative w-32 h-32 mx-auto bg-muted rounded-lg overflow-hidden border-2 border-muted">
+                    <Image
+                      src={registration.portraitPhotoUrl}
+                      alt="Student Portrait"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
+
             {/* Payment Receipt */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
