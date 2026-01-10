@@ -21,6 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   LayoutDashboard,
   GraduationCap,
@@ -218,27 +219,23 @@ export function Sidebar() {
               className="w-full h-auto p-2 hover:bg-gray-100 justify-start"
             >
               <div className="flex items-center gap-3 w-full">
-                <div
-                  className={cn(
-                    "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-                    portalConfig.color === "emerald"
-                      ? "bg-emerald-100"
-                      : "bg-blue-100",
-                  )}
-                >
-                  <span
+                <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarImage
+                    src={user.photoUrl || undefined}
+                    alt={user.firstName || user.email || "User"}
+                  />
+                  <AvatarFallback
                     className={cn(
-                      "font-semibold text-sm",
                       portalConfig.color === "emerald"
-                        ? "text-emerald-700"
-                        : "text-blue-700",
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-blue-100 text-blue-700",
                     )}
                   >
                     {user.email?.charAt(0).toUpperCase() ||
                       user.firstName?.charAt(0).toUpperCase() ||
                       "U"}
-                  </span>
-                </div>
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-medium truncate">
                     {user.firstName && user.lastName
