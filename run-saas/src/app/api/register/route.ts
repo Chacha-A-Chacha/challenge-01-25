@@ -1,7 +1,7 @@
 // app/api/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/utils";
+import { hashPassword, capitalizeWords } from "@/lib/utils";
 import { validateForm, studentRegistrationSchema } from "@/lib/validations";
 import { ERROR_MESSAGES } from "@/lib/constants";
 import type {
@@ -150,9 +150,11 @@ export async function POST(request: NextRequest) {
     // Create registration
     const registration = await prisma.studentRegistration.create({
       data: {
-        surname: data.surname.trim(),
-        firstName: data.firstName.trim(),
-        lastName: data.lastName?.trim() ?? null,
+        surname: capitalizeWords(data.surname.trim()),
+        firstName: capitalizeWords(data.firstName.trim()),
+        lastName: data.lastName?.trim()
+          ? capitalizeWords(data.lastName.trim())
+          : null,
         email: data.email.toLowerCase().trim(),
         phoneNumber: data.phoneNumber?.trim() ?? null,
         portraitPhotoUrl: data.portraitPhotoUrl?.trim() ?? null,
