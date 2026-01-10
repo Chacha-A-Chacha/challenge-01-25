@@ -54,8 +54,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Require auth for photos (user profile), allow anonymous for receipts (registration)
-    if (category !== "receipt" && !session?.user) {
+    // Allow anonymous uploads for registration (receipts and photos)
+    // userId "registration" indicates a pre-authentication upload
+    const isRegistrationUpload = userId === "registration";
+
+    // Require auth for non-registration uploads
+    if (!isRegistrationUpload && !session?.user) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
@@ -96,6 +100,7 @@ export async function POST(request: NextRequest) {
     // Compress image if applicable
     if (isCompressibleImage(file.type)) {
       try {
+        console.log(`[Upload] Starting compression for ${category}...`);
         const compressionResult = await compressImage(
           buffer,
           file.type,
@@ -114,7 +119,10 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         // If compression fails, use original file
-        console.warn(`[Upload] Compression failed, using original:`, error);
+        console.error(`[Upload] Compression failed, using original:`, {
+          error: error instanceof Error ? error.message : "Unknown error",
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }
 
@@ -140,7 +148,11 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("[Upload] Fatal error:", {
+      error: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      type: error?.constructor?.name,
+    });
     return NextResponse.json(
       {
         success: false,

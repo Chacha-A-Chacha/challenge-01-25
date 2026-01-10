@@ -146,15 +146,15 @@ export const FILE_CONSTRAINTS: Record<
   { allowedTypes: string[]; maxSize: number }
 > = {
   receipt: {
-    allowedTypes: ["image/jpeg", "image/png", "application/pdf"],
+    allowedTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
     maxSize: 5 * 1024 * 1024, // 5MB
   },
   photo: {
-    allowedTypes: ["image/jpeg", "image/png"],
+    allowedTypes: ["image/jpeg", "image/png", "image/webp"],
     maxSize: 2 * 1024 * 1024, // 2MB
   },
   document: {
-    allowedTypes: ["application/pdf", "image/jpeg", "image/png"],
+    allowedTypes: ["application/pdf", "image/jpeg", "image/png", "image/webp"],
     maxSize: 10 * 1024 * 1024, // 10MB
   },
 };
