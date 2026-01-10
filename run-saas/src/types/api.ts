@@ -187,6 +187,7 @@ export interface StudentRegistrationRequest {
   lastName?: string;
   email: string;
   phoneNumber?: string;
+  portraitPhotoUrl?: string;
 
   // Authentication
   password: string;

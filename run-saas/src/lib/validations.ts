@@ -415,14 +415,19 @@ export const studentRegistrationSchema = z
       .string()
       .max(VALIDATION_RULES.NAME.MAX_LENGTH)
       .optional()
-      .or(z.literal("")),
+      .or(z.literal(""))
+      .transform((val) => (val === "" ? undefined : val)),
     email: emailSchema,
-    phoneNumber: phoneSchema,
+    phoneNumber: phoneSchema.transform((val) => (val === "" ? undefined : val)),
     portraitPhotoUrl: z
       .string()
-      .url("Invalid portrait photo URL")
       .optional()
-      .or(z.literal("")),
+      .or(z.literal(""))
+      .transform((val) => (val === "" ? undefined : val))
+      .refine(
+        (val) => !val || z.string().url().safeParse(val).success,
+        "Invalid portrait photo URL",
+      ),
 
     // Authentication
     password: passwordSchema,

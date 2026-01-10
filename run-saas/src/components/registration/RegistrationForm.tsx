@@ -207,31 +207,84 @@ export function RegistrationForm() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          paymentReceiptUrl: "Please upload an image file",
-        }));
-        return;
-      }
+    if (!file) return;
 
-      // Validate file size (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          paymentReceiptUrl: "File size must be less than 5MB",
-        }));
-        return;
-      }
+    console.log("[ReceiptUpload] Starting payment receipt upload:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
-      const url = URL.createObjectURL(file);
-      setField("paymentReceiptUrl", url);
-      setImagePreview(url);
-      setFieldErrors((prev) => ({ ...prev, paymentReceiptUrl: "" }));
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      console.error("[ReceiptUpload] Invalid file type:", file.type);
+      setFieldErrors((prev) => ({
+        ...prev,
+        paymentReceiptUrl: "Please upload an image file",
+      }));
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      console.error("[ReceiptUpload] File too large:", file.size);
+      setFieldErrors((prev) => ({
+        ...prev,
+        paymentReceiptUrl: "File size must be less than 5MB",
+      }));
+      return;
+    }
+
+    // Show preview immediately
+    const previewUrl = URL.createObjectURL(file);
+    setImagePreview(previewUrl);
+    setFieldErrors((prev) => ({ ...prev, paymentReceiptUrl: "" }));
+
+    try {
+      // Upload file to server
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "receipt");
+      formData.append("userId", "registration");
+
+      console.log("[ReceiptUpload] Sending file to /api/upload...");
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log("[ReceiptUpload] Server response:", {
+        success: result.success,
+        url: result.data?.url,
+        error: result.error,
+      });
+
+      if (result.success) {
+        // Store the actual uploaded URL
+        console.log(
+          "[ReceiptUpload] File uploaded successfully:",
+          result.data.url,
+        );
+        setField("paymentReceiptUrl", result.data.url);
+      } else {
+        throw new Error(result.error || "Upload failed");
+      }
+    } catch (error) {
+      console.error("[ReceiptUpload] Upload failed:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      setFieldErrors((prev) => ({
+        ...prev,
+        paymentReceiptUrl:
+          error instanceof Error ? error.message : "Upload failed",
+      }));
+      setImagePreview(null);
+      setField("paymentReceiptUrl", "");
     }
   };
 
@@ -240,31 +293,86 @@ export function RegistrationForm() {
     setImagePreview(null);
   };
 
-  const handlePortraitUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePortraitUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith("image/")) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          portraitPhotoUrl: "Please upload an image file",
-        }));
-        return;
-      }
+    if (!file) return;
 
-      // Validate file size (2MB for portrait)
-      if (file.size > 2 * 1024 * 1024) {
-        setFieldErrors((prev) => ({
-          ...prev,
-          portraitPhotoUrl: "File size must be less than 2MB",
-        }));
-        return;
-      }
+    console.log("[PortraitUpload] Starting portrait photo upload:", {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
 
-      const url = URL.createObjectURL(file);
-      setField("portraitPhotoUrl", url);
-      setPortraitPreview(url);
-      setFieldErrors((prev) => ({ ...prev, portraitPhotoUrl: "" }));
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      console.error("[PortraitUpload] Invalid file type:", file.type);
+      setFieldErrors((prev) => ({
+        ...prev,
+        portraitPhotoUrl: "Please upload an image file",
+      }));
+      return;
+    }
+
+    // Validate file size (2MB for portrait)
+    if (file.size > 2 * 1024 * 1024) {
+      console.error("[PortraitUpload] File too large:", file.size);
+      setFieldErrors((prev) => ({
+        ...prev,
+        portraitPhotoUrl: "File size must be less than 2MB",
+      }));
+      return;
+    }
+
+    // Show preview immediately
+    const previewUrl = URL.createObjectURL(file);
+    setPortraitPreview(previewUrl);
+    setFieldErrors((prev) => ({ ...prev, portraitPhotoUrl: "" }));
+
+    try {
+      // Upload file to server
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "photo");
+      formData.append("userId", "registration");
+
+      console.log("[PortraitUpload] Sending file to /api/upload...");
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      console.log("[PortraitUpload] Server response:", {
+        success: result.success,
+        url: result.data?.url,
+        error: result.error,
+      });
+
+      if (result.success) {
+        // Store the actual uploaded URL
+        console.log(
+          "[PortraitUpload] File uploaded successfully:",
+          result.data.url,
+        );
+        setField("portraitPhotoUrl", result.data.url);
+      } else {
+        throw new Error(result.error || "Upload failed");
+      }
+    } catch (error) {
+      console.error("[PortraitUpload] Upload failed:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      setFieldErrors((prev) => ({
+        ...prev,
+        portraitPhotoUrl:
+          error instanceof Error ? error.message : "Upload failed",
+      }));
+      setPortraitPreview(null);
+      setField("portraitPhotoUrl", "");
     }
   };
 
@@ -344,24 +452,29 @@ export function RegistrationForm() {
               </div>
             </CardHeader>
             <CardContent>
-              <Select
-                value={formData.courseId}
-                onValueChange={(value) => setField("courseId", value)}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="Select a course" />
-                </SelectTrigger>
-                <SelectContent>
-                  {courses.map((course) => (
-                    <SelectItem key={course.id} value={course.id}>
-                      <div className="flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4 text-blue-600" />
-                        <span className="font-medium">{course.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-2">
+                <Label htmlFor="course">
+                  Course <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={formData.courseId}
+                  onValueChange={(value) => setField("courseId", value)}
+                >
+                  <SelectTrigger className="h-11 w-full focus-visible:border-blue-500 focus-visible:ring-blue-500/50">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courses.map((course) => (
+                      <SelectItem key={course.id} value={course.id}>
+                        <div className="flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4 text-blue-600" />
+                          <span className="font-medium">{course.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
@@ -649,7 +762,7 @@ export function RegistrationForm() {
                       handleFieldChange("surname", e.target.value)
                     }
                     required
-                    className="h-11"
+                    className="h-11 focus-visible:border-orange-500 focus-visible:ring-orange-500/50"
                   />
                 </div>
                 <div className="space-y-2">
@@ -663,7 +776,7 @@ export function RegistrationForm() {
                       handleFieldChange("firstName", e.target.value)
                     }
                     required
-                    className="h-11"
+                    className="h-11 focus-visible:border-orange-500 focus-visible:ring-orange-500/50"
                   />
                 </div>
               </div>
@@ -676,7 +789,7 @@ export function RegistrationForm() {
                   onChange={(e) =>
                     handleFieldChange("lastName", e.target.value)
                   }
-                  className="h-11"
+                  className="h-11 focus-visible:border-orange-500 focus-visible:ring-orange-500/50"
                 />
               </div>
 
@@ -754,7 +867,7 @@ export function RegistrationForm() {
                   onBlur={(e) => handleFieldBlur("email", e.target.value)}
                   required
                   className={cn(
-                    "h-11",
+                    "h-11 focus-visible:border-orange-500 focus-visible:ring-orange-500/50",
                     touchedFields.email &&
                       fieldErrors.email &&
                       "border-red-500",
@@ -780,7 +893,7 @@ export function RegistrationForm() {
                   }
                   onBlur={(e) => handleFieldBlur("phoneNumber", e.target.value)}
                   className={cn(
-                    "h-11",
+                    "h-11 focus-visible:border-orange-500 focus-visible:ring-orange-500/50",
                     touchedFields.phoneNumber &&
                       fieldErrors.phoneNumber &&
                       "border-red-500",
@@ -826,7 +939,7 @@ export function RegistrationForm() {
                     required
                     minLength={8}
                     className={cn(
-                      "h-11 pr-10",
+                      "h-11 pr-10 focus-visible:border-indigo-500 focus-visible:ring-indigo-500/50 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-password-toggle-button]:hidden",
                       touchedFields.password &&
                         fieldErrors.password &&
                         "border-red-500",
@@ -872,7 +985,7 @@ export function RegistrationForm() {
                     }
                     required
                     className={cn(
-                      "h-11 pr-10",
+                      "h-11 pr-10 focus-visible:border-indigo-500 focus-visible:ring-indigo-500/50 [&::-ms-reveal]:hidden [&::-ms-clear]:hidden [&::-webkit-credentials-auto-fill-button]:hidden [&::-webkit-password-toggle-button]:hidden",
                       touchedFields.confirmPassword &&
                         fieldErrors.confirmPassword &&
                         "border-red-500",
@@ -931,7 +1044,7 @@ export function RegistrationForm() {
                   }
                   required
                   className={cn(
-                    "h-11",
+                    "h-11 focus-visible:border-pink-500 focus-visible:ring-pink-500/50",
                     touchedFields.paymentReceiptNo &&
                       fieldErrors.paymentReceiptNo &&
                       "border-red-500",
@@ -963,9 +1076,9 @@ export function RegistrationForm() {
                     />
                     <label
                       htmlFor="receiptImage"
-                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-pink-300 rounded-lg cursor-pointer hover:border-pink-400 hover:bg-pink-50 transition-colors"
                     >
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                      <Upload className="w-8 h-8 text-pink-400 mb-2" />
                       <span className="text-sm text-gray-600 font-medium">
                         Click to upload receipt
                       </span>

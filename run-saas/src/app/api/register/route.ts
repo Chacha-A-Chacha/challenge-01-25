@@ -16,9 +16,7 @@ import type {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as StudentRegistrationRequest & {
-      confirmPassword: string;
-    };
+    const body = await request.json();
 
     // Validate input
     const { isValid, errors, data } = validateForm(
@@ -51,10 +49,23 @@ export async function POST(request: NextRequest) {
 
     if (existingRegistration) {
       if (existingRegistration.status === "PENDING") {
-        return NextResponse.json(
-          { success: false, error: "You already have a pending registration" },
-          { status: 409 },
-        );
+        // Allow retry if the pending registration was created within the last 10 minutes
+        // This handles failed registration attempts
+        const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+        if (existingRegistration.createdAt > tenMinutesAgo) {
+          // Delete the recent failed attempt and allow retry
+          await prisma.studentRegistration.delete({
+            where: { id: existingRegistration.id },
+          });
+        } else {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "You already have a pending registration",
+            },
+            { status: 409 },
+          );
+        }
       }
       // If rejected/expired, allow re-registration by deleting old one
       if (
@@ -141,10 +152,10 @@ export async function POST(request: NextRequest) {
       data: {
         surname: data.surname.trim(),
         firstName: data.firstName.trim(),
-        lastName: data.lastName?.trim() || null,
+        lastName: data.lastName?.trim() ?? null,
         email: data.email.toLowerCase().trim(),
-        phoneNumber: data.phoneNumber?.trim() || null,
-        portraitPhotoUrl: data.portraitPhotoUrl?.trim() || null,
+        phoneNumber: data.phoneNumber?.trim() ?? null,
+        portraitPhotoUrl: data.portraitPhotoUrl?.trim() ?? null,
         courseId: data.courseId,
         saturdaySessionId: data.saturdaySessionId,
         sundaySessionId: data.sundaySessionId,
@@ -233,10 +244,12 @@ async function getSessionWithAvailability(
 /**
  * Format session time for display
  */
-function formatSessionTime(start: Date, end: Date): string {
-  const formatTime = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, "0");
+function formatSessionTime(start: string, end: string): string {
+  const formatTime = (time: string) => {
+    // Time is in format "HH:MM:SS"
+    const [hoursStr, minutesStr] = time.split(":");
+    const hours = parseInt(hoursStr, 10);
+    const minutes = minutesStr;
     const ampm = hours >= 12 ? "PM" : "AM";
     const displayHour = hours % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
