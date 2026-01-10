@@ -189,6 +189,14 @@ export function RegistrationForm() {
       )!;
     }
 
+    // Validate required file uploads
+    if (
+      !formData.paymentReceiptUrl ||
+      formData.paymentReceiptUrl.trim() === ""
+    ) {
+      errors.paymentReceiptUrl = "Payment receipt is required";
+    }
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       setTouchedFields({
@@ -197,6 +205,7 @@ export function RegistrationForm() {
         password: true,
         confirmPassword: true,
         paymentReceiptNo: true,
+        paymentReceiptUrl: true,
       });
       return;
     }
@@ -278,19 +287,31 @@ export function RegistrationForm() {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       });
+      // Clear both preview and form data on upload failure
+      setImagePreview(null);
+      setField("paymentReceiptUrl", "");
       setFieldErrors((prev) => ({
         ...prev,
         paymentReceiptUrl:
           error instanceof Error ? error.message : "Upload failed",
       }));
-      setImagePreview(null);
-      setField("paymentReceiptUrl", "");
+      // Reset the file input
+      const fileInput = document.getElementById(
+        "receiptImage",
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
     }
   };
 
   const clearUploadedFile = () => {
     setField("paymentReceiptUrl", "");
     setImagePreview(null);
+    setFieldErrors((prev) => ({ ...prev, paymentReceiptUrl: "" }));
+    // Reset the file input
+    const fileInput = document.getElementById(
+      "receiptImage",
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
   };
 
   const handlePortraitUpload = async (
@@ -366,19 +387,31 @@ export function RegistrationForm() {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
       });
+      // Clear both preview and form data on upload failure
+      setPortraitPreview(null);
+      setField("portraitPhotoUrl", "");
       setFieldErrors((prev) => ({
         ...prev,
         portraitPhotoUrl:
           error instanceof Error ? error.message : "Upload failed",
       }));
-      setPortraitPreview(null);
-      setField("portraitPhotoUrl", "");
+      // Reset the file input
+      const fileInput = document.getElementById(
+        "portraitPhoto",
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
     }
   };
 
   const clearPortraitPhoto = () => {
     setField("portraitPhotoUrl", "");
     setPortraitPreview(null);
+    setFieldErrors((prev) => ({ ...prev, portraitPhotoUrl: "" }));
+    // Reset the file input
+    const fileInput = document.getElementById(
+      "portraitPhoto",
+    ) as HTMLInputElement;
+    if (fileInput) fileInput.value = "";
   };
 
   if (!ready || isLoadingCourses) {

@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ERROR_MESSAGES } from "@/lib/constants";
+import { sendEmail } from "@/lib/email";
+import { registrationApprovedTemplate } from "@/lib/email-templates";
 import type { ApiResponse } from "@/types";
 
 interface RouteParams {
@@ -34,6 +36,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       include: {
         saturdaySession: { include: { class: true } },
         sundaySession: true,
+        course: true,
       },
     });
 
@@ -99,6 +102,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       return { student, studentNumber };
     });
+
+    // Send approval email to student
+    try {
+      await sendEmail({
+        to: registration.email,
+        subject: "Registration Approved - Welcome to Weekend Academy!",
+        html: registrationApprovedTemplate({
+          name: `${registration.firstName} ${registration.surname}`,
+          studentNumber: result.studentNumber,
+          courseName: registration.course.name,
+          className: registration.saturdaySession.class.name,
+          loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
+        }),
+      });
+    } catch (emailError) {
+      // Log email error but don't fail the approval
+      console.error("Failed to send approval email:", emailError);
+    }
 
     const response: ApiResponse<{ studentId: string; studentNumber: string }> =
       {
