@@ -40,3 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 prisma/sample_random_data.csv
+
+# local file uploads
+/uploads
+uploads/
