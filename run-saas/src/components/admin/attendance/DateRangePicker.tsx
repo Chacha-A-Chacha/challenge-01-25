@@ -63,23 +63,25 @@ export function DateRangePicker({
         <Button
           variant="outline"
           className={cn(
-            "justify-start text-left font-normal",
+            "w-full sm:w-auto justify-start text-left font-normal border-emerald-600 text-emerald-700 hover:bg-emerald-50",
             !startDate && !endDate && "text-muted-foreground",
             className,
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {startDate && endDate ? (
-            <>
-              {format(new Date(startDate), "MMM dd, yyyy")} -{" "}
-              {format(new Date(endDate), "MMM dd, yyyy")}
-            </>
-          ) : (
-            <span>Pick a date range</span>
-          )}
+          <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+          <span className="truncate">
+            {startDate && endDate ? (
+              <>
+                {format(new Date(startDate), "MMM dd, yyyy")} -{" "}
+                {format(new Date(endDate), "MMM dd, yyyy")}
+              </>
+            ) : (
+              "Pick a date range"
+            )}
+          </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-4" align="start">
+      <PopoverContent className="w-auto p-4 max-w-[95vw]" align="start">
         <div className="space-y-4">
           {/* Quick select buttons */}
           <div className="flex flex-wrap gap-2">
@@ -87,6 +89,7 @@ export function DateRangePicker({
               variant="outline"
               size="sm"
               onClick={() => handleQuickSelect(7)}
+              className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
             >
               Last 7 days
             </Button>
@@ -94,6 +97,7 @@ export function DateRangePicker({
               variant="outline"
               size="sm"
               onClick={() => handleQuickSelect(30)}
+              className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
             >
               Last 30 days
             </Button>
@@ -101,12 +105,13 @@ export function DateRangePicker({
               variant="outline"
               size="sm"
               onClick={() => handleQuickSelect(90)}
+              className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
             >
               Last 3 months
             </Button>
           </div>
 
-          <div className="border-t pt-4 grid grid-cols-2 gap-4">
+          <div className="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium mb-2">Start Date</p>
               <Calendar
@@ -148,6 +153,7 @@ export function DateRangePicker({
               size="sm"
               onClick={handleApply}
               disabled={!tempStartDate || !tempEndDate}
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
               Apply
             </Button>

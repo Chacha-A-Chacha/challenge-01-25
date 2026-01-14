@@ -88,7 +88,11 @@ export function ExportButton({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={isExporting}>
+        <Button
+          variant="outline"
+          disabled={isExporting}
+          className="w-full sm:w-auto border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+        >
           {isExporting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

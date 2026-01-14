@@ -61,26 +61,26 @@ export function StudentSearchBox({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-600 flex-shrink-0" />
             <Input
               placeholder="Search by student name or number..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
+              className="pl-10 pr-10 border-emerald-600 focus-visible:ring-emerald-600"
             />
             {searchQuery && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClear}
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-emerald-50"
               >
                 <X className="h-4 w-4" />
               </Button>
             )}
           </div>
         </PopoverTrigger>
-        <PopoverContent className="p-2 w-[400px]" align="start">
+        <PopoverContent className="p-2 w-[95vw] sm:w-[400px]" align="start">
           <div className="space-y-1">
             {isSearching && (
               <div className="py-6 text-center text-sm text-muted-foreground">
@@ -101,12 +101,12 @@ export function StudentSearchBox({
                   <button
                     key={student.id}
                     onClick={() => handleSelectStudent(student.id)}
-                    className="w-full text-left px-3 py-2 rounded-md hover:bg-accent transition-colors"
+                    className="w-full text-left px-3 py-2 rounded-md hover:bg-emerald-50 transition-colors"
                   >
-                    <div className="font-medium text-sm">
+                    <div className="font-medium text-sm truncate">
                       {student.surname}, {student.firstName} {student.lastName}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
+                    <div className="text-xs text-muted-foreground mt-0.5 truncate">
                       {student.studentNumber} • {student.className}
                     </div>
                   </button>
@@ -118,18 +118,23 @@ export function StudentSearchBox({
       </Popover>
 
       {selectedStudent && (
-        <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/50">
-          <div className="flex-1">
-            <div className="font-medium">
+        <div className="flex items-center gap-2 p-3 border border-emerald-200 rounded-lg bg-emerald-50/50">
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-sm truncate">
               {selectedStudent.surname}, {selectedStudent.firstName}{" "}
               {selectedStudent.lastName}
             </div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs text-muted-foreground truncate">
               {selectedStudent.studentNumber} • {selectedStudent.className} •{" "}
               {selectedStudent.email}
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleClear}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            className="flex-shrink-0 hover:bg-emerald-100"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>

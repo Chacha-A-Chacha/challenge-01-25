@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, TrendingUp, Users, Calendar } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { RefreshCw, TrendingUp, Users, Calendar, Download } from "lucide-react";
 import {
   useCourseOverview,
   useCourseDetail,
@@ -23,12 +25,15 @@ import {
 } from "@/components/admin/attendance/AttendanceStatsCard";
 import { DateRangePicker } from "@/components/admin/attendance/DateRangePicker";
 import { ClassAttendanceTable } from "@/components/admin/attendance/ClassAttendanceTable";
+import { ClassAttendanceCard } from "@/components/admin/attendance/ClassAttendanceCard";
 import { StudentAttendanceTable } from "@/components/admin/attendance/StudentAttendanceTable";
+import { StudentAttendanceCard } from "@/components/admin/attendance/StudentAttendanceCard";
 import { StudentSearchBox } from "@/components/admin/attendance/StudentSearchBox";
 import { ExportButton } from "@/components/admin/attendance/ExportButton";
 
 export default function AdminAttendancePage() {
   const [activeTab, setActiveTab] = useState("overview");
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   // Course Overview
   const {
@@ -71,6 +76,17 @@ export default function AdminAttendancePage() {
   useEffect(() => {
     loadCoursesStats(overviewDateRange.startDate, overviewDateRange.endDate);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-switch to cards on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setViewMode(window.innerWidth < 768 ? "cards" : "table");
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const handleOverviewDateRangeChange = (
@@ -143,33 +159,44 @@ export default function AdminAttendancePage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+    <div className="space-y-6 pb-8">
+      {/* Header - Mobile Optimized */}
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
           Attendance Reports
         </h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-sm sm:text-base text-muted-foreground">
           View and analyze attendance data across courses and students
         </p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - Mobile Optimized with Horizontal Scroll */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="overview">Course Overview</TabsTrigger>
-          <TabsTrigger value="detail">Course Detail</TabsTrigger>
-          <TabsTrigger value="student">Student Tracker</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto">
+          <TabsList className="grid w-full min-w-[400px] sm:min-w-0 sm:max-w-md grid-cols-3">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="detail" className="text-xs sm:text-sm">
+              Detail
+            </TabsTrigger>
+            <TabsTrigger value="student" className="text-xs sm:text-sm">
+              Student
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Course Overview */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <DateRangePicker
-              startDate={overviewDateRange.startDate}
-              endDate={overviewDateRange.endDate}
-              onDateRangeChange={handleOverviewDateRangeChange}
-            />
+          {/* Controls - Mobile Optimized */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="w-full sm:w-auto">
+              <DateRangePicker
+                startDate={overviewDateRange.startDate}
+                endDate={overviewDateRange.endDate}
+                onDateRangeChange={handleOverviewDateRangeChange}
+              />
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -180,6 +207,7 @@ export default function AdminAttendancePage() {
                 )
               }
               disabled={isLoadingOverview}
+              className="w-full sm:w-auto border-emerald-600 text-emerald-700 hover:bg-emerald-50"
             >
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${isLoadingOverview ? "animate-spin" : ""}`}
@@ -188,8 +216,8 @@ export default function AdminAttendancePage() {
             </Button>
           </div>
 
-          {/* Overall Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Overall Stats - 2 columns on mobile */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <AttendanceStatsCard
               title="Total Courses"
               value={overallStats.totalCourses}
@@ -224,21 +252,27 @@ export default function AdminAttendancePage() {
 
           {/* Course Cards */}
           <div>
-            <h2 className="text-xl font-semibold mb-4">Courses</h2>
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Courses</h2>
             {isLoadingOverview ? (
-              <div className="text-center py-12 text-muted-foreground">
-                Loading courses...
-              </div>
+              <Card>
+                <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
+                  Loading courses...
+                </CardContent>
+              </Card>
             ) : overviewError ? (
-              <div className="text-center py-12 text-red-600">
-                {overviewError}
-              </div>
+              <Card>
+                <CardContent className="pt-6 pb-6 text-center text-red-600">
+                  {overviewError}
+                </CardContent>
+              </Card>
             ) : coursesStats.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                No courses found for the selected date range
-              </div>
+              <Card>
+                <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
+                  No courses found for the selected date range
+                </CardContent>
+              </Card>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {coursesStats.map((course) => (
                   <CourseStatsCard
                     key={course.courseId}
@@ -262,8 +296,9 @@ export default function AdminAttendancePage() {
 
         {/* Tab 2: Course Detail */}
         <TabsContent value="detail" className="space-y-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1 space-y-2">
+          {/* Filters - Mobile Optimized: Stack Vertically */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
               <Label>Select Course</Label>
               <Select
                 value={selectedCourseId || undefined}
@@ -283,8 +318,8 @@ export default function AdminAttendancePage() {
             </div>
 
             {courseDetail && courseDetail.sessions.length > 0 && (
-              <div className="flex-1 space-y-2">
-                <Label>Filter by Session (Optional)</Label>
+              <div className="space-y-2">
+                <Label>Filter by Session</Label>
                 <Select
                   value={selectedSessionFilter || "all"}
                   onValueChange={handleSessionFilterChange}
@@ -305,7 +340,7 @@ export default function AdminAttendancePage() {
               </div>
             )}
 
-            <div className="flex-1 space-y-2">
+            <div className="space-y-2">
               <Label>Date Range</Label>
               <DateRangePicker
                 startDate={detailDateRange.startDate}
@@ -316,19 +351,27 @@ export default function AdminAttendancePage() {
           </div>
 
           {!selectedCourseId ? (
-            <div className="text-center py-12 text-muted-foreground border rounded-lg">
-              Select a course to view detailed attendance breakdown
-            </div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
+                Select a course to view detailed attendance breakdown
+              </CardContent>
+            </Card>
           ) : isLoadingDetail ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Loading course details...
-            </div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
+                Loading course details...
+              </CardContent>
+            </Card>
           ) : detailError ? (
-            <div className="text-center py-12 text-red-600">{detailError}</div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-red-600">
+                {detailError}
+              </CardContent>
+            </Card>
           ) : courseDetail ? (
             <>
-              {/* Course Info & Stats */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Course Info & Stats - 2 columns on mobile */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <AttendanceStatsCard
                   title="Total Students"
                   value={courseDetail.overallStats.totalStudents}
@@ -357,7 +400,7 @@ export default function AdminAttendancePage() {
                 />
               </div>
 
-              {/* Export Button */}
+              {/* Export Button - Full width on mobile */}
               <div className="flex justify-end">
                 <ExportButton
                   startDate={detailDateRange.startDate}
@@ -367,13 +410,38 @@ export default function AdminAttendancePage() {
                 />
               </div>
 
-              {/* Class Breakdown Table */}
+              {/* Class Breakdown - Auto-switch between table and cards */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">Class Breakdown</h3>
-                <ClassAttendanceTable
-                  classes={courseDetail.classBreakdown}
-                  isLoading={isLoadingDetail}
-                />
+
+                {viewMode === "table" ? (
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[900px]">
+                      <ClassAttendanceTable
+                        classes={courseDetail.classBreakdown}
+                        isLoading={isLoadingDetail}
+                      />
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="space-y-4">
+                    {courseDetail.classBreakdown.length === 0 ? (
+                      <Card>
+                        <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
+                          No class data available. Select a different date range
+                          or course.
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      courseDetail.classBreakdown.map((classData) => (
+                        <ClassAttendanceCard
+                          key={classData.classId}
+                          classData={classData}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : null}
@@ -381,8 +449,9 @@ export default function AdminAttendancePage() {
 
         {/* Tab 3: Student Tracker */}
         <TabsContent value="student" className="space-y-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
+          {/* Search and Date Range - Stack vertically on mobile */}
+          <div className="grid gap-4 sm:grid-cols-[1fr,auto]">
+            <div>
               <StudentSearchBox
                 onSearch={searchStudents}
                 onSelectStudent={handleStudentSelect}
@@ -401,73 +470,85 @@ export default function AdminAttendancePage() {
           </div>
 
           {!selectedStudentId ? (
-            <div className="text-center py-12 text-muted-foreground border rounded-lg">
-              Search for a student to view their attendance history
-            </div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
+                Search for a student to view their attendance history
+              </CardContent>
+            </Card>
           ) : isLoadingHistory ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Loading student attendance...
-            </div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
+                Loading student attendance...
+              </CardContent>
+            </Card>
           ) : studentError ? (
-            <div className="text-center py-12 text-red-600">{studentError}</div>
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-red-600">
+                {studentError}
+              </CardContent>
+            </Card>
           ) : studentHistory ? (
             <>
-              {/* Student Info Card */}
-              <div className="border rounded-lg p-6 bg-muted/50">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
-                      Student Information
-                    </h3>
-                    <dl className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">
-                          Student Number:
-                        </dt>
-                        <dd className="font-medium">
-                          {studentHistory.student.studentNumber}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Class:</dt>
-                        <dd className="font-medium">
-                          {studentHistory.student.className}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-muted-foreground">Email:</dt>
-                        <dd className="font-medium">
-                          {studentHistory.student.email}
-                        </dd>
-                      </div>
-                    </dl>
+              {/* Student Info Card - Single column on mobile */}
+              <Card className="bg-muted/50">
+                <CardContent className="pt-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div>
+                      <h3 className="font-semibold text-base sm:text-lg mb-3">
+                        Student Information
+                      </h3>
+                      <dl className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <dt className="text-muted-foreground">
+                            Student Number:
+                          </dt>
+                          <dd className="font-medium">
+                            {studentHistory.student.studentNumber}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-muted-foreground">Class:</dt>
+                          <dd className="font-medium">
+                            {studentHistory.student.className}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between">
+                          <dt className="text-muted-foreground">Email:</dt>
+                          <dd className="font-medium truncate max-w-[60%]">
+                            {studentHistory.student.email}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base sm:text-lg mb-3">
+                        Assigned Sessions
+                      </h3>
+                      <dl className="space-y-2 text-sm">
+                        <div>
+                          <dt className="text-muted-foreground mb-1">
+                            Saturday:
+                          </dt>
+                          <dd className="font-medium">
+                            {studentHistory.student.saturdaySession.time}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-muted-foreground mb-1">
+                            Sunday:
+                          </dt>
+                          <dd className="font-medium">
+                            {studentHistory.student.sundaySession.time}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-lg mb-2">
-                      Assigned Sessions
-                    </h3>
-                    <dl className="space-y-2 text-sm">
-                      <div>
-                        <dt className="text-muted-foreground mb-1">
-                          Saturday:
-                        </dt>
-                        <dd className="font-medium">
-                          {studentHistory.student.saturdaySession.time}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground mb-1">Sunday:</dt>
-                        <dd className="font-medium">
-                          {studentHistory.student.sundaySession.time}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
 
-              {/* Attendance Stats */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Attendance Stats - 2 columns on mobile */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
                 <AttendanceStatsCard
                   title="Overall Attendance"
                   value={`${studentHistory.stats.attendanceRate}%`}
@@ -498,7 +579,7 @@ export default function AdminAttendancePage() {
                 />
               </div>
 
-              {/* Export Button */}
+              {/* Export Button - Full width on mobile */}
               <div className="flex justify-end">
                 <ExportButton
                   startDate={studentDateRange.startDate}
@@ -507,15 +588,40 @@ export default function AdminAttendancePage() {
                 />
               </div>
 
-              {/* Attendance Records Table */}
+              {/* Attendance Records - Auto-switch between table and cards */}
               <div>
                 <h3 className="text-lg font-semibold mb-4">
                   Attendance History
                 </h3>
-                <StudentAttendanceTable
-                  records={studentHistory.attendanceRecords}
-                  isLoading={isLoadingHistory}
-                />
+
+                {viewMode === "table" ? (
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[700px]">
+                      <StudentAttendanceTable
+                        records={studentHistory.attendanceRecords}
+                        isLoading={isLoadingHistory}
+                      />
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <div className="space-y-3">
+                    {studentHistory.attendanceRecords.length === 0 ? (
+                      <Card>
+                        <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
+                          No attendance records found for the selected date
+                          range
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      studentHistory.attendanceRecords.map((record) => (
+                        <StudentAttendanceCard
+                          key={record.id}
+                          record={record}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : null}
