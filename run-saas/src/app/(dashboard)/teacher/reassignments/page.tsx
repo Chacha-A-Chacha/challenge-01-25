@@ -447,9 +447,9 @@ export default function ReassignmentsPage() {
         </Card>
       </div>
 
-      {/* Filters - Stack vertically on mobile */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-        <div className="flex-1">
+      {/* Filters - Same line with different widths */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex-1 sm:min-w-[300px]">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
