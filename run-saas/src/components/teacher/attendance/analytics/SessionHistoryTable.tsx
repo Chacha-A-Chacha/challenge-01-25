@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,7 @@ import {
   useClassBreakdown,
 } from "@/store/teacher/attendance-analytics-store";
 import { DateRangePicker } from "@/components/admin/attendance/DateRangePicker";
+import { SessionHistoryCard } from "./SessionHistoryCard";
 import { formatTimeForDisplay } from "@/lib/validations";
 
 export function SessionHistoryTable() {
@@ -40,6 +42,7 @@ export function SessionHistoryTable() {
   const { classBreakdown, loadClassBreakdown } = useClassBreakdown();
 
   const [initialized, setInitialized] = useState(false);
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
 
   useEffect(() => {
     if (!initialized) {
@@ -49,6 +52,17 @@ export function SessionHistoryTable() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialized]);
+
+  // Auto-switch to cards on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setViewMode(window.innerWidth < 768 ? "cards" : "table");
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleDateRangeChange = (startDate: string, endDate: string) => {
     loadSessionHistory(
@@ -100,23 +114,25 @@ export function SessionHistoryTable() {
     <div className="space-y-4">
       {/* Header and Filters */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold">Session History</h3>
             <p className="text-sm text-muted-foreground">
               Past attendance sessions
             </p>
           </div>
-          <DateRangePicker
-            startDate={dateRange.startDate}
-            endDate={dateRange.endDate}
-            onDateRangeChange={handleDateRangeChange}
-          />
+          <div className="w-full sm:w-auto">
+            <DateRangePicker
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              onDateRangeChange={handleDateRangeChange}
+            />
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex gap-4">
-          <div className="flex-1 space-y-2">
+        {/* Filters - Stack vertically on mobile */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
             <Label>Filter by Class</Label>
             <Select
               value={selectedClassFilter || "all"}
@@ -136,7 +152,7 @@ export function SessionHistoryTable() {
             </Select>
           </div>
 
-          <div className="flex-1 space-y-2">
+          <div className="space-y-2">
             <Label>Filter by Day</Label>
             <Select
               value={selectedDayFilter || "all"}
@@ -155,7 +171,7 @@ export function SessionHistoryTable() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Loading State */}
       {isLoadingHistory ? (
         <div className="flex items-center justify-center h-64">
           <div className="text-muted-foreground">
@@ -171,62 +187,81 @@ export function SessionHistoryTable() {
             </p>
           </div>
         </div>
-      ) : (
-        <div className="rounded-md border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[140px]">Date & Day</TableHead>
-                <TableHead>Class & Time</TableHead>
-                <TableHead className="text-center w-[80px]">Students</TableHead>
-                <TableHead className="text-center w-[100px]">Rate</TableHead>
-                <TableHead className="text-center w-[70px]">Present</TableHead>
-                <TableHead className="text-center w-[70px]">Absent</TableHead>
-                <TableHead className="text-center w-[70px]">Wrong</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessionHistory.map((session, index) => (
-                <TableRow key={`${session.sessionId}-${session.date}-${index}`}>
-                  <TableCell className="py-3">
-                    <div className="font-medium text-sm">
-                      {new Date(session.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {session.day}
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <div className="text-sm font-medium">
-                      {session.className}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatTimeForDisplay(session.startTime)} -{" "}
-                      {formatTimeForDisplay(session.endTime)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-3 text-sm">
-                    {session.totalStudents}
-                  </TableCell>
-                  <TableCell className="text-center py-3">
-                    {getAttendanceRateBadge(session.attendanceRate)}
-                  </TableCell>
-                  <TableCell className="text-center py-3 text-sm text-green-600 font-medium">
-                    {session.presentCount}
-                  </TableCell>
-                  <TableCell className="text-center py-3 text-sm text-red-600 font-medium">
-                    {session.absentCount}
-                  </TableCell>
-                  <TableCell className="text-center py-3 text-sm text-orange-600 font-medium">
-                    {session.wrongSessionCount}
-                  </TableCell>
+      ) : viewMode === "table" ? (
+        /* Table View - Desktop */
+        <ScrollArea className="w-full">
+          <div className="min-w-[900px] rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[140px]">Date & Day</TableHead>
+                  <TableHead>Class & Time</TableHead>
+                  <TableHead className="text-center w-[80px]">
+                    Students
+                  </TableHead>
+                  <TableHead className="text-center w-[100px]">Rate</TableHead>
+                  <TableHead className="text-center w-[70px]">
+                    Present
+                  </TableHead>
+                  <TableHead className="text-center w-[70px]">Absent</TableHead>
+                  <TableHead className="text-center w-[70px]">Wrong</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {sessionHistory.map((session, index) => (
+                  <TableRow
+                    key={`${session.sessionId}-${session.date}-${index}`}
+                  >
+                    <TableCell className="py-3">
+                      <div className="font-medium text-sm">
+                        {new Date(session.date).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {session.day}
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="text-sm font-medium">
+                        {session.className}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatTimeForDisplay(session.startTime)} -{" "}
+                        {formatTimeForDisplay(session.endTime)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-3 text-sm">
+                      {session.totalStudents}
+                    </TableCell>
+                    <TableCell className="text-center py-3">
+                      {getAttendanceRateBadge(session.attendanceRate)}
+                    </TableCell>
+                    <TableCell className="text-center py-3 text-sm text-green-600 font-medium">
+                      {session.presentCount}
+                    </TableCell>
+                    <TableCell className="text-center py-3 text-sm text-red-600 font-medium">
+                      {session.absentCount}
+                    </TableCell>
+                    <TableCell className="text-center py-3 text-sm text-orange-600 font-medium">
+                      {session.wrongSessionCount}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </ScrollArea>
+      ) : (
+        /* Card View - Mobile */
+        <div className="space-y-3">
+          {sessionHistory.map((session, index) => (
+            <SessionHistoryCard
+              key={`${session.sessionId}-${session.date}-${index}`}
+              session={session}
+            />
+          ))}
         </div>
       )}
     </div>

@@ -44,28 +44,32 @@ export function CourseOverviewDashboard() {
   return (
     <div className="space-y-6">
       {/* Header with Date Range */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold">{stats.courseName || "Course"}</h2>
-          <p className="text-muted-foreground mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold">
+            {stats.courseName || "Course"}
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
             Overall attendance statistics
           </p>
         </div>
-        <DateRangePicker
-          startDate={dateRange.startDate}
-          endDate={dateRange.endDate}
-          onDateRangeChange={handleDateRangeChange}
-        />
+        <div className="w-full sm:w-auto">
+          <DateRangePicker
+            startDate={dateRange.startDate}
+            endDate={dateRange.endDate}
+            onDateRangeChange={handleDateRangeChange}
+          />
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stats Grid - 2 columns mobile, 4 desktop */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {/* Total Students */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {stats.totalStudents}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -75,7 +79,7 @@ export function CourseOverviewDashboard() {
                   Across {stats.totalClasses} classes
                 </p>
               </div>
-              <Users className="h-5 w-5 text-muted-foreground" />
+              <Users className="h-5 w-5 text-emerald-600/50" />
             </div>
           </CardContent>
         </Card>
@@ -85,7 +89,7 @@ export function CourseOverviewDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {stats.totalSessions}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -95,7 +99,7 @@ export function CourseOverviewDashboard() {
                   In selected period
                 </p>
               </div>
-              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <Calendar className="h-5 w-5 text-emerald-600/50" />
             </div>
           </CardContent>
         </Card>
@@ -131,7 +135,7 @@ export function CourseOverviewDashboard() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-slate-600 dark:text-slate-400">
+                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                   {stats.totalRecords}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -141,13 +145,13 @@ export function CourseOverviewDashboard() {
                   Attendance entries
                 </p>
               </div>
-              <ClipboardList className="h-5 w-5 text-muted-foreground" />
+              <ClipboardList className="h-5 w-5 text-emerald-600/50" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Breakdown Stats */}
+      {/* Breakdown Stats - 2 cols mobile, 3 desktop */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
         <Card>
           <CardContent className="pt-6">

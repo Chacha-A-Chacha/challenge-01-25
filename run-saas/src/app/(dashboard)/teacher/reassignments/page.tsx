@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Check, X, Calendar, Clock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { SearchInput } from "@/components/shared/SearchInput";
 import { FilterSelect } from "@/components/shared/FilterSelect";
@@ -26,7 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from "react";
 
 type StatusFilter = "all" | "PENDING" | "APPROVED" | "DENIED";
 
@@ -37,6 +37,143 @@ const statusOptions: { label: string; value: StatusFilter }[] = [
   { label: "Denied", value: "DENIED" },
 ];
 
+// Mobile Card Component
+function ReassignmentCard({
+  request,
+  onApprove,
+  onDeny,
+  isProcessing,
+}: {
+  request: ReassignmentRequestDetail;
+  onApprove: () => void;
+  onDeny: () => void;
+  isProcessing: boolean;
+}) {
+  const getStatusBadge = (status: string) => {
+    if (status === "APPROVED") {
+      return <Badge className="bg-green-600">APPROVED</Badge>;
+    }
+    if (status === "DENIED") {
+      return <Badge variant="destructive">DENIED</Badge>;
+    }
+    return <Badge className="bg-orange-500">PENDING</Badge>;
+  };
+
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="pt-6">
+        <div className="space-y-4">
+          {/* Header - Student Info */}
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5 text-emerald-600" />
+              <div>
+                <p className="font-semibold text-base">{request.studentName}</p>
+                <p className="text-xs text-muted-foreground">
+                  {request.studentNumber}
+                </p>
+              </div>
+            </div>
+            {getStatusBadge(request.status)}
+          </div>
+
+          {/* Class */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Class:</span>
+            <Badge variant="outline" className="font-normal">
+              {request.className}
+            </Badge>
+          </div>
+
+          {/* Sessions - From/To */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-3 border-y">
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                FROM SESSION
+              </p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-sm font-medium">
+                    {request.fromSessionDay}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {request.fromSessionTime}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                TO SESSION
+              </p>
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-emerald-600" />
+                  <span className="text-sm font-medium">
+                    {request.toSessionDay}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {request.toSessionTime}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Reason */}
+          {request.reason && (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                REASON
+              </p>
+              <p className="text-sm">{request.reason}</p>
+            </div>
+          )}
+
+          {/* Requested Date */}
+          <div className="text-xs text-muted-foreground">
+            Requested: {new Date(request.requestedAt).toLocaleDateString()}
+          </div>
+
+          {/* Actions - Only for Pending */}
+          {request.status === "PENDING" && (
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-green-600 text-green-700 hover:bg-green-50"
+                onClick={onApprove}
+                disabled={isProcessing}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-600 text-red-700 hover:bg-red-50"
+                onClick={onDeny}
+                disabled={isProcessing}
+              >
+                <X className="h-4 w-4 mr-1" />
+                Deny
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function ReassignmentsPage() {
   const { filteredRequests, isLoading, loadRequests } =
     useReassignmentRequests();
@@ -46,6 +183,7 @@ export default function ReassignmentsPage() {
     useReassignmentFilters();
   const stats = useReassignmentStats();
 
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     action: "approve" | "deny" | null;
@@ -59,6 +197,17 @@ export default function ReassignmentsPage() {
   useEffect(() => {
     loadRequests();
   }, [loadRequests]);
+
+  // Auto-switch to cards on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      setViewMode(window.innerWidth < 768 ? "cards" : "table");
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleApprove = async () => {
     if (!confirmDialog.request) return;
@@ -170,10 +319,17 @@ export default function ReassignmentsPage() {
         <Badge
           variant={
             value === "APPROVED"
-              ? "success"
+              ? "default"
               : value === "DENIED"
                 ? "destructive"
-                : "warning"
+                : "secondary"
+          }
+          className={
+            value === "APPROVED"
+              ? "bg-green-600"
+              : value === "PENDING"
+                ? "bg-orange-500"
+                : ""
           }
         >
           {value}
@@ -223,60 +379,76 @@ export default function ReassignmentsPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Session Reassignments
-          </h1>
-          <p className="text-muted-foreground">
-            Review and manage student session reassignment requests
-          </p>
-        </div>
+    <div className="space-y-6 pb-8">
+      {/* Header - Mobile Optimized */}
+      <div className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+          Session Reassignments
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          Review and manage student session reassignment requests
+        </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Stats - 2 columns mobile, 4 desktop */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">Total Requests</p>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {stats.total}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total Requests
+                </p>
               </div>
-              <User className="h-8 w-8 text-muted-foreground" />
+              <User className="h-5 w-5 text-emerald-600/50" />
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-orange-600">
-              {stats.pending}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-orange-600">
+                  {stats.pending}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Pending Review
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Pending Review</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {stats.approved}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.approved}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Approved</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Approved</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-red-600">
-              {stats.denied}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-red-600">
+                  {stats.denied}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Denied</p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">Denied</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-4">
+      {/* Filters - Stack vertically on mobile */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
         <div className="flex-1">
           <SearchInput
             value={searchQuery}
@@ -284,12 +456,14 @@ export default function ReassignmentsPage() {
             placeholder="Search by student name, number, or class..."
           />
         </div>
-        <FilterSelect
-          value={statusFilter}
-          options={statusOptions}
-          onChange={(value) => setStatusFilter(value as StatusFilter)}
-          placeholder="Filter by status"
-        />
+        <div className="w-full sm:w-48">
+          <FilterSelect
+            value={statusFilter}
+            options={statusOptions}
+            onChange={(value) => setStatusFilter(value as StatusFilter)}
+            placeholder="Filter by status"
+          />
+        </div>
       </div>
 
       {/* Info Alert for Pending Requests */}
@@ -302,24 +476,52 @@ export default function ReassignmentsPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Loading State */}
       {isLoading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="w-16 h-16 border-4 border-gray-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Loading requests...</p>
           </div>
         </div>
+      ) : viewMode === "table" ? (
+        /* Table View - Desktop */
+        <ScrollArea className="w-full">
+          <div className="min-w-[900px]">
+            <DataTable
+              data={filteredRequests}
+              columns={columns}
+              emptyMessage={
+                statusFilter === "all"
+                  ? "No reassignment requests found"
+                  : `No ${statusFilter.toLowerCase()} requests found`
+              }
+            />
+          </div>
+        </ScrollArea>
       ) : (
-        <DataTable
-          data={filteredRequests}
-          columns={columns}
-          emptyMessage={
-            statusFilter === "all"
-              ? "No reassignment requests found"
-              : `No ${statusFilter.toLowerCase()} requests found`
-          }
-        />
+        /* Card View - Mobile */
+        <div className="space-y-3">
+          {filteredRequests.length === 0 ? (
+            <Card>
+              <CardContent className="pt-12 pb-12 text-center text-muted-foreground">
+                {statusFilter === "all"
+                  ? "No reassignment requests found"
+                  : `No ${statusFilter.toLowerCase()} requests found`}
+              </CardContent>
+            </Card>
+          ) : (
+            filteredRequests.map((request) => (
+              <ReassignmentCard
+                key={request.id}
+                request={request}
+                onApprove={() => openConfirmDialog("approve", request)}
+                onDeny={() => openConfirmDialog("deny", request)}
+                isProcessing={isApproving || isDenying}
+              />
+            ))
+          )}
+        </div>
       )}
 
       {/* Confirmation Dialog */}

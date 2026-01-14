@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search } from "lucide-react";
 import { useStudentTracker } from "@/store/teacher/attendance-analytics-store";
 import { DateRangePicker } from "@/components/admin/attendance/DateRangePicker";
@@ -76,7 +77,7 @@ export function StudentTrackerView() {
     <div className="space-y-6">
       {/* Header and Search */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h3 className="text-lg font-semibold">Student Tracker</h3>
             <p className="text-sm text-muted-foreground">
@@ -84,18 +85,25 @@ export function StudentTrackerView() {
             </p>
           </div>
           {selectedStudent && (
-            <DateRangePicker
-              startDate={dateRange.startDate}
-              endDate={dateRange.endDate}
-              onDateRangeChange={handleDateRangeChange}
-            />
+            <div className="w-full sm:w-auto">
+              <DateRangePicker
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                onDateRangeChange={handleDateRangeChange}
+              />
+            </div>
           )}
         </div>
 
         {/* Search Box */}
-        <form onSubmit={handleSearch} className="flex gap-2">
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col sm:flex-row gap-2"
+        >
           <div className="flex-1">
-            <Label htmlFor="student-search">Search Student</Label>
+            <Label htmlFor="student-search" className="text-sm">
+              Search Student
+            </Label>
             <div className="relative">
               <Input
                 id="student-search"
@@ -125,7 +133,11 @@ export function StudentTrackerView() {
               )}
             </div>
           </div>
-          <Button type="submit" className="mt-auto" disabled={isSearching}>
+          <Button
+            type="submit"
+            className="sm:mt-auto bg-emerald-600 hover:bg-emerald-700"
+            disabled={isSearching}
+          >
             <Search className="h-4 w-4 mr-2" />
             Search
           </Button>
@@ -154,9 +166,9 @@ export function StudentTrackerView() {
       {selectedStudent && !isLoadingStudent && (
         <>
           {/* Student Info Card */}
-          <Card>
+          <Card className="bg-muted/50">
             <CardContent className="pt-6">
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid sm:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-semibold text-lg mb-3">
                     Student Information
@@ -211,8 +223,8 @@ export function StudentTrackerView() {
             </CardContent>
           </Card>
 
-          {/* Attendance Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {/* Attendance Stats - 2 cols mobile, 4 desktop */}
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center">
@@ -286,50 +298,57 @@ export function StudentTrackerView() {
                 </p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Day</TableHead>
-                      <TableHead>Session Time</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-center">
-                        Correct Session
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedStudent.attendanceRecords.map((record, index) => (
-                      <TableRow key={`${record.date}-${index}`}>
-                        <TableCell className="font-medium">
-                          {new Date(record.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{record.day}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {record.sessionTime}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {getStatusBadge(record.status)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {record.isCorrectSession ? (
-                            <span className="text-green-600">✓</span>
-                          ) : (
-                            <span className="text-orange-600">✗</span>
-                          )}
-                        </TableCell>
+              <ScrollArea className="w-full">
+                <div className="min-w-[700px] rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Day</TableHead>
+                        <TableHead>Session Time</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">
+                          Correct Session
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedStudent.attendanceRecords.map(
+                        (record, index) => (
+                          <TableRow key={`${record.date}-${index}`}>
+                            <TableCell className="font-medium">
+                              {new Date(record.date).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{record.day}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {record.sessionTime}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {getStatusBadge(record.status)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {record.isCorrectSession ? (
+                                <span className="text-green-600">✓</span>
+                              ) : (
+                                <span className="text-orange-600">✗</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ),
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
             )}
           </div>
         </>

@@ -18,23 +18,25 @@ export default function AttendanceReportsPage() {
   const { dateRange } = useCourseOverview();
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
+    <div className="space-y-6 pb-8">
+      {/* Header - Mobile Optimized */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/teacher/attendance")}
-            className="gap-2"
+            className="gap-2 self-start"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Attendance
           </Button>
-          <TeacherExportButton
-            startDate={dateRange.startDate}
-            endDate={dateRange.endDate}
-          />
+          <div className="w-full sm:w-auto">
+            <TeacherExportButton
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+            />
+          </div>
         </div>
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
@@ -46,14 +48,24 @@ export default function AttendanceReportsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs - Mobile Optimized with Horizontal Scroll */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="classes">Classes</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
-          <TabsTrigger value="students">Students</TabsTrigger>
-        </TabsList>
+        <div className="w-full overflow-x-auto">
+          <TabsList className="grid w-full min-w-[400px] sm:min-w-0 sm:max-w-2xl grid-cols-4">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger value="classes" className="text-xs sm:text-sm">
+              Classes
+            </TabsTrigger>
+            <TabsTrigger value="sessions" className="text-xs sm:text-sm">
+              Sessions
+            </TabsTrigger>
+            <TabsTrigger value="students" className="text-xs sm:text-sm">
+              Students
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Course Overview */}
         <TabsContent value="overview" className="space-y-6">

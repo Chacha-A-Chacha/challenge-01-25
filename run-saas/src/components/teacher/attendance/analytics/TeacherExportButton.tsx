@@ -64,6 +64,7 @@ export function TeacherExportButton({
       disabled={isExporting}
       variant="outline"
       size="sm"
+      className="w-full sm:w-auto border-emerald-600 text-emerald-700 hover:bg-emerald-50"
     >
       <Download className="h-4 w-4 mr-2" />
       {isExporting ? "Exporting..." : "Export to CSV"}
