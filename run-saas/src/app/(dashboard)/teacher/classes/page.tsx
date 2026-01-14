@@ -120,27 +120,22 @@ export default function ClassesPage() {
         </Card>
       </div>
 
-      {/* Filters - Mobile Optimized */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">Search & Sort</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-[1fr,auto]">
-            <SearchInput
-              value={filters.search}
-              onChange={(value) => setFilters({ search: value })}
-              placeholder="Search classes by name..."
-            />
-            <FilterSelect
-              value={`${filters.sortBy}-${filters.sortOrder}`}
-              options={sortOptions}
-              onChange={handleSortChange}
-              placeholder="Sort by"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ search: value })}
+            placeholder="Search classes by name..."
+          />
+        </div>
+        <FilterSelect
+          value={`${filters.sortBy}-${filters.sortOrder}`}
+          options={sortOptions}
+          onChange={handleSortChange}
+          placeholder="Sort by"
+        />
+      </div>
 
       {/* Classes Grid - Responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
       {isLoading ? (
