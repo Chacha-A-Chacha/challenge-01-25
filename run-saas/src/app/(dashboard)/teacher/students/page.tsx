@@ -250,29 +250,22 @@ export default function StudentsPage() {
         </Card>
       </div>
 
-      {/* Filters - Mobile Optimized */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base sm:text-lg">
-            Search & Filter
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-[1fr,auto]">
-            <SearchInput
-              value={filters.search}
-              onChange={(value) => setFilters({ search: value })}
-              placeholder="Search by name, email, or student number..."
-            />
-            <FilterSelect
-              value={filters.classId}
-              options={classOptions}
-              onChange={(value) => setFilters({ classId: value })}
-              placeholder="Filter by class"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <SearchInput
+            value={filters.search}
+            onChange={(value) => setFilters({ search: value })}
+            placeholder="Search by name, email, or student number..."
+          />
+        </div>
+        <FilterSelect
+          value={filters.classId}
+          options={classOptions}
+          onChange={(value) => setFilters({ classId: value })}
+          placeholder="Filter by class"
+        />
+      </div>
 
       {/* Loading State */}
       {isLoading ? (
