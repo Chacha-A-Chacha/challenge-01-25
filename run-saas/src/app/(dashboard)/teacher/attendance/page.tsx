@@ -8,7 +8,7 @@ import {
   Users,
   BarChart3,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -110,7 +110,7 @@ export default function AttendancePage() {
       };
 
   return (
-    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
+    <div className="space-y-6 pb-8">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -122,7 +122,11 @@ export default function AttendancePage() {
           </p>
         </div>
         <Link href="/teacher/attendance/reports">
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+          >
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Reports</span>
           </Button>
@@ -169,149 +173,145 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="class-select">Class</Label>
-          <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-            <SelectTrigger id="class-select">
-              <SelectValue placeholder="Select class" />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.length === 0 ? (
-                <SelectItem value="none" disabled>
-                  No classes available
-                </SelectItem>
-              ) : (
-                classes.map((cls) => (
-                  <SelectItem key={cls.id} value={cls.id}>
-                    {cls.name}
-                  </SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Filters - Wrapped in Card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">
+            Session Selection
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="class-select">Class</Label>
+              <Select
+                value={selectedClassId}
+                onValueChange={setSelectedClassId}
+              >
+                <SelectTrigger id="class-select">
+                  <SelectValue placeholder="Select class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No classes available
+                    </SelectItem>
+                  ) : (
+                    classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="session-select">Session</Label>
-          <Select
-            value={selectedSessionId}
-            onValueChange={setSelectedSessionId}
-            disabled={!selectedClassId}
-          >
-            <SelectTrigger id="session-select">
-              <SelectValue placeholder="Select session" />
-            </SelectTrigger>
-            <SelectContent>
-              {sessions.map((session) => (
-                <SelectItem key={session.id} value={session.id}>
-                  {session.day} ({formatTimeForDisplay(session.startTime)} -{" "}
-                  {formatTimeForDisplay(session.endTime)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="session-select">Session</Label>
+              <Select
+                value={selectedSessionId}
+                onValueChange={setSelectedSessionId}
+                disabled={!selectedClassId}
+              >
+                <SelectTrigger id="session-select">
+                  <SelectValue placeholder="Select session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sessions.map((session) => (
+                    <SelectItem key={session.id} value={session.id}>
+                      {session.day} ({formatTimeForDisplay(session.startTime)} -{" "}
+                      {formatTimeForDisplay(session.endTime)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="date-select">Date</Label>
-          <input
-            id="date-select"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="date-select">Date</Label>
+              <input
+                id="date-select"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+      {/* Stats Cards - Better Mobile Layout */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {stats.total}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Total Students
-                </p>
-              </div>
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="h-4 w-4 text-emerald-600" />
+              <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
             </div>
+            <p className="text-xs text-muted-foreground">Total Students</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400">
-                  {stats.present}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Present</p>
+            <div className="flex items-center gap-2 mb-1">
+              <ClipboardList className="h-4 w-4 text-green-600" />
+              <div className="text-xl sm:text-2xl font-bold text-green-600">
+                {stats.present}
               </div>
-              <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             </div>
+            <p className="text-xs text-muted-foreground">Present</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400">
-                  {stats.absent}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">Absent</p>
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="h-4 w-4 text-red-600" />
+              <div className="text-xl sm:text-2xl font-bold text-red-600">
+                {stats.absent}
               </div>
-              <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             </div>
+            <p className="text-xs text-muted-foreground">Absent</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-400">
-                  {stats.wrongSession}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Wrong Session
-                </p>
+            <div className="flex items-center gap-2 mb-1">
+              <QrCode className="h-4 w-4 text-orange-600" />
+              <div className="text-xl sm:text-2xl font-bold text-orange-600">
+                {stats.wrongSession}
               </div>
-              <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             </div>
+            <p className="text-xs text-muted-foreground">Wrong Session</p>
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 lg:col-span-1">
+        <Card className="col-span-2 md:col-span-1">
           <CardContent className="pt-4 sm:pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {stats.rate}%
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Attendance Rate
-                </p>
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="h-4 w-4 text-emerald-600" />
+              <div className="text-xl sm:text-2xl font-bold text-emerald-600">
+                {stats.rate}%
               </div>
-              <ClipboardList className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
             </div>
+            <p className="text-xs text-muted-foreground">Attendance Rate</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="list" className="text-xs sm:text-sm">
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="list" className="text-xs sm:text-sm py-2.5">
+            <ClipboardList className="h-4 w-4 mr-2" />
             Attendance List
           </TabsTrigger>
-          <TabsTrigger value="mark" className="text-xs sm:text-sm">
+          <TabsTrigger value="mark" className="text-xs sm:text-sm py-2.5">
+            <QrCode className="h-4 w-4 mr-2" />
             Mark Attendance
           </TabsTrigger>
         </TabsList>
