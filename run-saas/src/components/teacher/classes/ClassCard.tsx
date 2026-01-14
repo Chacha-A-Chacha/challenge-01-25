@@ -8,9 +8,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  ChevronDown,
-  ChevronUp,
-  Plus,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,9 +21,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { EditClassModal } from "./EditClassModal";
 import { DeleteClassDialog } from "./DeleteClassDialog";
-import { CreateSessionModal } from "./CreateSessionModal";
-import { SessionCard } from "./SessionCard";
+import { SessionsSheet } from "./SessionsSheet";
 import type { Session } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface ClassWithDetails {
   id: string;
@@ -47,24 +45,18 @@ interface ClassCardProps {
 }
 
 export function ClassCard({ classItem, isHeadTeacher }: ClassCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showSessionsSheet, setShowSessionsSheet] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showCreateSessionModal, setShowCreateSessionModal] = useState(false);
 
-  const studentCount = classItem._count?.students || classItem.students?.length || 0;
-  const sessionCount = classItem._count?.sessions || classItem.sessions?.length || 0;
+  const studentCount =
+    classItem._count?.students || classItem.students?.length || 0;
+  const sessionCount =
+    classItem._count?.sessions || classItem.sessions?.length || 0;
   const utilizationRate =
     classItem.capacity > 0
       ? Math.round((studentCount / classItem.capacity) * 100)
       : 0;
-
-  const saturdaySessions = classItem.sessions?.filter(
-    (s) => s.day === "SATURDAY"
-  ) || [];
-  const sundaySessions = classItem.sessions?.filter(
-    (s) => s.day === "SUNDAY"
-  ) || [];
 
   const getUtilizationColor = () => {
     if (utilizationRate >= 90) return "text-red-600";
@@ -75,15 +67,17 @@ export function ClassCard({ classItem, isHeadTeacher }: ClassCardProps) {
   return (
     <>
       <Card className="hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-lg">{classItem.name}</CardTitle>
-              <div className="flex items-center gap-2 mt-1">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg truncate">
+                {classItem.name}
+              </CardTitle>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <Badge variant="outline" className={getUtilizationColor()}>
                   {utilizationRate}% Full
                 </Badge>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-muted-foreground">
                   {studentCount} / {classItem.capacity} students
                 </span>
               </div>
@@ -91,7 +85,11 @@ export function ClassCard({ classItem, isHeadTeacher }: ClassCardProps) {
             {isHeadTeacher && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                  >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -115,99 +113,56 @@ export function ClassCard({ classItem, isHeadTeacher }: ClassCardProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 text-sm">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span>{studentCount} Students</span>
+              <Users className="h-4 w-4 text-purple-600 flex-shrink-0" />
+              <span className="truncate">{studentCount} Students</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>{sessionCount} Sessions</span>
+              <Calendar className="h-4 w-4 text-blue-600 flex-shrink-0" />
+              <span className="truncate">{sessionCount} Sessions</span>
             </div>
           </div>
 
-          {/* Expand/Collapse Button */}
-          <Button
-            variant="ghost"
-            className="w-full justify-between"
-            onClick={() => setIsExpanded(!isExpanded)}
-          >
-            <span className="text-sm">
-              {isExpanded ? "Hide Sessions" : "View Sessions"}
-            </span>
-            {isExpanded ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </Button>
-
-          {/* Expanded Sessions View */}
-          {isExpanded && (
-            <div className="space-y-4 pt-2 border-t">
-              {/* Saturday Sessions */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Saturday Sessions
-                  </h4>
-                  {isHeadTeacher && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowCreateSessionModal(true)}
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add
-                    </Button>
-                  )}
-                </div>
-                {saturdaySessions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground pl-6">
-                    No Saturday sessions
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {saturdaySessions.map((session) => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        isHeadTeacher={isHeadTeacher}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Sunday Sessions */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Sunday Sessions
-                  </h4>
-                </div>
-                {sundaySessions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground pl-6">
-                    No Sunday sessions
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {sundaySessions.map((session) => (
-                      <SessionCard
-                        key={session.id}
-                        session={session}
-                        isHeadTeacher={isHeadTeacher}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+          {/* Session Breakdown */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>
+                Sat:{" "}
+                {classItem.sessions?.filter((s) => s.day === "SATURDAY")
+                  .length || 0}
+              </span>
             </div>
-          )}
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              <span>
+                Sun:{" "}
+                {classItem.sessions?.filter((s) => s.day === "SUNDAY").length ||
+                  0}
+              </span>
+            </div>
+          </div>
+
+          {/* View Sessions Button */}
+          <Button
+            variant="outline"
+            className="w-full border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+            onClick={() => setShowSessionsSheet(true)}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Sessions
+          </Button>
         </CardContent>
       </Card>
+
+      {/* Sessions Sheet */}
+      <SessionsSheet
+        open={showSessionsSheet}
+        onOpenChange={setShowSessionsSheet}
+        classItem={classItem}
+        isHeadTeacher={isHeadTeacher}
+      />
 
       {/* Modals */}
       <EditClassModal
@@ -219,12 +174,6 @@ export function ClassCard({ classItem, isHeadTeacher }: ClassCardProps) {
         open={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         classItem={classItem}
-      />
-      <CreateSessionModal
-        open={showCreateSessionModal}
-        onClose={() => setShowCreateSessionModal(false)}
-        classId={classItem.id}
-        existingSessions={classItem.sessions}
       />
     </>
   );
