@@ -163,7 +163,6 @@ export function StudentDashboard() {
                   <h1 className="text-3xl md:text-4xl font-bold">
                     {getFullName()}
                   </h1>
-                  <Sparkles className="h-6 w-6 text-yellow-300" />
                 </div>
                 <p className="text-blue-100 text-lg mb-4">
                   {schedule.student.studentNumber}

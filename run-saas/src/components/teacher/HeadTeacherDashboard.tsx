@@ -11,10 +11,18 @@ import {
   BookOpen,
   Clock,
   CheckCircle,
+  Activity,
+  Sparkles,
+  UserCheck,
+  ClipboardList,
+  AlertCircle,
+  Settings,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 
 interface HeadTeacherStats {
   course: {
@@ -111,41 +119,85 @@ export function HeadTeacherDashboard() {
     return null;
   }
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (
+    status: string,
+  ): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case "ACTIVE":
-        return "success";
-      case "INACTIVE":
-        return "warning";
-      case "COMPLETED":
-        return "secondary";
-      default:
         return "default";
+      case "INACTIVE":
+        return "secondary";
+      case "COMPLETED":
+        return "outline";
+      default:
+        return "secondary";
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "text-green-600";
+      case "INACTIVE":
+        return "text-yellow-600";
+      case "COMPLETED":
+        return "text-gray-600";
+      default:
+        return "text-muted-foreground";
+    }
+  };
+
+  const utilizationColor =
+    stats.classes.utilizationRate >= 80
+      ? "text-green-600"
+      : stats.classes.utilizationRate >= 60
+        ? "text-yellow-600"
+        : "text-red-600";
+
+  const hasPendingItems =
+    stats.registrations.pending > 0 || stats.reassignments.pending > 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header with Course Info */}
-      <div>
-        <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-8">
+      {/* Header Section */}
+      <div className="space-y-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {stats.course.name}
-            </h1>
-            <p className="text-muted-foreground">Head Teacher Dashboard</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                {stats.course.name}
+              </h1>
+              <Badge
+                variant={getStatusBadgeVariant(stats.course.status)}
+                className={getStatusColor(stats.course.status)}
+              >
+                {stats.course.status}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Head Teacher Dashboard
+            </p>
           </div>
-          <Badge variant={getStatusBadgeVariant(stats.course.status)}>
-            {stats.course.status}
-          </Badge>
+          {hasPendingItems && (
+            <Badge
+              variant="destructive"
+              className="flex items-center gap-1 w-fit"
+            >
+              <AlertCircle className="h-3 w-3" />
+              {stats.registrations.pending + stats.reassignments.pending}{" "}
+              Pending
+            </Badge>
+          )}
         </div>
-        <div className="mt-4 flex gap-4 text-sm text-muted-foreground">
-          <div>
+        <div className="flex flex-wrap gap-3 text-xs sm:text-sm text-muted-foreground pt-2">
+          <div className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
             <span className="font-medium">Started:</span>{" "}
             {new Date(stats.course.createdAt).toLocaleDateString()}
           </div>
           {stats.course.endDate && (
-            <div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
               <span className="font-medium">End Date:</span>{" "}
               {new Date(stats.course.endDate).toLocaleDateString()}
             </div>
@@ -153,277 +205,540 @@ export function HeadTeacherDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-4">
+      {/* Mobile Quick Actions - Only visible on small screens */}
+      <div className="grid grid-cols-2 gap-3 sm:hidden">
         <Button
-          className="h-20"
+          size="lg"
+          className="h-auto py-4 flex flex-col gap-2"
           onClick={() => router.push("/teacher/teachers")}
         >
-          <Users className="mr-2 h-5 w-5" />
-          Manage Teachers
+          <Users className="h-5 w-5" />
+          <span className="text-xs font-medium">Teachers</span>
         </Button>
         <Button
-          className="h-20"
+          size="lg"
+          className="h-auto py-4 flex flex-col gap-2"
           onClick={() => router.push("/teacher/classes")}
-          variant="outline"
         >
-          <School className="mr-2 h-5 w-5" />
-          Manage Classes
+          <School className="h-5 w-5" />
+          <span className="text-xs font-medium">Classes</span>
         </Button>
         <Button
-          className="h-20"
+          size="lg"
+          variant="outline"
+          className="h-auto py-4 flex flex-col gap-2"
           onClick={() => router.push("/teacher/students")}
-          variant="outline"
         >
-          <GraduationCap className="mr-2 h-5 w-5" />
-          Manage Students
+          <GraduationCap className="h-5 w-5" />
+          <span className="text-xs font-medium">Students</span>
         </Button>
         <Button
-          className="h-20"
-          onClick={() => router.push("/teacher/registrations")}
+          size="lg"
           variant="outline"
+          className="h-auto py-4 flex flex-col gap-2 relative"
+          onClick={() => router.push("/teacher/registrations")}
         >
-          <CheckCircle className="mr-2 h-5 w-5" />
-          Registrations
+          <CheckCircle className="h-5 w-5" />
+          <span className="text-xs font-medium">Registrations</span>
           {stats.registrations.pending > 0 && (
-            <Badge className="ml-2" variant="destructive">
+            <Badge
+              variant="destructive"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
+            >
               {stats.registrations.pending}
             </Badge>
           )}
         </Button>
       </div>
 
-      {/* Teachers & Classes Stats */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Teachers */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Teachers</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Teachers
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.teachers.total}</div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Including you (Head Teacher)
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Additional Teachers
-                </CardTitle>
-                <Users className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
+      {/* Overview Cards - 2 columns on mobile, 4 on larger screens */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Course Overview
+          </h2>
+        </div>
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/teacher/teachers")}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Teachers</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.teachers.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="text-blue-600 font-medium">
                   {stats.teachers.additional}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                </span>{" "}
+                additional
+              </p>
+            </CardContent>
+          </Card>
 
-        {/* Classes */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Classes</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Classes
-                </CardTitle>
-                <School className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.classes.total}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Class Utilization
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/teacher/classes")}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Classes</CardTitle>
+              <School className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.classes.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className={`font-medium ${utilizationColor}`}>
                   {stats.classes.utilizationRate}%
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {stats.classes.totalStudents} / {stats.classes.totalCapacity}{" "}
-                  students
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+                </span>{" "}
+                capacity
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push("/teacher/students")}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Students</CardTitle>
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.students.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="text-green-600 font-medium">
+                  +{stats.students.recentRegistrations}
+                </span>{" "}
+                this week
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sessions</CardTitle>
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.sessions.total}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                <span className="font-medium">{stats.sessions.saturday}</span>{" "}
+                Sat /{" "}
+                <span className="font-medium">{stats.sessions.sunday}</span> Sun
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
-      {/* Sessions & Students Stats */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Sessions */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Sessions</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Sessions
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.sessions.total}</div>
-              </CardContent>
-            </Card>
+      <Separator className="my-6" />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Saturday / Sunday
-                </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {stats.sessions.saturday} / {stats.sessions.sunday}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      {/* Detailed Stats Section - 2 columns on mobile, 3 on larger screens */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+        {/* Teacher Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              Teacher Management
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-blue-600" />
+                <span className="text-sm">You (Head Teacher)</span>
+              </div>
+              <Badge variant="secondary" className="text-xs">
+                Active
+              </Badge>
+            </div>
 
-        {/* Students */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Students</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Students
-                </CardTitle>
-                <GraduationCap className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.students.total}</div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-purple-600" />
+                <span className="text-sm">Additional Teachers</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-purple-600">
+                  {stats.teachers.additional}
+                </span>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Recent Registrations
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.students.recentRegistrations}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Last 7 days
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">Team Size</div>
+              <div className="text-2xl font-bold">{stats.teachers.total}</div>
+              <p className="text-xs text-muted-foreground">
+                Total teaching staff
+              </p>
+            </div>
+
+            <Button
+              className="w-full"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/teacher/teachers")}
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Manage Teachers
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Class & Capacity Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <School className="h-4 w-4 text-primary" />
+              Capacity Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total Capacity</span>
+                <span className="font-semibold">
+                  {stats.classes.totalCapacity}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Enrolled Students</span>
+                <span className="font-semibold">
+                  {stats.classes.totalStudents}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Available Seats</span>
+                <span className="font-semibold">
+                  {stats.classes.totalCapacity - stats.classes.totalStudents}
+                </span>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Utilization Rate</span>
+                <span className={`text-xl font-bold ${utilizationColor}`}>
+                  {stats.classes.utilizationRate}%
+                </span>
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full transition-all ${
+                    stats.classes.utilizationRate >= 80
+                      ? "bg-green-600"
+                      : stats.classes.utilizationRate >= 60
+                        ? "bg-yellow-600"
+                        : "bg-red-600"
+                  }`}
+                  style={{ width: `${stats.classes.utilizationRate}%` }}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <Button
+              className="w-full"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/teacher/classes")}
+            >
+              <School className="h-4 w-4 mr-2" />
+              Manage Classes
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Sessions Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              Session Distribution
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500" />
+                <span className="text-sm">Saturday Sessions</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-blue-600">
+                  {stats.sessions.saturday}
+                </span>
+                <Badge variant="secondary" className="text-xs">
+                  {stats.sessions.total > 0
+                    ? Math.round(
+                        (stats.sessions.saturday / stats.sessions.total) * 100,
+                      )
+                    : 0}
+                  %
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-purple-500" />
+                <span className="text-sm">Sunday Sessions</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-purple-600">
+                  {stats.sessions.sunday}
+                </span>
+                <Badge variant="secondary" className="text-xs">
+                  {stats.sessions.total > 0
+                    ? Math.round(
+                        (stats.sessions.sunday / stats.sessions.total) * 100,
+                      )
+                    : 0}
+                  %
+                </Badge>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="text-xs text-muted-foreground">
+                Total Sessions
+              </div>
+              <div className="text-2xl font-bold">{stats.sessions.total}</div>
+              <p className="text-xs text-muted-foreground">
+                Across all classes
+              </p>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <UserCheck className="h-4 w-4 text-green-600" />
+                <span className="text-muted-foreground">
+                  Students with Sessions
+                </span>
+              </div>
+              <div className="text-xl font-bold">
+                {stats.students.withSessions}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                of {stats.students.total} enrolled
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Registrations & Reassignments */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Registrations */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Student Registrations</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Pending Approval
-                </CardTitle>
-                <BookOpen className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {stats.registrations.pending}
+      {/* Action Items - Registrations & Reassignments */}
+      {hasPendingItems && (
+        <>
+          <Separator className="my-6" />
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <h2 className="text-lg font-semibold">Action Required</h2>
+            </div>
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              {/* Registrations */}
+              {stats.registrations.pending > 0 && (
+                <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-orange-600" />
+                      Pending Registrations
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Awaiting Review
+                      </span>
+                      <Badge variant="destructive" className="text-lg px-3">
+                        {stats.registrations.pending}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.registrations.approvedThisWeek} approved this week
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={() => router.push("/teacher/registrations")}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Review Registrations
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Reassignments */}
+              {stats.reassignments.pending > 0 && (
+                <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ArrowRightLeft className="h-4 w-4 text-orange-600" />
+                      Pending Reassignments
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        Awaiting Review
+                      </span>
+                      <Badge variant="destructive" className="text-lg px-3">
+                        {stats.reassignments.pending}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {stats.reassignments.total} total requests received
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={() => router.push("/teacher/reassignments")}
+                    >
+                      <ArrowRightLeft className="h-4 w-4 mr-2" />
+                      Review Reassignments
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Info Cards for Approved Items */}
+      {!hasPendingItems && (
+        <>
+          <Separator className="my-6" />
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+            <Card className="border-dashed">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-full bg-green-100 dark:bg-green-950">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Approved This Week</p>
+                      <p className="text-xs text-muted-foreground">
+                        Student registrations
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.registrations.approvedThisWeek}
+                    </div>
+                  </div>
                 </div>
-                {stats.registrations.pending > 0 && (
-                  <Button
-                    className="mt-3"
-                    size="sm"
-                    onClick={() => router.push("/teacher/registrations")}
-                  >
-                    Review Now
-                  </Button>
-                )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Approved This Week
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {stats.registrations.approvedThisWeek}
+            <Card className="border-dashed">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-full bg-blue-100 dark:bg-blue-950">
+                      <ArrowRightLeft className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Total Reassignments</p>
+                      <p className="text-xs text-muted-foreground">
+                        All time requests
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {stats.reassignments.total}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-        </div>
+        </>
+      )}
 
-        {/* Reassignments */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Session Reassignments</h2>
-          <div className="grid gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Pending Review
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
-                  {stats.reassignments.pending}
-                </div>
-                {stats.reassignments.pending > 0 && (
-                  <Button
-                    className="mt-3"
-                    size="sm"
-                    onClick={() => router.push("/teacher/reassignments")}
-                  >
-                    Review Now
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Requests
-                </CardTitle>
-                <BookOpen className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {stats.reassignments.total}
-                </div>
-              </CardContent>
-            </Card>
+      {/* Action Buttons - Hidden on mobile (shown in quick actions instead) */}
+      <div className="hidden sm:grid gap-4 grid-cols-1 md:grid-cols-4 pt-4">
+        <Button
+          size="lg"
+          className="h-auto py-6"
+          onClick={() => router.push("/teacher/teachers")}
+        >
+          <div className="flex items-center gap-3">
+            <Users className="h-5 w-5" />
+            <div className="text-left">
+              <div className="font-semibold">Teachers</div>
+              <div className="text-xs opacity-90">Manage team</div>
+            </div>
           </div>
-        </div>
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="h-auto py-6"
+          onClick={() => router.push("/teacher/classes")}
+        >
+          <div className="flex items-center gap-3">
+            <School className="h-5 w-5" />
+            <div className="text-left">
+              <div className="font-semibold">Classes</div>
+              <div className="text-xs opacity-90">Manage classes</div>
+            </div>
+          </div>
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="h-auto py-6"
+          onClick={() => router.push("/teacher/students")}
+        >
+          <div className="flex items-center gap-3">
+            <GraduationCap className="h-5 w-5" />
+            <div className="text-left">
+              <div className="font-semibold">Students</div>
+              <div className="text-xs opacity-90">Manage students</div>
+            </div>
+          </div>
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="h-auto py-6 relative"
+          onClick={() => router.push("/teacher/registrations")}
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-5 w-5" />
+            <div className="text-left">
+              <div className="font-semibold">Registrations</div>
+              <div className="text-xs opacity-90">Review requests</div>
+            </div>
+          </div>
+          {stats.registrations.pending > 0 && (
+            <Badge
+              variant="destructive"
+              className="absolute -top-2 -right-2 h-6 w-6 p-0 flex items-center justify-center"
+            >
+              {stats.registrations.pending}
+            </Badge>
+          )}
+        </Button>
       </div>
     </div>
   );

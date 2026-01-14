@@ -135,7 +135,6 @@ function SchedulePage() {
         <div>
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-yellow-500" />
               Weekly Sessions
             </h2>
             <p className="text-muted-foreground mt-1">
