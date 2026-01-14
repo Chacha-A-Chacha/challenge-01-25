@@ -447,16 +447,16 @@ export default function ReassignmentsPage() {
         </Card>
       </div>
 
-      {/* Filters - Same line with different widths */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="flex-1 sm:min-w-[300px]">
+      {/* Filters - Same line with filter having shortest width */}
+      <div className="flex gap-3">
+        <div className="flex-1">
           <SearchInput
             value={searchQuery}
             onChange={setSearchQuery}
             placeholder="Search by student name, number, or class..."
           />
         </div>
-        <div className="w-full sm:w-48">
+        <div className="w-48">
           <FilterSelect
             value={statusFilter}
             options={statusOptions}
