@@ -319,16 +319,14 @@ export default function RegistrationsPage() {
             placeholder="Search by name or email..."
           />
         </div>
-        <div className="w-48">
-          <FilterSelect
-            value={filters.status}
-            options={statusOptions}
-            onChange={(value) =>
-              setFilters({ status: value as RegistrationStatusFilter })
-            }
-            placeholder="Filter by status"
-          />
-        </div>
+        <FilterSelect
+          value={filters.status}
+          options={statusOptions}
+          onChange={(value) =>
+            setFilters({ status: value as RegistrationStatusFilter })
+          }
+          placeholder="Filter by status"
+        />
       </div>
 
       {/* Bulk Actions Bar */}

@@ -447,8 +447,8 @@ export default function ReassignmentsPage() {
         </Card>
       </div>
 
-      {/* Filters - Same line with filter having shortest width */}
-      <div className="flex gap-3">
+      {/* Filters */}
+      <div className="flex gap-4">
         <div className="flex-1">
           <SearchInput
             value={searchQuery}
@@ -456,14 +456,12 @@ export default function ReassignmentsPage() {
             placeholder="Search by student name, number, or class..."
           />
         </div>
-        <div className="w-48">
-          <FilterSelect
-            value={statusFilter}
-            options={statusOptions}
-            onChange={(value) => setStatusFilter(value as StatusFilter)}
-            placeholder="Filter by status"
-          />
-        </div>
+        <FilterSelect
+          value={statusFilter}
+          options={statusOptions}
+          onChange={(value) => setStatusFilter(value as StatusFilter)}
+          placeholder="Filter by status"
+        />
       </div>
 
       {/* Info Alert for Pending Requests */}
