@@ -163,118 +163,118 @@ export function SessionsSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="h-[85vh] sm:h-auto sm:max-h-[85vh] flex flex-col"
+          className="h-[85vh] sm:h-auto sm:max-h-[85vh] flex flex-col p-0"
         >
-          <SheetHeader className="flex-shrink-0">
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <SheetTitle className="text-xl pr-8">
-                  {classItem.name}
-                </SheetTitle>
-                <SheetDescription className="mt-2">
-                  <div className="flex flex-wrap items-center gap-3">
+          <div className="w-full max-w-4xl mx-auto px-6 sm:px-8 py-6 flex flex-col h-full">
+            <SheetHeader className="flex-shrink-0">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <SheetTitle className="text-xl pr-8">
+                    {classItem.name}
+                  </SheetTitle>
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
                     <Badge variant="outline" className={getUtilizationColor()}>
                       {utilizationRate}% Full
                     </Badge>
-                    <span className="text-sm">
+                    <span className="text-sm text-muted-foreground">
                       {studentCount} / {classItem.capacity} students
                     </span>
                     <span className="text-sm text-muted-foreground">
                       • {sessionCount} sessions
                     </span>
                   </div>
-                </SheetDescription>
+                </div>
               </div>
-            </div>
-          </SheetHeader>
+            </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto mt-6 -mx-6 px-6">
-            <div className="space-y-6">
-              {/* Saturday Sessions */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      Saturday
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      ({saturdaySessions.length})
-                    </span>
-                  </h3>
-                  {isHeadTeacher && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowCreateSessionModal(true)}
-                      className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
-                      Add Session
-                    </Button>
+            <div className="flex-1 overflow-y-auto mt-6 -mx-2 px-2">
+              <div className="space-y-6">
+                {/* Saturday Sessions */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Saturday
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        ({saturdaySessions.length})
+                      </span>
+                    </h3>
+                    {isHeadTeacher && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCreateSessionModal(true)}
+                        className="border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        Add Session
+                      </Button>
+                    )}
+                  </div>
+                  {saturdaySessions.length === 0 ? (
+                    <div className="p-8 text-center border rounded-lg bg-muted/30">
+                      <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        No Saturday sessions yet
+                      </p>
+                      {isHeadTeacher && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowCreateSessionModal(true)}
+                          className="mt-2 text-emerald-700 hover:text-emerald-800"
+                        >
+                          Create one now
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {saturdaySessions.map((session) => (
+                        <SessionItem key={session.id} session={session} />
+                      ))}
+                    </div>
                   )}
                 </div>
-                {saturdaySessions.length === 0 ? (
-                  <div className="p-8 text-center border rounded-lg bg-muted/30">
-                    <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No Saturday sessions yet
-                    </p>
-                    {isHeadTeacher && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowCreateSessionModal(true)}
-                        className="mt-2 text-emerald-700 hover:text-emerald-800"
-                      >
-                        Create one now
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {saturdaySessions.map((session) => (
-                      <SessionItem key={session.id} session={session} />
-                    ))}
-                  </div>
-                )}
-              </div>
 
-              {/* Sunday Sessions */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-base font-semibold flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      Sunday
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      ({sundaySessions.length})
-                    </span>
-                  </h3>
+                {/* Sunday Sessions */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-base font-semibold flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Sunday
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        ({sundaySessions.length})
+                      </span>
+                    </h3>
+                  </div>
+                  {sundaySessions.length === 0 ? (
+                    <div className="p-8 text-center border rounded-lg bg-muted/30">
+                      <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        No Sunday sessions yet
+                      </p>
+                      {isHeadTeacher && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowCreateSessionModal(true)}
+                          className="mt-2 text-emerald-700 hover:text-emerald-800"
+                        >
+                          Create one now
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sundaySessions.map((session) => (
+                        <SessionItem key={session.id} session={session} />
+                      ))}
+                    </div>
+                  )}
                 </div>
-                {sundaySessions.length === 0 ? (
-                  <div className="p-8 text-center border rounded-lg bg-muted/30">
-                    <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      No Sunday sessions yet
-                    </p>
-                    {isHeadTeacher && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowCreateSessionModal(true)}
-                        className="mt-2 text-emerald-700 hover:text-emerald-800"
-                      >
-                        Create one now
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {sundaySessions.map((session) => (
-                      <SessionItem key={session.id} session={session} />
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           </div>
