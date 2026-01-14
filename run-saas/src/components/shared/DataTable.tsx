@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export interface Column<T> {
   header: string;
@@ -43,45 +44,56 @@ export function DataTable<T extends { id: string }>({
 
   return (
     <div className={cn("rounded-md border", className)}>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column, index) => (
-              <TableHead key={index} className={column.className}>
-                {column.header}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                {emptyMessage}
-              </TableCell>
-            </TableRow>
-          ) : (
-            data.map((row) => (
-              <TableRow
-                key={row.id}
-                onClick={() => onRowClick?.(row)}
-                className={onRowClick ? "cursor-pointer" : ""}
-              >
-                {columns.map((column, index) => {
-                  const value = getCellValue(row, column);
-                  return (
-                    <TableCell key={index} className={column.className}>
-                      {column.cell
-                        ? column.cell(value, row)
-                        : (value as ReactNode)}
-                    </TableCell>
-                  );
-                })}
+      <ScrollArea className="w-full">
+        <div className="min-w-full">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {columns.map((column, index) => (
+                  <TableHead key={index} className={column.className}>
+                    {column.header}
+                  </TableHead>
+                ))}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {data.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    {emptyMessage}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    onClick={() => onRowClick?.(row)}
+                    className={cn(
+                      onRowClick &&
+                        "cursor-pointer hover:bg-muted/50 transition-colors",
+                    )}
+                  >
+                    {columns.map((column, index) => {
+                      const value = getCellValue(row, column);
+                      return (
+                        <TableCell key={index} className={column.className}>
+                          {column.cell
+                            ? column.cell(value, row)
+                            : (value as ReactNode)}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
     </div>
   );
 }
