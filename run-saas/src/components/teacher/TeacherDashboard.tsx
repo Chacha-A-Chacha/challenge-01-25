@@ -184,7 +184,7 @@ function AdditionalTeacherDashboard() {
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/classes")}
         >
           <School className="h-5 w-5" />
@@ -192,7 +192,7 @@ function AdditionalTeacherDashboard() {
         </Button>
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/students")}
         >
           <GraduationCap className="h-5 w-5" />
@@ -201,7 +201,7 @@ function AdditionalTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/attendance")}
         >
           <ClipboardList className="h-5 w-5" />
@@ -210,7 +210,7 @@ function AdditionalTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2 relative"
+          className="h-auto py-4 flex flex-col gap-2 relative border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/reassignments")}
         >
           <ArrowRightLeft className="h-5 w-5" />
@@ -262,7 +262,7 @@ function AdditionalTeacherDashboard() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-emerald-600" />
             Teaching Overview
           </h2>
         </div>
@@ -351,7 +351,7 @@ function AdditionalTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <School className="h-4 w-4 text-primary" />
+              <School className="h-4 w-4 text-emerald-600" />
               Class Distribution
             </CardTitle>
           </CardHeader>
@@ -428,7 +428,7 @@ function AdditionalTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
+              <Calendar className="h-4 w-4 text-emerald-600" />
               Session Overview
             </CardTitle>
           </CardHeader>
@@ -496,7 +496,7 @@ function AdditionalTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <GraduationCap className="h-4 w-4 text-primary" />
+              <GraduationCap className="h-4 w-4 text-emerald-600" />
               Student Information
             </CardTitle>
           </CardHeader>
@@ -590,7 +590,7 @@ function AdditionalTeacherDashboard() {
                   {stats.reassignments.total} total requests received
                 </p>
                 <Button
-                  className="w-full"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700"
                   onClick={() => router.push("/teacher/reassignments")}
                 >
                   <ArrowRightLeft className="h-4 w-4 mr-2" />
@@ -606,7 +606,7 @@ function AdditionalTeacherDashboard() {
       <div className="hidden sm:grid gap-4 grid-cols-1 md:grid-cols-4 pt-4">
         <Button
           size="lg"
-          className="h-auto py-6"
+          className="h-auto py-6 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/classes")}
         >
           <div className="flex items-center gap-3">
@@ -621,7 +621,7 @@ function AdditionalTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/students")}
         >
           <div className="flex items-center gap-3">
@@ -636,7 +636,7 @@ function AdditionalTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/attendance")}
         >
           <div className="flex items-center gap-3">
@@ -651,7 +651,7 @@ function AdditionalTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6 relative"
+          className="h-auto py-6 relative border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/reassignments")}
         >
           <div className="flex items-center gap-3">
@@ -676,8 +676,8 @@ function AdditionalTeacherDashboard() {
       <Card className="border-dashed">
         <CardContent className="pt-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
-              <BookOpen className="h-5 w-5 text-primary" />
+            <div className="p-3 rounded-full bg-emerald-100">
+              <BookOpen className="h-5 w-5 text-emerald-600" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium">Course Information</p>

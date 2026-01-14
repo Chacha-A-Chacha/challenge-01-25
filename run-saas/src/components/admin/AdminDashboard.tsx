@@ -137,7 +137,7 @@ export function AdminDashboard() {
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/admin/courses")}
         >
           <BookOpen className="h-5 w-5" />
@@ -145,7 +145,7 @@ export function AdminDashboard() {
         </Button>
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/admin/teachers")}
         >
           <Users className="h-5 w-5" />
@@ -154,7 +154,7 @@ export function AdminDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/admin/attendance")}
         >
           <ClipboardList className="h-5 w-5" />
@@ -163,7 +163,7 @@ export function AdminDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/admin/settings")}
         >
           <Settings className="h-5 w-5" />
@@ -175,7 +175,7 @@ export function AdminDashboard() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-emerald-600" />
             Quick Overview
           </h2>
         </div>
@@ -260,7 +260,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" />
+              <BookOpen className="h-4 w-4 text-emerald-600" />
               Course Distribution
             </CardTitle>
           </CardHeader>
@@ -343,7 +343,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
+              <Users className="h-4 w-4 text-emerald-600" />
               Teacher Statistics
             </CardTitle>
           </CardHeader>
@@ -411,7 +411,7 @@ export function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <School className="h-4 w-4 text-primary" />
+              <School className="h-4 w-4 text-emerald-600" />
               Capacity Overview
             </CardTitle>
           </CardHeader>
@@ -486,7 +486,7 @@ export function AdminDashboard() {
       <div className="hidden sm:grid gap-4 grid-cols-1 md:grid-cols-3 pt-4">
         <Button
           size="lg"
-          className="h-auto py-6"
+          className="h-auto py-6 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/admin/courses")}
         >
           <div className="flex items-center gap-3">
@@ -501,7 +501,7 @@ export function AdminDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/admin/teachers")}
         >
           <div className="flex items-center gap-3">
@@ -516,7 +516,7 @@ export function AdminDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/admin/attendance")}
         >
           <div className="flex items-center gap-3">
@@ -534,8 +534,8 @@ export function AdminDashboard() {
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-primary/10">
-                <Calendar className="h-5 w-5 text-primary" />
+              <div className="p-3 rounded-full bg-emerald-100">
+                <Calendar className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <p className="text-sm font-medium">Students with Sessions</p>

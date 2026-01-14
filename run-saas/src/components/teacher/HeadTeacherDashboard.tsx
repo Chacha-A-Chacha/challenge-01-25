@@ -209,7 +209,7 @@ export function HeadTeacherDashboard() {
       <div className="grid grid-cols-2 gap-3 sm:hidden">
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/teachers")}
         >
           <Users className="h-5 w-5" />
@@ -217,7 +217,7 @@ export function HeadTeacherDashboard() {
         </Button>
         <Button
           size="lg"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/classes")}
         >
           <School className="h-5 w-5" />
@@ -226,7 +226,7 @@ export function HeadTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2"
+          className="h-auto py-4 flex flex-col gap-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/students")}
         >
           <GraduationCap className="h-5 w-5" />
@@ -235,7 +235,7 @@ export function HeadTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-4 flex flex-col gap-2 relative"
+          className="h-auto py-4 flex flex-col gap-2 relative border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/registrations")}
         >
           <CheckCircle className="h-5 w-5" />
@@ -255,7 +255,7 @@ export function HeadTeacherDashboard() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <Sparkles className="h-5 w-5 text-emerald-600" />
             Course Overview
           </h2>
         </div>
@@ -342,7 +342,7 @@ export function HeadTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
+              <Users className="h-4 w-4 text-emerald-600" />
               Teacher Management
             </CardTitle>
           </CardHeader>
@@ -395,7 +395,7 @@ export function HeadTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <School className="h-4 w-4 text-primary" />
+              <School className="h-4 w-4 text-emerald-600" />
               Capacity Overview
             </CardTitle>
           </CardHeader>
@@ -462,7 +462,7 @@ export function HeadTeacherDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-primary" />
+              <Calendar className="h-4 w-4 text-emerald-600" />
               Session Distribution
             </CardTitle>
           </CardHeader>
@@ -571,7 +571,7 @@ export function HeadTeacherDashboard() {
                       {stats.registrations.approvedThisWeek} approved this week
                     </p>
                     <Button
-                      className="w-full"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => router.push("/teacher/registrations")}
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
@@ -603,7 +603,7 @@ export function HeadTeacherDashboard() {
                       {stats.reassignments.total} total requests received
                     </p>
                     <Button
-                      className="w-full"
+                      className="w-full bg-emerald-600 hover:bg-emerald-700"
                       onClick={() => router.push("/teacher/reassignments")}
                     >
                       <ArrowRightLeft className="h-4 w-4 mr-2" />
@@ -626,8 +626,8 @@ export function HeadTeacherDashboard() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-green-100 dark:bg-green-950">
-                      <CheckCircle className="h-5 w-5 text-green-600" />
+                    <div className="p-3 rounded-full bg-emerald-100 dark:bg-emerald-950">
+                      <CheckCircle className="h-5 w-5 text-emerald-600" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">Approved This Week</p>
@@ -637,7 +637,7 @@ export function HeadTeacherDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-emerald-600">
                       {stats.registrations.approvedThisWeek}
                     </div>
                   </div>
@@ -675,7 +675,7 @@ export function HeadTeacherDashboard() {
       <div className="hidden sm:grid gap-4 grid-cols-1 md:grid-cols-4 pt-4">
         <Button
           size="lg"
-          className="h-auto py-6"
+          className="h-auto py-6 bg-emerald-600 hover:bg-emerald-700"
           onClick={() => router.push("/teacher/teachers")}
         >
           <div className="flex items-center gap-3">
@@ -690,7 +690,7 @@ export function HeadTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/classes")}
         >
           <div className="flex items-center gap-3">
@@ -705,7 +705,7 @@ export function HeadTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6"
+          className="h-auto py-6 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/students")}
         >
           <div className="flex items-center gap-3">
@@ -720,7 +720,7 @@ export function HeadTeacherDashboard() {
         <Button
           size="lg"
           variant="outline"
-          className="h-auto py-6 relative"
+          className="h-auto py-6 relative border-emerald-600 text-emerald-700 hover:bg-emerald-50"
           onClick={() => router.push("/teacher/registrations")}
         >
           <div className="flex items-center gap-3">
